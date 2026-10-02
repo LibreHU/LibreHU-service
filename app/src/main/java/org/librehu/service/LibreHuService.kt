@@ -286,6 +286,12 @@ class LibreHuService : Service() {
             override fun unregisterCallback(callback: ILibreHuCallback?) {
                 if (callback != null) callbacks.unregister(callback)
             }
+
+            override fun setRadioAntenna(on: Boolean) {
+                unit?.setRadioAntenna(on)
+            }
+
+            override fun isRadioAntennaOn() = unit?.radioAntennaRequested ?: false
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------

@@ -51,4 +51,10 @@ interface ILibreHuService {
 
     void registerCallback(ILibreHuCallback callback);
     void unregisterCallback(ILibreHuCallback callback);
+
+    // --- API 2 (new methods go at the end to keep the transaction numbers of older clients) ---
+
+    /** Radio antenna power (GPIO 110 + MCU 0x43), requested by the radio app while it plays. Cut at ACC off. */
+    void setRadioAntenna(boolean on);
+    boolean isRadioAntennaOn();
 }

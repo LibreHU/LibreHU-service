@@ -28,6 +28,7 @@ object BoardGpio {
     const val TURN_RIGHT = 6 // input, active low
     const val TURN_LEFT = 7 // input, active low
     const val AMP_MUTE = 166 // output, 1 = muted
+    const val RADIO_ANTENNA = 110 // output, 1 = antenna powered (with MCU 0x43)
 }
 
 data class VehicleState(
@@ -105,6 +106,11 @@ class HeadUnit(
     private var sender: (McuFrame) -> Unit = {}
     private var backlightTask: ScheduledFuture<*>? = null
     private var mcuDate: McuEvent.Date? = null
+
+    /** Antenna requested by the radio app; powered only while ACC is on. */
+    @Volatile
+    var radioAntennaRequested = false
+        private set
     private var clockReceived = false
 
     /** Starts with [send] as the way to the MCU (usually [McuTransport.send]). */
@@ -195,6 +201,21 @@ class HeadUnit(
         sendToMcu(Mcu.time(now.hour, now.minute, now.second))
     }
 
+    // --- Radio antenna -----------------------------------------------------------------------------------------
+
+    fun setRadioAntenna(on: Boolean) {
+        executor.execute {
+            radioAntennaRequested = on
+            applyAntenna()
+        }
+    }
+
+    private fun applyAntenna() {
+        val on = radioAntennaRequested && state.acc
+        gpio.set(BoardGpio.RADIO_ANTENNA, on)
+        sendToMcu(Mcu.antenna(on))
+    }
+
     // --- ACC / power ---------------------------------------------------------------------------------------------
 
     private fun setAcc(on: Boolean) {
@@ -207,11 +228,13 @@ class HeadUnit(
             sendToMcu(Mcu.mute(false))
             applyAudio()
             sendToMcu(Mcu.externalAmp(settings.externalAmp))
+            if (radioAntennaRequested) applyAntenna()
             backlightTask = executor.schedule({ gpio.set(BoardGpio.BACKLIGHT, true) }, BACKLIGHT_DELAY_MS, TimeUnit.MILLISECONDS)
         } else {
             applyMute(true)
             sendToMcu(Mcu.mute(true))
             sendToMcu(Mcu.externalAmp(false))
+            if (radioAntennaRequested) applyAntenna()
             gpio.set(BoardGpio.BACKLIGHT, false)
         }
     }

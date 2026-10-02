@@ -87,4 +87,21 @@ class HeadUnitTest {
         assertEquals(Bd37534.tone(14), regs[Bd37534.BASS_GAIN])
         executor.shutdownNow()
     }
+
+    @Test
+    fun radioAntennaFollowsAcc() {
+        unit.start { sent += it }
+        unit.setRadioAntenna(true)
+        settle()
+        // ACC still off: request kept, antenna not powered.
+        assertEquals(false, outputs[BoardGpio.RADIO_ANTENNA])
+        unit.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
+        settle()
+        assertEquals(true, outputs[BoardGpio.RADIO_ANTENNA])
+        assertEquals(Mcu.antenna(true), sent.last { it.cmd == Mcu.CMD_ANTENNA })
+        unit.onFrame(McuFrame.of(Mcu.CMD_ACC, 0))
+        settle()
+        assertEquals(false, outputs[BoardGpio.RADIO_ANTENNA])
+        executor.shutdownNow()
+    }
 }
