@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LibreHU service</string>
+    <string name="notif_channel">Head unit service</string>
+    <string name="notif_text">MCU, audio processor and vehicle inputs</string>
+    <string name="permission_label">control the head unit</string>
+    <string name="permission_description">Read vehicle state (ignition, reverse, lights) and control the MCU and the audio processor of the head unit.</string>
+    <string name="disconnected">Service disconnected</string>
+    <string name="status_line">Link: %1$s\nMCU: %2$s</string>
+    <string name="restart">Restart</string>
+    <string name="force_start">Start despite ivi-services</string>
+    <string name="section_audio">Audio processor</string>
+    <string name="section_traffic">MCU traffic</string>
+    <string name="value_line">%1$s: %2$d</string>
+    <string name="volume">Volume</string>
+    <string name="mute">Mute</string>
+    <string name="bass">Bass</string>
+    <string name="middle">Middle</string>
+    <string name="treble">Treble</string>
+    <string name="balance">Balance (0 = left)</string>
+    <string name="fade">Fader (0 = front)</string>
+    <string name="loudness">Loudness</string>
+    <string name="subwoofer">Subwoofer output</string>
+    <string name="sub_level">Subwoofer level</string>
+    <string name="external_amp">External power amplifier (REM)</string>
+    <string name="flag_mcu">MCU</string>
+    <string name="flag_acc">ACC</string>
+    <string name="flag_reverse">Reverse</string>
+    <string name="flag_handbrake">Handbrake</string>
+    <string name="flag_headlight">Lights</string>
+    <string name="flag_turn_left">Left</string>
+    <string name="flag_turn_right">Right</string>
+    <string name="key_event">Key ch %1$d: %2$s (released: %3$b)</string>
+</resources>

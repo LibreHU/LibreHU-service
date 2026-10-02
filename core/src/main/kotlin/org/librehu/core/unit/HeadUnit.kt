@@ -1,0 +1,300 @@
+package org.librehu.core.unit
+
+import org.librehu.core.audio.Bd37534
+import org.librehu.core.mcu.Mcu
+import org.librehu.core.mcu.McuEvent
+import org.librehu.core.mcu.McuFrame
+import org.librehu.core.mcu.McuTransport
+import java.time.LocalDateTime
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+
+/** SoC GPIOs through `/dev/gpios_ioctl`. */
+interface Gpio {
+    fun set(
+        gpio: Int,
+        high: Boolean,
+    ): Boolean
+
+    /** Level 0/1, or -1 on error. Reading also switches the pin to input (driver behaviour): inputs only. */
+    fun read(gpio: Int): Int
+}
+
+/** GPIO numbers of board A0_AN (from ivi-services `Platform_AutoChips_8257_Base`). */
+object BoardGpio {
+    const val REVERSE = 2 // input, active low
+    const val BACKLIGHT = 5 // output, 1 = on
+    const val TURN_RIGHT = 6 // input, active low
+    const val TURN_LEFT = 7 // input, active low
+    const val AMP_MUTE = 166 // output, 1 = muted
+}
+
+data class VehicleState(
+    val mcuOnline: Boolean = false,
+    val acc: Boolean = false,
+    val handbrake: Boolean = false,
+    val headlight: Boolean = false,
+    val reverse: Boolean = false,
+    val turnLeft: Boolean = false,
+    val turnRight: Boolean = false,
+    val mcuVersion: String = "",
+)
+
+data class HeadUnitSettings(
+    val volume: Int = 12,
+    val muted: Boolean = false,
+    val bass: Int = Bd37534.TONE_FLAT,
+    val middle: Int = Bd37534.TONE_FLAT,
+    val treble: Int = Bd37534.TONE_FLAT,
+    val balance: Int = Bd37534.FADER_CENTER,
+    val fade: Int = Bd37534.FADER_CENTER,
+    val loudness: Int = 0,
+    val subwoofer: Boolean = false,
+    val subLevel: Int = Bd37534.SUB_DEFAULT_LEVEL,
+    val externalAmp: Boolean = false,
+)
+
+interface SettingsStore {
+    fun load(): HeadUnitSettings
+
+    fun save(settings: HeadUnitSettings)
+}
+
+/**
+ * Core behaviour of the head unit, replacing the parts of ivi-services' `IVICore` and platform layer that matter on
+ * the UJC201: MCU handshake, ACC handling (backlight, mute, external amplifier), SoC GPIO inputs, clock sync and the
+ * BD37534 settings. Everything runs on [executor] (single thread), so state needs no locking.
+ */
+class HeadUnit(
+    private val gpio: Gpio,
+    private val dsp: Bd37534?,
+    private val store: SettingsStore,
+    private val executor: ScheduledExecutorService,
+    private val listener: Listener,
+    private val clock: () -> LocalDateTime = { LocalDateTime.now() },
+) : McuTransport.Listener {
+    interface Listener {
+        fun onStateChanged(state: VehicleState) {}
+
+        fun onSettingsChanged(settings: HeadUnitSettings) {}
+
+        fun onMcuFrame(
+            frame: McuFrame,
+            fromMcu: Boolean,
+        ) {}
+
+        fun onKey(key: McuEvent.Key) {}
+
+        fun onCanData(bytes: ByteArray) {}
+
+        /** First date/time sent by the MCU since start (its RTC keeps time while the SoC is off). */
+        fun onMcuClock(time: LocalDateTime) {}
+
+        fun onLog(message: String) {}
+    }
+
+    @Volatile
+    var state = VehicleState()
+        private set
+
+    @Volatile
+    var settings = store.load()
+        private set
+
+    private var sender: (McuFrame) -> Unit = {}
+    private var backlightTask: ScheduledFuture<*>? = null
+    private var mcuDate: McuEvent.Date? = null
+    private var clockReceived = false
+
+    /** Starts with [send] as the way to the MCU (usually [McuTransport.send]). */
+    fun start(send: (McuFrame) -> Unit) {
+        sender = send
+        executor.execute {
+            gpio.set(BoardGpio.AMP_MUTE, true)
+            val ok = dsp?.init()
+            log("BD37534 init: ${ok ?: "absent"}")
+            applyAudio()
+            send(Mcu.pcReady())
+        }
+        executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
+        executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
+    }
+
+    fun sendToMcu(frame: McuFrame) {
+        sender(frame)
+        listener.onMcuFrame(frame, false)
+    }
+
+    // --- MCU ---------------------------------------------------------------------------------------------------
+
+    override fun onFrame(frame: McuFrame) {
+        listener.onMcuFrame(frame, true)
+        executor.execute { handle(McuEvent.decode(frame)) }
+    }
+
+    override fun onAckTimeout(frame: McuFrame) = log("MCU: no ACK for $frame")
+
+    override fun onError(e: Exception) = log("MCU link error: ${e.message}")
+
+    private fun handle(event: McuEvent) {
+        if (!state.mcuOnline) update { it.copy(mcuOnline = true) }
+        when (event) {
+            is McuEvent.Acc -> {
+                setAcc(event.on)
+            }
+
+            is McuEvent.Handbrake -> {
+                update { it.copy(handbrake = event.on) }
+            }
+
+            is McuEvent.Headlight -> {
+                update { it.copy(headlight = event.on) }
+            }
+
+            is McuEvent.Version -> {
+                update { it.copy(mcuVersion = event.text) }
+            }
+
+            is McuEvent.Date -> {
+                mcuDate = event
+            }
+
+            is McuEvent.Time -> {
+                onMcuTime(event)
+            }
+
+            is McuEvent.Key -> {
+                listener.onKey(event)
+            }
+
+            is McuEvent.Can -> {
+                listener.onCanData(event.bytes)
+            }
+
+            else -> {}
+        }
+    }
+
+    private fun onMcuTime(t: McuEvent.Time) {
+        val d = mcuDate ?: return
+        if (clockReceived) return
+        clockReceived = true
+        try {
+            listener.onMcuClock(LocalDateTime.of(d.year, d.month, d.day, t.hour, t.minute, t.second))
+        } catch (e: java.time.DateTimeException) {
+            log("MCU clock invalid: $d $t")
+        }
+    }
+
+    /** Android time to the MCU RTC every minute, once the MCU clock has been read (as ivi-services does). */
+    private fun syncClockToMcu() {
+        if (!clockReceived) return
+        val now = clock()
+        sendToMcu(Mcu.date(now.year, now.monthValue, now.dayOfMonth))
+        sendToMcu(Mcu.time(now.hour, now.minute, now.second))
+    }
+
+    // --- ACC / power ---------------------------------------------------------------------------------------------
+
+    private fun setAcc(on: Boolean) {
+        val changed = on != state.acc
+        update { it.copy(acc = on) }
+        if (!changed && on) return
+        log("ACC ${if (on) "on" else "off"}")
+        backlightTask?.cancel(false)
+        if (on) {
+            sendToMcu(Mcu.mute(false))
+            applyAudio()
+            sendToMcu(Mcu.externalAmp(settings.externalAmp))
+            backlightTask = executor.schedule({ gpio.set(BoardGpio.BACKLIGHT, true) }, BACKLIGHT_DELAY_MS, TimeUnit.MILLISECONDS)
+        } else {
+            applyMute(true)
+            sendToMcu(Mcu.mute(true))
+            sendToMcu(Mcu.externalAmp(false))
+            gpio.set(BoardGpio.BACKLIGHT, false)
+        }
+    }
+
+    // --- GPIO inputs ---------------------------------------------------------------------------------------------
+
+    private fun pollGpio() {
+        val reverse = activeLow(BoardGpio.REVERSE) ?: state.reverse
+        val left = activeLow(BoardGpio.TURN_LEFT) ?: state.turnLeft
+        val right = activeLow(BoardGpio.TURN_RIGHT) ?: state.turnRight
+        if (reverse != state.reverse) log("Reverse ${if (reverse) "on" else "off"}")
+        update { it.copy(reverse = reverse, turnLeft = left, turnRight = right) }
+    }
+
+    private fun activeLow(n: Int): Boolean? =
+        when (gpio.read(n)) {
+            0 -> true
+            1 -> false
+            else -> null
+        }
+
+    // --- Audio ---------------------------------------------------------------------------------------------------
+
+    fun changeSettings(transform: (HeadUnitSettings) -> HeadUnitSettings) {
+        executor.execute {
+            val old = settings
+            val new = transform(old).normalized()
+            if (new == old) return@execute
+            settings = new
+            store.save(new)
+            applyAudio(old)
+            if (new.externalAmp != old.externalAmp && state.acc) sendToMcu(Mcu.externalAmp(new.externalAmp))
+            listener.onSettingsChanged(new)
+        }
+    }
+
+    /** Writes the settings that differ from [old] (all of them when null) to the chip. */
+    private fun applyAudio(old: HeadUnitSettings? = null) {
+        val s = settings
+        val dsp = dsp
+        if (dsp != null) {
+            if (old == null || old.volume != s.volume) dsp.setVolume(s.volume)
+            if (old == null || old.bass != s.bass || old.middle != s.middle || old.treble != s.treble) {
+                dsp.setTone(s.bass, s.middle, s.treble)
+            }
+            if (old == null || old.balance != s.balance || old.fade != s.fade) dsp.setBalanceFade(s.balance, s.fade)
+            if (old == null || old.loudness != s.loudness) dsp.setLoudness(s.loudness)
+            if (old == null || old.subwoofer != s.subwoofer || old.subLevel != s.subLevel) {
+                dsp.setSubwoofer(s.subwoofer, s.subLevel)
+            }
+        }
+        applyMute(s.muted || !state.acc)
+    }
+
+    private fun applyMute(mute: Boolean) {
+        if (dsp != null && dsp.isMuted != mute) dsp.setMute(mute)
+        gpio.set(BoardGpio.AMP_MUTE, mute)
+    }
+
+    private fun HeadUnitSettings.normalized() =
+        copy(
+            volume = volume.coerceIn(0, Bd37534.MAX_VOLUME),
+            bass = bass.coerceIn(0, Bd37534.TONE_MAX),
+            middle = middle.coerceIn(0, Bd37534.TONE_MAX),
+            treble = treble.coerceIn(0, Bd37534.TONE_MAX),
+            balance = balance.coerceIn(0, Bd37534.FADER_MAX),
+            fade = fade.coerceIn(0, Bd37534.FADER_MAX),
+            loudness = loudness.coerceIn(0, 15),
+            subLevel = subLevel.coerceIn(0, Bd37534.SUB_MAX_LEVEL),
+        )
+
+    private inline fun update(transform: (VehicleState) -> VehicleState) {
+        val new = transform(state)
+        if (new != state) {
+            state = new
+            listener.onStateChanged(new)
+        }
+    }
+
+    private fun log(message: String) = listener.onLog(message)
+
+    companion object {
+        const val GPIO_POLL_MS = 100L
+        const val BACKLIGHT_DELAY_MS = 800L
+    }
+}

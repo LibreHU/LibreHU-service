@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LibreHU service</string>
+    <string name="notif_channel">Service autoradio</string>
+    <string name="notif_text">MCU, processeur audio et entrées véhicule</string>
+    <string name="permission_label">contrôler l\'autoradio</string>
+    <string name="permission_description">Lire l\'état du véhicule (contact, marche arrière, feux) et piloter la MCU et le processeur audio de l\'autoradio.</string>
+    <string name="disconnected">Service déconnecté</string>
+    <string name="status_line">Liaison : %1$s\nMCU : %2$s</string>
+    <string name="restart">Redémarrer</string>
+    <string name="force_start">Démarrer malgré ivi-services</string>
+    <string name="section_audio">Processeur audio</string>
+    <string name="section_traffic">Trafic MCU</string>
+    <string name="value_line">%1$s : %2$d</string>
+    <string name="volume">Volume</string>
+    <string name="mute">Muet</string>
+    <string name="bass">Graves</string>
+    <string name="middle">Médiums</string>
+    <string name="treble">Aigus</string>
+    <string name="balance">Balance (0 = gauche)</string>
+    <string name="fade">Fader (0 = avant)</string>
+    <string name="loudness">Loudness</string>
+    <string name="subwoofer">Sortie caisson</string>
+    <string name="sub_level">Niveau caisson</string>
+    <string name="external_amp">Ampli externe (REM)</string>
+    <string name="flag_mcu">MCU</string>
+    <string name="flag_acc">Contact</string>
+    <string name="flag_reverse">Recul</string>
+    <string name="flag_handbrake">Frein à main</string>
+    <string name="flag_headlight">Feux</string>
+    <string name="flag_turn_left">Gauche</string>
+    <string name="flag_turn_right">Droite</string>
+    <string name="key_event">Touche canal %1$d : %2$s (relâchée : %3$b)</string>
+</resources>

@@ -10,8 +10,11 @@ C'est ce que le nouveau service devra piloter directement. Sources : `platform/A
 - `isRemove1821` : `AtcMetazone_.readval(65952)` == `0x5A5A5A51` → sens du frein à main inversé.
 
 ## 2.2 GPIO [A][N]
-Accès par **`/dev/gpios_ioctl`** (module noyau Autochips/Jancar) : `ioctl(fd, cmd, n)` avec `cmd` =
-`0x6B01` niveau haut, `0x6B00` niveau bas, `0x6B02` lecture, `0x6B03` passage en entrée. Le nom `GPIOnnn` vaut
+Accès par **`/dev/gpios_ioctl`** (module noyau Autochips/Jancar) : `ioctl(fd, cmd, &n)`, l'argument est un
+**pointeur** vers le numéro de GPIO. D'après `GPIO::set` / `GPIO::get` de `libJanCarIVI.so` : `0x6B00` = niveau
+haut (`set(n, 1)`), `0x6B01` = niveau bas (`set(n, 0)`), `0x6B02` = passage en entrée, `0x6B03` = lecture (niveau
+renvoyé par `ioctl`). `get()` fait `0x6B02` puis `0x6B03` : **lire une broche la passe en entrée**, ne jamais lire
+une sortie. (Une version précédente de ce document inversait ces codes.) Le nom `GPIOnnn` vaut
 simplement le numéro `nnn` (`GPIO::getAC8Index` = `atoi`).
 
 | GPIO | Rôle | Sens / logique |
@@ -43,7 +46,8 @@ simplement le numéro `nnn` (`GPIO::getAC8Index` = `atoi`).
 Détail : [03-mcu-car.md](03-mcu-car.md) et `MCU-tools-app/docs/mcu_firmware.md`.
 
 ## 2.5 I2C [N]
-`/dev/i2c-0` à `/dev/i2c-6`. Puce audio **ROHM BD37534 sur `i2c-6`, adresse 0x40** ; tuner sur `i2c-6`
+`/dev/i2c-0` à `/dev/i2c-6`, ouverts avec `I2C_SLAVE_FORCE` (0x706) puis écrits par `I2C_RDWR` (0x707)
+(`I2C::open` / `I2C::write`). Puce audio **ROHM BD37534 sur `i2c-6`, adresse 0x40** ; tuner sur `i2c-6`
 (`mRadioI2CBusIndex = 6`). Registres BD37534 : `MCU-tools-app/docs/ivi_audio.md` §7.
 
 ## 2.6 Tuner [A][N]
