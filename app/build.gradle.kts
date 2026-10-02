@@ -1,7 +1,8 @@
 import java.io.ByteArrayOutputStream
 
 plugins {
-    alias(libs.plugins.android.application)
+    // Version set in the root build script (buildscript classpath).
+    id("com.android.application")
 }
 
 // Version from git: versionName = `git describe`, versionCode = number of commits.
