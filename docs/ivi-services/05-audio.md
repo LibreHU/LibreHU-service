@@ -15,6 +15,9 @@ AUX / AV ───────────────────────�
 - Entrées physiques (`Platform_AutoChips_8257_37534`) : PC/Android = 11 (gain 0 dB), radio = 3, AUX/AV = 0
   (+5 dB). Avec un tuner « interne », la radio passe par l'entrée Android.
 
+**Android ne sort qu'en stéréo** (`dumpsys media.audio_flinger` : 2 canaux FL/FR, 48 kHz, 16 bits) [V]. La
+séparation avant/arrière et le caisson n'existent que dans le BD37534.
+
 ## 5.2 Sources (« canaux ») [A]
 `IVIAudio.Channel` : PC (1), musique (3), vidéo (4), radio (11), radio TA (12), AUX (23), AV (25), BT A2DP (33),
 BT appel (31), BT sonnerie (32), CarPlay / Android Auto (51..64)…

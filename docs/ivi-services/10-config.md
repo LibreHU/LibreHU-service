@@ -22,6 +22,11 @@ Des copies d'origine existent dans `/system/etc/` (`ivi-config.ini`, `ivi-custom
   « Smart ACC off »…), avec écoute des changements.
 - `Settings.Global` : `accStatus`, `global_mcudatadebug` (journal des trames MCU), `KEY_EXTERNAL_AMP_SWITCH`…
 
+Schéma relevé sur l'unité [V] : table `settings` (`_id`, `name`, `value`), noms préfixés `global_` ou `network_`.
+Exemples : `global_brake = DISABLE`, `global_ccdcamera = true`, `global_backlight = 70`,
+`global_smartaccoff = 2880` (minutes), `global_deepsleep = ENABLE`, `global_ledlight = 50331648`,
+`global_defaultnavipackage`, `global_mcudatadebug = false`, `global_password = 1234`.
+
 ## 10.3 Propriétés système [A]
 | Propriété | Rôle |
 |---|---|

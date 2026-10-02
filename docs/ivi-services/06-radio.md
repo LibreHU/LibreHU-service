@@ -17,8 +17,21 @@
 - ACC : extinction lors de l'ACC long off, rallumage 2,1 s après le réveil (tuner externe).
 - AIDL `IRadio` (37 méthodes) et `IRadioCallback` (30) : [api.md](api.md).
 
-## 6.3 À reprendre
-Le pilote du tuner est **dans la lib native** (pilotes NXP TEF66xx, propriétaires, avec patch de firmware à
-charger). Il faut d'abord connaître le tuner réel (`getprop jancar.radio.id`). Options : réutiliser
+## 6.3 Sur cette unité : FM interne MediaTek [V][A]
+Relevés : `jancar.radio.id = -1`, `fmradio.driver.enable = 1`, module noyau **`fmradio_drv`** chargé (puce combo
+MediaTek MT6631 : Wi-Fi, BT, GPS, FM). Aucun tuner NXP n'est détecté.
+- L'app radio (`com.jancar.radio`, `ivi-radio.apk`) passe en mode « radio interne » (`bInnerRadio`) et pilote
+  **directement `/dev/fm`** avec la JNI MediaTek standard `libfmjni.so` (`FmNative` : `openDev`, `powerUp`,
+  `tune`, `autoScan`, `seek`, RDS `getPs` / `getLrText` / `getPTY`, TA/TP, AF…). Le logcat montre les
+  ioctl `0xF50A`, `0xF513` sur `/dev/fm`.
+- Le son FM est routé par le matériel MediaTek. L'app joue un `AudioTrack` silencieux pour garder la sortie
+  audio active. Côté puce BD37534, la radio passe donc par l'entrée Android.
+- `RadioService` d'ivi-services tourne quand même (pilote MT6631 vide dans la lib native).
+- Pour la réécriture : reprendre la JNI `libfmjni` (même interface que l'app FM Radio open source de MediaTek)
+  ou les ioctl de `/dev/fm`. Pas besoin de pilote I2C de tuner.
+
+## 6.4 Autres cartes
+Sur les cartes avec tuner externe, le pilote est **dans la lib native** (pilotes NXP TEF66xx, propriétaires, avec
+patch de firmware à charger). Options : réutiliser
 `libJanCarIVI.so` par JNI (pas libre, mais disponible), ou écrire un pilote TEF668x (des pilotes libres existent
 pour les TEF668x, par exemple [PE5PVB/TEF6686_ESP32](https://github.com/PE5PVB/TEF6686_ESP32)).

@@ -16,6 +16,7 @@ Version analysée : 3.0.0.ac8257.6a605cd0.20250611, UJC201, board id `A0_AN` (pu
 | [09-other-modules.md](09-other-modules.md) | média, voix, navigation, combiné, DAB, BT, projection |
 | [10-config.md](10-config.md) | fichiers de configuration, réglages, propriétés, broadcasts |
 | [11-rewrite-plan.md](11-rewrite-plan.md) | périmètre et architecture de LibreHU-service |
+| [12-canbus.md](12-canbus.md) | app CAN, véhicule configuré (Renault Clio 3 / Hiworld), trames du boîtier |
 | [api.md](api.md) | les 30 interfaces AIDL (≈ 470 méthodes) avec leurs numéros de transaction |
 
 Compléments dans `LibreHU/MCU-tools-app/docs` : `mcu_firmware.md` (firmware MCU et protocole) et
@@ -28,22 +29,12 @@ Compléments dans `LibreHU/MCU-tools-app/docs` : `mcu_firmware.md` (firmware MCU
 - La datasheet officielle du BD37534 n'a pas pu être consultée (bloquée par le proxy de la session d'analyse).
 
 ## Ce qu'il manque
-**APK** (`adb shell pm path <paquet>` puis `adb pull`) :
-- `com.jancar.canservice` — décodage du CAN (portes, clim, radar, touches CAN) ;
-- `com.jancar.settings` — fournisseur de réglages `com.jancar.settings.provider` et ses clés ;
-- `com.jancar.steeringwheelkeys` — format de `ivi-studykey.ini` et apprentissage ;
-- `com.autochips.backcarapp` et tout `com.autochips.*` (recul rapide, QuickBoot) ;
-- l'app radio (`com.jancar.radio…`), le lanceur et l'interface système Jancar (barre de volume, nuit).
+Reçus : `ivi-services`, `ivi-audio-settings`, `ivi-bt`, `ivi-btservice`, `ivi-canbus`, `ivi-radio`,
+`ivi-settings`, `ivi-input` (app AV `com.jancar.avin`), dump de configuration, relevés `get.zip`.
 
-**Relevés sur l'appareil** :
-```sh
-adb shell getprop > getprop.txt                       # dont jancar.radio.id (tuner réel)
-adb shell ls -lZ /dev/gpios_ioctl /dev/i2c-* /dev/ttyS* /dev/video* > devices.txt
-adb shell cat /proc/bus/input/devices > input.txt
-adb shell lsmod > lsmod.txt; adb shell cat /proc/cmdline > cmdline.txt
-adb shell dumpsys media.audio_flinger > audioflinger.txt
-adb shell settings list global > settings_global.txt
-adb shell content query --uri content://com.jancar.settings.provider/settings > jancar_settings.txt
-adb logcat -b all -d > logcat_boot.txt                # juste après un démarrage (tags ivi-services)
-# avec root : adb shell i2cdetect -y 6 ; noyau (boot.img) ou modules .ko qui fournissent /dev/gpios_ioctl
-```
+Encore utiles :
+- **capture CAN** sur la voiture (MCU Toolkit, « Capture CAN ») : contact, moteur, chaque commande au volant ;
+- `com.autoai.canbus.provider` : `adb shell content query --uri content://com.autoai.canbus.provider/...` (tables à découvrir) ;
+- noyau (`boot.img`) ou source du pilote de `/dev/gpios_ioctl` (pour LineageOS) ;
+- `com.autochips.*` (recul rapide, QuickBoot), le lanceur et l'interface système Jancar ;
+- avec root : `i2cdetect -y 6`.

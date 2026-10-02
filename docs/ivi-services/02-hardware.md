@@ -50,8 +50,8 @@ Détail : [03-mcu-car.md](03-mcu-car.md) et `MCU-tools-app/docs/mcu_firmware.md`
 `RadioDevice.nativeCreate(id, bus 6, resetGpio 112, fmLevelOffset)`. Avec l'id **-1**,
 `RadioDevice::getInstance` appelle **`NXPRadio::detect`** (détection d'un tuner NXP sur l'I2C), puis instancie
 l'un des pilotes : TEF6638, TEF6686, TEF6692, TEF6856, TDA7786, TDA7708, TSC4745, SI475x, QN8027, CA9636,
-MT6631 (ce dernier est vide dans la lib). L'id réel est publié dans **`jancar.radio.id`**. **À relever sur
-l'appareil.**
+MT6631 (ce dernier est vide dans la lib). L'id réel est publié dans **`jancar.radio.id`** : **-1 sur cette unité,
+aucun tuner I2C**. La radio est la FM interne MediaTek, pilotée par l'app radio ([06-radio.md](06-radio.md)).
 
 ## 2.7 Autres périphériques [A]
 | Élément | Valeur |
@@ -64,7 +64,17 @@ l'appareil.**
 | Caméras | HAL Autochips, `vendor/etc/atc_camera_config.xml` : USB id 0, MIPI sub id 2, CVBS id 3, MIPI VC id 8 |
 | Recul rapide | géré avant Android ; état `persist.action.fastreverse.state` (défaut `true`) |
 
-## 2.8 Commandes MCU envoyées par la couche plateforme [A]
+## 2.8 Relevés sur l'unité (get.zip) [V]
+- **SELinux permissif** (`permissive=1` dans les refus du logcat).
+- Droits : `/dev/gpios_ioctl` `crwxrwxrwx root` (label générique `device`) ; `/dev/i2c-0..6` `0777 system`
+  (`i2c-1` et `i2c-6` : `mfi_auth_device`) ; `/dev/ttyS1..3` `0666 system`, `ttyS0` `0600 root`.
+- Entrées : `mtk-kpd` (touches SoC, event0), `gpio_ir_recv` (IR, event1), `mtk-tpd` (tactile, event2).
+- Vidéo : `/dev/video10` seulement.
+- Modules : `wmt_drv`, `wlan_drv_gen4m`, `bt_drv`, `gps_drv`, **`fmradio_drv`** (combo MT6631), `fpsgo`.
+- Propriétés : `jancar.device.id = A0_AN`, `jancar.radio.id = -1`, `persist.sf.hwrotation = 90`,
+  `persist.action.fastreverse.state = false`, `persist.jancar.canversion = H1N5LNF63C-250906`.
+
+## 2.9 Commandes MCU envoyées par la couche plateforme [A]
 | Fonction | Trame |
 |---|---|
 | `setRadioAntennaPower` | GPIO 110 + `43 [0/1]` |
