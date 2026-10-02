@@ -42,7 +42,8 @@ d'autres MCU.
 ## 3.4 Données véhicule évoluées
 `ICar` / `ICarCallback` exposent climatisation, portes, radar, pneus, trajets, VIN, entretien, flux d'énergie…
 Sur cette carte, **rien de tout cela n'est décodé par ivi-services** : ces événements viennent du protocole
-`CIS_V2` (autre type de MCU) ou de **`com.jancar.canservice`**, qui décode les trames `10` selon
+`CIS_V2` (autre type de MCU) ou de l'app CAN — sur cette unité **`com.can.activity`** (`ivi-canbus.apk`) ;
+ivi-services cherche à relancer un paquet `com.jancar.canservice` absent ici —, qui décode les trames `10` selon
 `/jancar/config/can_config.json` (Raise, Hiworld, Simple…). Détail et véhicule de l'utilisateur (Renault Clio 3,
 boîtier Hiworld) : [12-canbus.md](12-canbus.md).
 

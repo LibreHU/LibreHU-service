@@ -59,7 +59,7 @@ l'I2C, l'écran… (API complète : [api.md](api.md)).
 | App | Utilisation |
 |---|---|
 | `com.jancar.settings` | **fournisseur de réglages** `content://com.jancar.settings.provider/settings` (lu via `SettingModel`) ; écrans de réglage |
-| `com.jancar.canservice` | **décodage CAN** : reçoit les trames `10` de la MCU via `IPassthroughDataCallback` ; ivi-services ne décode pas le CAN sur cette carte |
+| `com.can.activity` (`ivi-canbus.apk`) | **décodage CAN** : reçoit les trames `10` de la MCU via `IPassthroughDataCallback` ; ivi-services ne décode pas le CAN sur cette carte ([12-canbus.md](12-canbus.md)). ivi-services référence aussi `com.jancar.canservice`, absent ici |
 | `com.jancar.bluetooth` / `com.jancar.btservice` | téléphone/musique BT (pile Android), contacts `content://com.jancar.bluetooth/…` |
 | `com.autochips.backcarapp` | affichage caméra de recul |
 | `com.jancar.steeringwheelkeys` | apprentissage des touches volant |
