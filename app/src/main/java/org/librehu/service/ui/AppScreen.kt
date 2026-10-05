@@ -24,8 +24,10 @@ import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +58,8 @@ enum class Tab(
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
     OBD(Icons.Default.DirectionsCar, R.string.tab_obd),
     DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
+    GPS(Icons.Default.GpsFixed, R.string.tab_gps),
+    TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
     MCU(Icons.Default.Memory, R.string.tab_mcu),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
 }
@@ -67,6 +71,9 @@ class AppActions(
     val requestBtPermissions: () -> Unit,
     val openWriteSettings: () -> Unit,
     val restartLink: () -> Unit,
+    val openLocationSettings: () -> Unit,
+    val openDateSettings: () -> Unit,
+    val calibrateTouch: () -> Unit,
 )
 
 /** Android Auto-like layout: icon rail on the left, the selected settings page on the right. */
@@ -97,6 +104,8 @@ fun AppScreen(
                 Tab.BLUETOOTH -> BluetoothScreen(client, actions)
                 Tab.OBD -> ObdScreen(client)
                 Tab.DISPLAY -> DisplayScreen(actions)
+                Tab.GPS -> GpsTimeScreen(actions)
+                Tab.TOUCH -> TouchScreen(actions)
                 Tab.MCU -> McuScreen(actions)
                 Tab.DIAG -> DiagScreen(client, actions)
             }

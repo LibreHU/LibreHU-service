@@ -79,6 +79,10 @@ class HeadUnit(
     private val clock: () -> LocalDateTime = { LocalDateTime.now() },
     private val protocol: McuProtocol = JacProtocol,
     private val board: BoardSpec = McuProfiles.JANCAR_JAC_V1.board,
+    /** Set Android's clock from the MCU's RTC (once per start, see [Listener.onMcuClock]). */
+    private val clockFromMcu: () -> Boolean = { true },
+    /** Send Android's clock to the MCU every minute. */
+    private val clockToMcu: () -> Boolean = { true },
 ) : McuTransport.Listener {
     interface Listener {
         fun onStateChanged(state: VehicleState) {}
@@ -207,6 +211,9 @@ class HeadUnit(
         val d = mcuDate ?: return
         if (clockReceived) return
         clockReceived = true
+        val forced = forcePull
+        forcePull = false
+        if (!clockFromMcu() && !forced) return
         try {
             listener.onMcuClock(LocalDateTime.of(d.year, d.month, d.day, t.hour, t.minute, t.second))
         } catch (e: java.time.DateTimeException) {
@@ -216,11 +223,28 @@ class HeadUnit(
 
     /** Android time to the MCU RTC every minute, once the MCU clock has been read (as ivi-services does). */
     private fun syncClockToMcu() {
-        if (!clockReceived) return
+        // Wait for the MCU clock first (it may be the better one at boot), unless it is not used.
+        if (!clockToMcu() || (!clockReceived && clockFromMcu())) return
+        pushClockToMcu()
+    }
+
+    /** Android's clock to the MCU now (after a GPS time fix, or from the settings). */
+    fun pushClockToMcu() {
         val now = clock()
         sendIf(protocol.date(now.year, now.monthValue, now.dayOfMonth))
         sendIf(protocol.time(now.hour, now.minute, now.second))
     }
+
+    /** Reads the MCU clock again and hands it to [Listener.onMcuClock] (even when [clockFromMcu] is off). */
+    fun pullClockFromMcu() {
+        executor.execute {
+            clockReceived = false
+            forcePull = true
+            sendIf(protocol.queryClock())
+        }
+    }
+
+    private var forcePull = false
 
     // --- Radio antenna -----------------------------------------------------------------------------------------
 

@@ -30,6 +30,9 @@ import org.librehu.service.hw.SocGpio
 import org.librehu.service.hw.TtySerialChannel
 import org.librehu.service.mcu.ProfileStore
 import org.librehu.service.obd.ObdManager
+import org.librehu.service.time.TimeController
+import org.librehu.service.touch.TouchKeys
+import org.librehu.service.touch.TouchPanel
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -68,12 +71,39 @@ class LibreHuService : Service() {
     /** ELM327 OBD-II adapter. */
     private lateinit var obd: ObdManager
 
+    /** GPS test and clock sources (MCU, Android, GPS). */
+    private lateinit var time: TimeController
+
+    /** Front panel touch "buttons". */
+    private lateinit var touchKeys: TouchKeys
+
     override fun onCreate() {
         super.onCreate()
         startForegroundCompat()
         bluetoothModule = BluetoothModule(this).also { it.start() }
         display = DisplayController.get(this).also { it.start() }
         obd = ObdManager.get(this).also { it.start() }
+        time =
+            TimeController.get(this).also {
+                it.mcu =
+                    object : TimeController.McuClock {
+                        override fun pushToMcu() {
+                            unit?.pushClockToMcu()
+                        }
+
+                        override fun pullFromMcu() {
+                            unit?.pullClockFromMcu()
+                        }
+                    }
+                it.start()
+            }
+        touchKeys =
+            TouchKeys.get(this).also {
+                it.volumeHook = { step -> changeVolume(step) }
+                it.start()
+            }
+        // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
+        Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
         startHardware()
     }
 
@@ -96,11 +126,20 @@ class LibreHuService : Service() {
         bluetoothModule.stop()
         display.stop()
         obd.stop()
+        time.stop()
+        touchKeys.stop()
         callbacks.kill()
         super.onDestroy()
     }
 
     // --- Hardware ------------------------------------------------------------------------------------------------
+
+    /** Volume of the audio chip from the front panel touch keys: +1 / -1 step, 0 = mute toggle. */
+    private fun changeVolume(step: Int): Boolean {
+        val u = unit ?: return false
+        u.changeSettings { s -> if (step == 0) s.copy(muted = !s.muted) else s.copy(volume = s.volume + step, muted = false) }
+        return true
+    }
 
     private fun startHardware() {
         if (isIviServicesEnabled(this) && !prefs(this).getBoolean(PREF_FORCE, false)) {
@@ -130,7 +169,25 @@ class LibreHuService : Service() {
             }
         val exec = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "headunit") }
         val headUnit =
-            HeadUnit(SocGpio, dsp, PrefsSettingsStore(this), exec, unitListener, protocol = protocol, board = profile.board)
+            HeadUnit(
+                SocGpio,
+                dsp,
+                PrefsSettingsStore(this),
+                exec,
+                unitListener,
+                protocol = protocol,
+                board = profile.board,
+                clockFromMcu = {
+                    TimeController
+                        .get(this)
+                        .settings.value.fromMcu
+                },
+                clockToMcu = {
+                    TimeController
+                        .get(this)
+                        .settings.value.toMcu
+                },
+            )
         val t = McuTransport(channel, headUnit, protocol)
         executor = exec
         unit = headUnit

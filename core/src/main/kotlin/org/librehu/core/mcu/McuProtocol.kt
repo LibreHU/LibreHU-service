@@ -64,6 +64,9 @@ interface McuProtocol {
 
     /** Raw bytes for the CAN box, when the MCU relays them. */
     fun canData(bytes: ByteArray): McuFrame?
+
+    /** Asks the MCU for its date and time (answered with the date and time frames). */
+    fun queryClock(): McuFrame?
 }
 
 /** Jancar `JAC_V1` (UJC201 / AC8257), implemented natively: [JacFrame], [JacParser], [Mcu], [McuEvent.decode]. */
@@ -118,4 +121,6 @@ object JacProtocol : McuProtocol {
     ) = Mcu.time(hour, minute, second)
 
     override fun canData(bytes: ByteArray) = Mcu.canData(bytes)
+
+    override fun queryClock() = Mcu.query(Mcu.CMD_DATE_TIME)
 }

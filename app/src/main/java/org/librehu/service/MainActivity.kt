@@ -3,6 +3,7 @@ package org.librehu.service
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import org.librehu.service.display.DisplayController
+import org.librehu.service.touch.TouchCalibrationActivity
 import org.librehu.service.ui.AppActions
 import org.librehu.service.ui.AppScreen
 import org.librehu.service.ui.CarColors
@@ -23,7 +25,8 @@ import org.librehu.service.ui.importProfile
 import org.librehu.service.ui.profileFileName
 
 /**
- * LibreHU settings, Android Auto style: one tab per function (audio, Bluetooth, OBD, display, MCU protocol) plus
+ * LibreHU settings, Android Auto style: one tab per function (audio, Bluetooth, OBD, display, GPS / clock, touch
+ * panel, MCU protocol) plus
  * diagnostics. Talks to the service through its public API.
  */
 class MainActivity : ComponentActivity() {
@@ -76,6 +79,9 @@ class MainActivity : ComponentActivity() {
                 },
                 openWriteSettings = { startActivity(DisplayController.get(this).writeSettingsIntent()) },
                 restartLink = { LibreHuService.start(this, restart = true) },
+                openLocationSettings = { openSettings(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
+                openDateSettings = { openSettings(Settings.ACTION_DATE_SETTINGS) },
+                calibrateTouch = { startActivity(Intent(this, TouchCalibrationActivity::class.java)) },
             )
         setContent {
             CarTheme {
@@ -104,6 +110,14 @@ class MainActivity : ComponentActivity() {
     private fun openTab(intent: Intent?) {
         val name = intent?.getStringExtra(EXTRA_TAB) ?: return
         Tab.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { tab.value = it }
+    }
+
+    private fun openSettings(action: String) {
+        try {
+            startActivity(Intent(action))
+        } catch (e: android.content.ActivityNotFoundException) {
+            toast(e.message ?: action)
+        }
     }
 
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()

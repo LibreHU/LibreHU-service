@@ -96,7 +96,7 @@ data class McuProfile(
         const val FORMAT = "librehu-mcu-profile"
         const val VERSION = 1
         val OUTPUT_KEYS =
-            listOf("pcReady", "muteOn", "muteOff", "ampOn", "ampOff", "antennaOn", "antennaOff", "date", "time", "can")
+            listOf("pcReady", "muteOn", "muteOff", "ampOn", "ampOff", "antennaOn", "antennaOff", "date", "time", "can", "queryClock")
     }
 }
 
@@ -173,6 +173,7 @@ object McuProfiles {
                     "date" to "09 00 {yearHi} {yearLo} {month} {day}",
                     "time" to "09 01 {hour} {minute} {second}",
                     "can" to "10 {data}",
+                    "queryClock" to "F0 09 00",
                 ),
             board =
                 BoardSpec(
@@ -723,4 +724,6 @@ class ProfileProtocol(
     ) = out("time", mapOf("hour" to hour, "minute" to minute, "second" to second))
 
     override fun canData(bytes: ByteArray) = out("can", data = bytes)
+
+    override fun queryClock() = out("queryClock")
 }
