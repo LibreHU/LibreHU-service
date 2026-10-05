@@ -43,7 +43,7 @@ class BluetoothModule(
     private val callbacks = RemoteCallbackList<ILibreHuBluetoothCallback>()
 
     private var profiles: CarProfiles? = null
-    private val media = BtMedia(context, main) { info -> each { it.onMediaChanged(info) } }
+    private val btMedia = BtMedia(context, main) { info -> each { it.onMediaChanged(info) } }
     private val phonebook = BtPhonebook(context, main) { each { it.onPhonebookChanged() } }
     private val ringer = BtRinger(context)
 
@@ -69,7 +69,7 @@ class BluetoothModule(
     private var voiceAssistant = false
 
     @Volatile
-    private var status = BtStatus()
+    private var currentStatus = BtStatus()
 
     @Volatile
     private var callInfos: List<BtCallInfo> = emptyList()
@@ -87,7 +87,7 @@ class BluetoothModule(
         }
         register()
         profiles = CarProfiles(context, a) { main.post(::onProfilesChanged) }
-        media.start()
+        btMedia.start()
         phonebook.start()
         refreshStatus()
         restartAutoConnect()
@@ -101,7 +101,7 @@ class BluetoothModule(
             context.unregisterReceiver(receiver)
         } catch (_: IllegalArgumentException) {
         }
-        media.stop()
+        btMedia.stop()
         phonebook.stop()
         ringer.release()
         profiles?.close()
@@ -173,7 +173,7 @@ class BluetoothModule(
                     }
 
                     BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
-                        if (device != null && device.address == status.deviceAddress) restartAutoConnect()
+                        if (device != null && device.address == currentStatus.deviceAddress) restartAutoConnect()
                     }
 
                     CarProfiles.ACTION_HFP_CONNECTION -> {
@@ -190,7 +190,7 @@ class BluetoothModule(
 
                     CarProfiles.ACTION_A2DP_SINK_CONNECTION -> {
                         val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, 0)
-                        media.setA2dpConnected(state == BluetoothProfile.STATE_CONNECTED)
+                        btMedia.setA2dpConnected(state == BluetoothProfile.STATE_CONNECTED)
                         each { it.onDevicesChanged() }
                     }
 
@@ -205,7 +205,7 @@ class BluetoothModule(
     private fun onProfilesChanged() {
         val p = profiles ?: return
         // Already connected when the service starts: catch up.
-        p.connected(p.a2dpSink).firstOrNull()?.let { media.setA2dpConnected(true) }
+        p.connected(p.a2dpSink).firstOrNull()?.let { btMedia.setA2dpConnected(true) }
         p.connected(p.hfp).firstOrNull()?.let { readAgEvents(it) }
         refreshCalls()
         refreshStatus()
@@ -487,8 +487,8 @@ class BluetoothModule(
                 autoAnswer = autoAnswer(),
                 voiceAssistant = voiceAssistant,
             )
-        if (next != status) {
-            status = next
+        if (next != currentStatus) {
+            currentStatus = next
             each { it.onStatusChanged(next) }
         }
     }
@@ -565,7 +565,7 @@ class BluetoothModule(
 
     val binder: ILibreHuBluetooth.Stub =
         object : ILibreHuBluetooth.Stub() {
-            override fun getStatus() = status
+            override fun getStatus(): BtStatus = currentStatus
 
             override fun setEnabled(on: Boolean) =
                 post {
@@ -738,19 +738,19 @@ class BluetoothModule(
 
             override fun stopVoiceAssistant() = post { hfpDevice()?.let { profiles?.stopVoiceRecognition(it) } }
 
-            override fun getMedia() = media.info
+            override fun getMedia(): BtMediaInfo = btMedia.info
 
-            override fun mediaPlay() = post { media.play() }
+            override fun mediaPlay() = post { btMedia.play() }
 
-            override fun mediaPause() = post { media.pause() }
+            override fun mediaPause() = post { btMedia.pause() }
 
-            override fun mediaPlayPause() = post { media.playPause() }
+            override fun mediaPlayPause() = post { btMedia.playPause() }
 
-            override fun mediaNext() = post { media.next() }
+            override fun mediaNext() = post { btMedia.next() }
 
-            override fun mediaPrevious() = post { media.previous() }
+            override fun mediaPrevious() = post { btMedia.previous() }
 
-            override fun mediaStop() = post { media.stopPlayback() }
+            override fun mediaStop() = post { btMedia.stopPlayback() }
 
             override fun getContactCount() = phonebook.contactCount()
 
@@ -785,9 +785,9 @@ class BluetoothModule(
                 callbacks.register(callback)
                 // Current state right away.
                 try {
-                    callback.onStatusChanged(status)
+                    callback.onStatusChanged(currentStatus)
                     callback.onCallsChanged(callInfos)
-                    callback.onMediaChanged(media.info)
+                    callback.onMediaChanged(btMedia.info)
                 } catch (_: RemoteException) {
                 }
             }

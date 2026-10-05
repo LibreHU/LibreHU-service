@@ -47,7 +47,7 @@ class LibreHuService : Service() {
     private var unit: HeadUnit? = null
 
     /** Bluetooth runs whatever the MCU link does: it only needs Android's Bluetooth stack. */
-    private lateinit var bluetooth: BluetoothModule
+    private lateinit var bluetoothModule: BluetoothModule
 
     @Volatile
     private var link = Link.STOPPED
@@ -58,7 +58,7 @@ class LibreHuService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForegroundCompat()
-        bluetooth = BluetoothModule(this).also { it.start() }
+        bluetoothModule = BluetoothModule(this).also { it.start() }
         startHardware()
     }
 
@@ -78,7 +78,7 @@ class LibreHuService : Service() {
 
     override fun onDestroy() {
         stopHardware()
-        bluetooth.stop()
+        bluetoothModule.stop()
         callbacks.kill()
         super.onDestroy()
     }
@@ -300,7 +300,7 @@ class LibreHuService : Service() {
 
             override fun isRadioAntennaOn() = unit?.radioAntennaRequested ?: false
 
-            override fun getBluetooth(): ILibreHuBluetooth = bluetooth.binder
+            override fun getBluetooth(): ILibreHuBluetooth = bluetoothModule.binder
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------
