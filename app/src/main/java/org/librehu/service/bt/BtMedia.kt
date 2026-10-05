@@ -3,6 +3,7 @@ package org.librehu.service.bt
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.browse.MediaBrowser
 import android.media.session.MediaController
@@ -47,6 +48,7 @@ internal class BtMedia(
                 val b = browser ?: return
                 controller?.unregisterCallback(controllerCallback)
                 controller = MediaController(context, b.sessionToken).also { it.registerCallback(controllerCallback, main) }
+                if (a2dpConnected) takeFocusIfIdle()
                 publish()
             }
 
@@ -64,9 +66,22 @@ internal class BtMedia(
 
     /** A2DP sink connection changed: (re)attach to the Bluetooth player. */
     fun setA2dpConnected(connected: Boolean) {
+        val was = a2dpConnected
         a2dpConnected = connected
         if (connected && controller == null) connectBrowser()
+        if (connected && !was) takeFocusIfIdle()
         publish()
+    }
+
+    /**
+     * Android 9's A2DP sink pauses the phone when it starts playing while the car does not hold the audio focus
+     * (`A2dpSinkStreamHandler`, SRC_STR_START / SRC_PLAY): "play on the phone pauses at once". The Bluetooth media
+     * session takes the focus on prepare(): done when the phone connects, unless another app is playing (FM…).
+     */
+    private fun takeFocusIfIdle() {
+        val audio = context.getSystemService(AudioManager::class.java)
+        if (audio?.isMusicActive == true) return
+        controller?.transportControls?.prepare()
     }
 
     fun start() = connectBrowser()
@@ -78,7 +93,12 @@ internal class BtMedia(
         browser = null
     }
 
-    fun play() = controls()?.play()
+    /** prepare() first: the focus, without which the sink pauses the phone again (see [takeFocusIfIdle]). */
+    fun play() {
+        val c = controls() ?: return
+        c.prepare()
+        c.play()
+    }
 
     fun pause() = controls()?.pause()
 

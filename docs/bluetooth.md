@@ -88,3 +88,17 @@ Correspondance avec `IBluetooth` de Jancar : `callPhone` → `dial`, `listenPhon
 - Un seul téléphone pour les appels (`maxhfpdev = 1`), comme le firmware Jancar.
 - Le volume d'appel passe par la puce audio comme le reste (pas de priorité dédiée sur le BD37534 pour l'instant).
 - Pas de SMS (MAP client) ni de lecture de la bibliothèque musicale du téléphone (navigation AVRCP).
+
+## Musique : « lecture sur le téléphone mise en pause aussitôt »
+
+Android 9 (`A2dpSinkStreamHandler`) renvoie **pause** au téléphone quand il commence à jouer alors que la voiture n'a
+pas le **focus audio** (SRC_STR_START / SRC_PLAY sans focus). La session média Bluetooth prend ce focus sur
+`prepare()`, pas sur `play()`. LibreHU appelle donc `prepare()` à la connexion A2DP (si aucune autre appli ne joue,
+FM par exemple) et avant chaque `play()`.
+
+## Déconnexions / reconnexions en boucle
+
+La reconnexion automatique n'essaie plus un autre téléphone tant qu'une connexion est en cours, considère un
+téléphone connecté en musique seule comme connecté, et ne déconnecte les autres téléphones que sur un choix explicite
+(« Connecter »). Si `com.jancar.btservice` est encore activé, il gère lui aussi le Bluetooth : le désactiver avec
+ivi-services (`adb shell pm disable-user --user 0 com.jancar.btservice`), sinon le module reste passif.

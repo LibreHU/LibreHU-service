@@ -80,7 +80,31 @@ class TouchCalibrationActivity : ComponentActivity() {
     @Volatile
     private var rawDown: TouchSample? = null
 
-    private val listener: (TouchSample) -> Unit = { s -> if (s.down) rawDown = s }
+    /** Uptime of the last raw sample kept in [rawDown]. */
+    @Volatile
+    private var rawDownAt = 0L
+
+    /** Uptime of Android's last ACTION_UP while touching the targets. */
+    @Volatile
+    private var motionUpAt = 0L
+
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private val listener: (TouchSample) -> Unit = { s ->
+        if (s.down) {
+            rawDown = s
+            rawDownAt = android.os.SystemClock.uptimeMillis()
+        } else if (phase.value == Phase.TOUCH) {
+            // The panel saw a touch: if Android does not deliver it, the current matrix sends it off the screen.
+            val releasedAt = android.os.SystemClock.uptimeMillis()
+            handler.postDelayed({
+                if (phase.value == Phase.TOUCH && motionUpAt < releasedAt - LOST_MARGIN_MS) {
+                    error.value = getString(R.string.cal_lost_touch)
+                    phase.value = Phase.INTRO
+                }
+            }, LOST_DELAY_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,8 +132,11 @@ class TouchCalibrationActivity : ComponentActivity() {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         val p = phase.value
         if (p == Phase.TOUCH) {
-            if (ev.actionMasked == MotionEvent.ACTION_UP) onTargetTouched(ev.rawX.toDouble(), ev.rawY.toDouble())
-            if (ev.actionMasked == MotionEvent.ACTION_DOWN) rawDown = null
+            // Not cleared on ACTION_DOWN: the raw reader usually has the sample before Android dispatches it.
+            if (ev.actionMasked == MotionEvent.ACTION_UP) {
+                motionUpAt = android.os.SystemClock.uptimeMillis()
+                onTargetTouched(ev.rawX.toDouble(), ev.rawY.toDouble())
+            }
             return true
         }
         if (p == Phase.VERIFY && ev.actionMasked == MotionEvent.ACTION_DOWN) dots += Offset(ev.rawX, ev.rawY)
@@ -123,23 +150,26 @@ class TouchCalibrationActivity : ComponentActivity() {
         step.intValue = 0
         error.value = ""
         Thread {
-            val current = panel.readMatrix() ?: original
-            if (current == null) {
-                error.value = getString(R.string.cal_no_matrix)
-                return@Thread
-            }
-            measuring =
-                if (identityFirst.value) {
-                    modified = true
-                    if (!panel.writeMatrix(Gt9xxMatrix.IDENTITY)) {
-                        error.value = getString(R.string.touch_write_failed)
-                        return@Thread
-                    }
-                    Gt9xxMatrix.IDENTITY
+            // Measure on a matrix known for sure: written now. Jancar's factory one when asked (or when the driver's
+            // cannot be read), else the one in force.
+            val factory = panel.factoryMatrix()
+            val current = panel.readMatrix() ?: original ?: panel.savedMatrix()
+            val base =
+                if (identityFirst.value || current == null) {
+                    factory ?: current ?: Gt9xxMatrix.IDENTITY
                 } else {
                     current
                 }
-            runOnUiThread { phase.value = Phase.TOUCH }
+            modified = true
+            if (!panel.writeMatrix(base)) {
+                error.value = getString(R.string.touch_write_failed)
+                return@Thread
+            }
+            measuring = base
+            runOnUiThread {
+                rawDown = null
+                phase.value = Phase.TOUCH
+            }
         }.start()
     }
 
@@ -147,7 +177,8 @@ class TouchCalibrationActivity : ComponentActivity() {
         x: Double,
         y: Double,
     ) {
-        val raw = rawDown
+        val raw = rawDown?.takeIf { android.os.SystemClock.uptimeMillis() - rawDownAt < RAW_MAX_AGE_MS }
+        rawDown = null
         if (raw == null) {
             error.value = getString(R.string.cal_no_raw, panel.readerError.value)
             phase.value = Phase.INTRO
@@ -311,6 +342,9 @@ class TouchCalibrationActivity : ComponentActivity() {
 
     companion object {
         private const val VERIFY_S = 20
+        private const val RAW_MAX_AGE_MS = 2000L
+        private const val LOST_DELAY_MS = 700L
+        private const val LOST_MARGIN_MS = 300L
         private const val BAD_ERROR_PX = 20.0
     }
 }

@@ -67,6 +67,12 @@ interface McuProtocol {
 
     /** Asks the MCU for its date and time (answered with the date and time frames). */
     fun queryClock(): McuFrame?
+
+    /** Disarms (pauses) the MCU's watchdog on the SoC, when the protocol has one. */
+    fun watchdogOff(): McuFrame? = null
+
+    /** Restarts the SoC through the MCU (power cycle of the SoC rails). */
+    fun resetSoc(): McuFrame? = null
 }
 
 /** Jancar `JAC_V1` (UJC201 / AC8257), implemented natively: [JacFrame], [JacParser], [Mcu], [McuEvent.decode]. */
@@ -123,4 +129,8 @@ object JacProtocol : McuProtocol {
     override fun canData(bytes: ByteArray) = Mcu.canData(bytes)
 
     override fun queryClock() = Mcu.query(Mcu.CMD_DATE_TIME)
+
+    override fun watchdogOff() = Mcu.watchdogOff()
+
+    override fun resetSoc() = Mcu.resetSoc()
 }

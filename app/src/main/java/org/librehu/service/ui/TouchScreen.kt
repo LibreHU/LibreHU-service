@@ -67,6 +67,13 @@ fun TouchScreen(actions: AppActions) {
             if (root == false) Hint(stringResource(R.string.touch_no_root))
             Actions {
                 Pill(stringResource(R.string.touch_calibrate), enabled = root == true, onClick = actions.calibrateTouch)
+                Pill(stringResource(R.string.touch_factory), enabled = root == true) {
+                    Thread {
+                        message =
+                            context.getString(if (panel.restoreFactory()) R.string.touch_factory_done else R.string.touch_factory_none)
+                        matrixText = panel.readMatrix()?.toString() ?: "—"
+                    }.start()
+                }
                 Pill(stringResource(R.string.touch_restore), enabled = root == true && panel.backupMatrix() != null) {
                     Thread {
                         message = context.getString(if (panel.restoreBackup()) R.string.touch_restored else R.string.touch_write_failed)

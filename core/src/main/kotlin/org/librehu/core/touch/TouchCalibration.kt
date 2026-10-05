@@ -117,8 +117,14 @@ data class Gt9xxMatrix(
         const val DIV = 65536L
         val IDENTITY = Gt9xxMatrix(1, 0, 0, 0, 1, 0, 1)
 
+        /** The first 7 integers of [text], whatever separates them (driver output, pointercal values…). */
         fun parse(text: String?): Gt9xxMatrix? {
-            val v = text?.trim()?.split(Regex("\\s+"))?.mapNotNull { it.toLongOrNull() } ?: return null
+            val v =
+                Regex("-?\\d+")
+                    .findAll(text ?: return null)
+                    .mapNotNull { it.value.toLongOrNull() }
+                    .take(7)
+                    .toList()
             if (v.size != 7 || v[6] == 0L) return null
             return Gt9xxMatrix(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
         }

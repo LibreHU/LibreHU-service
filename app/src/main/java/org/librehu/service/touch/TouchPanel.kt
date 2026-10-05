@@ -23,6 +23,7 @@ import java.util.concurrent.CopyOnWriteArraySet
 class TouchPanel private constructor(
     context: Context,
 ) {
+    private val app = context.applicationContext
     private val prefs = context.applicationContext.createDeviceProtectedStorageContext().getSharedPreferences("touch", Context.MODE_PRIVATE)
 
     private val listeners = CopyOnWriteArraySet<(TouchSample) -> Unit>()
@@ -50,7 +51,45 @@ class TouchPanel private constructor(
     /** Panel id used by pointercal.xml: first 19 characters of `/proc/gt9xx_config`. */
     fun panelId(): String? = RootShell.read(CONFIG)?.take(19)?.takeIf { it.isNotBlank() }
 
-    fun writeMatrix(m: Gt9xxMatrix): Boolean = RootShell.write(PROPS, m.toString())
+    /** Same text as ivi-services (`TouchEventUtil.initTouchParameter`): the 7 values, each followed by a space. */
+    fun writeMatrix(m: Gt9xxMatrix): Boolean = RootShell.write(PROPS, m.values().joinToString("") { "$it " })
+
+    /**
+     * Jancar's calibration of this panel, as ivi-services applies it at boot: `pointercal-<long>x<short>.xml` first
+     * when the screen is not 1024x600, then `pointercal.xml`; the node of the panel id (or the only node).
+     */
+    fun factoryMatrix(): Gt9xxMatrix? {
+        val id = panelId()
+        for (path in pointercalFiles()) {
+            val nodes = RootShell.read(path)?.let(Pointercal::parse) ?: continue
+            val m =
+                nodes[id]
+                    ?: id?.let { wanted -> nodes.entries.firstOrNull { it.key.trim() == wanted.trim() }?.value }
+                    ?: nodes.values.singleOrNull()
+            if (m != null) return m
+        }
+        return null
+    }
+
+    /** pointercal files ivi-services reads, in its order. */
+    fun pointercalFiles(): List<String> {
+        val dm = app.resources.displayMetrics
+        val wm = app.getSystemService(android.view.WindowManager::class.java)
+        val size = android.graphics.Point()
+        @Suppress("DEPRECATION")
+        runCatching { wm.defaultDisplay.getRealSize(size) }
+        val w = maxOf(size.x, size.y).takeIf { it > 0 } ?: maxOf(dm.widthPixels, dm.heightPixels)
+        val h = minOf(size.x, size.y).takeIf { it > 0 } ?: minOf(dm.widthPixels, dm.heightPixels)
+        return listOfNotNull(if (w != 1024 || h != 600) "/jancar/config/pointercal-${w}x$h.xml" else null, POINTERCAL)
+    }
+
+    /** Jancar's calibration back in the driver (and LibreHU's own forgotten). */
+    fun restoreFactory(): Boolean {
+        val m = factoryMatrix() ?: return false
+        if (!writeMatrix(m)) return false
+        prefs.edit().remove(KEY_MATRIX).apply()
+        return true
+    }
 
     /**
      * Applies and remembers [m]; also stores it in Jancar's pointercal.xml when [forJancar]. [previous] (the matrix in
@@ -67,7 +106,9 @@ class TouchPanel private constructor(
         e.apply()
         if (forJancar) {
             val id = panelId()
-            if (id != null) RootShell.write(POINTERCAL, Pointercal.upsert(RootShell.read(POINTERCAL), id, m))
+            // The file ivi-services reads first for this screen.
+            val target = pointercalFiles().firstOrNull { RootShell.read(it) != null } ?: POINTERCAL
+            if (id != null) RootShell.write(target, Pointercal.upsert(RootShell.read(target), id, m))
         }
         return true
     }
@@ -84,10 +125,18 @@ class TouchPanel private constructor(
         return true
     }
 
-    /** At service start: the driver forgets the matrix at each boot (ivi-services rewrites it from pointercal.xml). */
+    /**
+     * At service start: the driver forgets the matrix at each boot and only ivi-services wrote it (from
+     * pointercal.xml); without it the touches land in the wrong place, as in TWRP. LibreHU's calibration when there is
+     * one, else Jancar's.
+     */
     fun applySaved() {
-        val m = savedMatrix() ?: return
-        if (readMatrix() != m && !writeMatrix(m)) Log.w(TAG, "Cannot apply the saved calibration")
+        val m = savedMatrix() ?: factoryMatrix()
+        if (m == null) {
+            Log.w(TAG, "No touch calibration to apply (no LibreHU calibration, no pointercal entry for ${panelId()})")
+            return
+        }
+        if (readMatrix() != m && !writeMatrix(m)) Log.w(TAG, "Cannot apply the touch calibration")
     }
 
     // --- Raw events ----------------------------------------------------------------------------------------------

@@ -27,6 +27,12 @@ object Mcu {
     /** "SoC ready": the MCU answers with ACC, then version (+200 ms) and date/time (+400 ms). */
     fun pcReady() = McuFrame.of(CMD_PC_READY, 0x01)
 
+    /**
+     * Pauses the MCU's watchdog on the SoC (`PC_WDG_PAUSE`, ivi-services `JAC_V1.Protocol.CMD_READY`). Firmware
+     * JCST 2024.08.09 ignores it (its only "watchdog" is the wait for PC_READY), other Jancar MCUs may not.
+     */
+    fun watchdogOff() = McuFrame.of(CMD_PC_READY, 0x05)
+
     /** Amplifier mute output of the MCU (PA0). */
     fun mute(on: Boolean) = McuFrame.of(CMD_MUTE, if (on) 1 else 0)
 

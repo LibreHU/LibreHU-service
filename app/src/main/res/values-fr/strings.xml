@@ -266,8 +266,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="ta_keycode">Code de touche</string>
     <string name="cal_title">Calibration tactile</string>
     <string name="cal_intro">Touchez le centre de chacune des 5 cibles avec un stylet ou le bout du doigt. La nouvelle calibration est essayée 20 s puis annulée si vous ne la gardez pas.</string>
-    <string name="cal_identity_first">Partir d\'une matrice neutre</string>
-    <string name="cal_identity_hint">Si la calibration actuelle est trop fausse pour atteindre les coins</string>
+    <string name="cal_identity_first">Partir de la calibration d\'usine Jancar</string>
+    <string name="cal_identity_hint">pointercal.xml : si la calibration actuelle est trop fausse pour atteindre les coins</string>
     <string name="cal_jancar">Enregistrer aussi pour ivi-services</string>
     <string name="cal_jancar_hint">Écrit /jancar/config/pointercal.xml (lu au démarrage par ivi-services)</string>
     <string name="cal_start">Commencer</string>
@@ -282,4 +282,30 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cal_keep">Garder</string>
     <string name="cal_revert">Annuler</string>
     <string name="cal_saved">Calibration enregistrée</string>
+    <string name="cal_lost_touch">Android n\'a pas reçu cet appui : la calibration actuelle l\'envoie hors de l\'écran. Activez « Partir de la calibration d\'usine Jancar » et recommencez.</string>
+    <string name="touch_factory">Calibration d\'usine Jancar</string>
+    <string name="touch_factory_done">Calibration d\'usine appliquée</string>
+    <string name="touch_factory_none">Aucune calibration d\'usine trouvée pour cette dalle (/jancar/config/pointercal*.xml)</string>
+    <string name="toast_started">LibreHU-service démarré</string>
+    <string name="toast_started_watchdog">LibreHU-service démarré · watchdog MCU désarmé</string>
+    <string name="watchdog_title">Watchdog MCU</string>
+    <string name="watchdog_hint">Au démarrage et au réveil de veille, le MCU attend le « prêt » du SoC (PC_READY) : 10 s maximum après une veille, sinon il coupe le SoC. Le service le renvoie jusqu\'à la réponse du MCU, puis la trame de désarmement (1F 05, PC_WDG_PAUSE).</string>
+    <string name="watchdog_disarm">Désarmer le watchdog au démarrage</string>
+    <string name="watchdog_disarm_hint">Envoyée après chaque PC_READY. Certains firmwares l\'ignorent (JCST 2024.08.09) : c\'est alors PC_READY qui compte</string>
+    <string name="watchdog_toast">Notification au démarrage</string>
+    <string name="watchdog_from_file">Imposé par %1$s</string>
+    <string name="watchdog_custom_frame">Trame du fichier de config : %1$s</string>
+    <string name="watchdog_file_hint">Fichier de config (facultatif, prioritaire sur ces réglages) : /data/local/tmp/librehu-service.conf ou Android/data/org.librehu.service/files/librehu-service.conf, lignes watchdog.disarm=true|false, watchdog.toast=true|false, watchdog.frame=1F 05</string>
+    <string name="watchdog_reload">Relire le fichier</string>
+    <string name="mcu_reset_soc">Redémarrer via le MCU</string>
+    <string name="mcu_reset_soc_confirm">Le MCU coupe l\'alimentation du SoC et la remet (commande MCU 0E), comme un reset matériel : ce qui n\'est pas enregistré est perdu.</string>
+    <string name="tab_can">CAN</string>
+    <string name="can_hint">Messages du boîtier CAN relayés par le MCU (trames 10), reconstitués selon le format Hiworld (5A A5 LEN CMD … CS). Octets modifiés en orange ; texte pour les messages Renault (LNP002) connus.</string>
+    <string name="can_counts">%1$d octets reçus · %2$d messages · %3$d octets hors message</string>
+    <string name="can_export">Exporter</string>
+    <string name="can_exported">Écrit : %1$s</string>
+    <string name="can_export_failed">Impossible d\'écrire le fichier</string>
+    <string name="can_by_command">Par commande</string>
+    <string name="can_none">Rien reçu pour l\'instant (boîtier branché ? liaison MCU active ?)</string>
+    <string name="can_stream">Derniers messages</string>
 </resources>

@@ -77,4 +77,9 @@ interface ILibreHuService {
     int getObdState();
     /** Name of the MCU protocol profile in use. */
     String getMcuProtocol();
+
+    // --- API 5 ---
+
+    /** Restarts the head unit through the MCU (power cycle of the SoC, MCU command 0E): works even when Android hangs. */
+    void resetSoc();
 }

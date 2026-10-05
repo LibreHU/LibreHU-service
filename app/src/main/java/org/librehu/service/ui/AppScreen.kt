@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
@@ -61,6 +62,7 @@ enum class Tab(
     GPS(Icons.Default.GpsFixed, R.string.tab_gps),
     TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
     MCU(Icons.Default.Memory, R.string.tab_mcu),
+    CAN(Icons.Default.Cable, R.string.tab_can),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
 }
 
@@ -107,6 +109,7 @@ fun AppScreen(
                 Tab.GPS -> GpsTimeScreen(actions)
                 Tab.TOUCH -> TouchScreen(actions)
                 Tab.MCU -> McuScreen(actions)
+                Tab.CAN -> CanScreen()
                 Tab.DIAG -> DiagScreen(client, actions)
             }
         }

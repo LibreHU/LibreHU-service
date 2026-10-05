@@ -266,8 +266,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="ta_keycode">Key code</string>
     <string name="cal_title">Touch calibration</string>
     <string name="cal_intro">Touch the centre of each of the 5 targets with a stylus or a fingertip. The new calibration is tried for 20 s and reverted unless you keep it.</string>
-    <string name="cal_identity_first">Start from a neutral matrix</string>
-    <string name="cal_identity_hint">If the current calibration is so wrong that the corners cannot be reached</string>
+    <string name="cal_identity_first">Start from Jancar\'s factory calibration</string>
+    <string name="cal_identity_hint">pointercal.xml: when the current calibration is too wrong to reach the corners</string>
     <string name="cal_jancar">Also save for ivi-services</string>
     <string name="cal_jancar_hint">Writes /jancar/config/pointercal.xml (used at boot by ivi-services)</string>
     <string name="cal_start">Start</string>
@@ -282,4 +282,30 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cal_keep">Keep</string>
     <string name="cal_revert">Revert</string>
     <string name="cal_saved">Calibration saved</string>
+    <string name="cal_lost_touch">Android did not receive this touch: the current calibration sends it off the screen. Turn on \"Start from Jancar\'s factory calibration\" and try again.</string>
+    <string name="touch_factory">Jancar factory calibration</string>
+    <string name="touch_factory_done">Factory calibration applied</string>
+    <string name="touch_factory_none">No factory calibration found for this panel (/jancar/config/pointercal*.xml)</string>
+    <string name="toast_started">LibreHU-service started</string>
+    <string name="toast_started_watchdog">LibreHU-service started · MCU watchdog disarmed</string>
+    <string name="watchdog_title">MCU watchdog</string>
+    <string name="watchdog_hint">At start and when waking from standby, the MCU waits for the SoC\'s \"ready\" (PC_READY): 10 s at most after standby, then it cuts the SoC. The service sends it again until the MCU answers, then the disarm frame (1F 05, PC_WDG_PAUSE).</string>
+    <string name="watchdog_disarm">Disarm the watchdog at start</string>
+    <string name="watchdog_disarm_hint">Sent after each PC_READY. Some firmwares ignore it (JCST 2024.08.09): PC_READY is what matters there</string>
+    <string name="watchdog_toast">Notify at start</string>
+    <string name="watchdog_from_file">Imposed by %1$s</string>
+    <string name="watchdog_custom_frame">Frame from the config file: %1$s</string>
+    <string name="watchdog_file_hint">Config file (optional, wins over these switches): /data/local/tmp/librehu-service.conf or Android/data/org.librehu.service/files/librehu-service.conf, lines watchdog.disarm=true|false, watchdog.toast=true|false, watchdog.frame=1F 05</string>
+    <string name="watchdog_reload">Reload the file</string>
+    <string name="mcu_reset_soc">Restart through the MCU</string>
+    <string name="mcu_reset_soc_confirm">The MCU cuts the power of the SoC and turns it back on (MCU command 0E), like a hard reset: unsaved data is lost.</string>
+    <string name="tab_can">CAN</string>
+    <string name="can_hint">Messages of the CAN box relayed by the MCU (frames 10), rebuilt with the Hiworld framing (5A A5 LEN CMD … CS). Changed bytes in orange; text for the known Renault (LNP002) messages.</string>
+    <string name="can_counts">%1$d bytes received · %2$d messages · %3$d bytes outside messages</string>
+    <string name="can_export">Export</string>
+    <string name="can_exported">Written: %1$s</string>
+    <string name="can_export_failed">Cannot write the file</string>
+    <string name="can_by_command">By command</string>
+    <string name="can_none">Nothing received yet (box connected? MCU link running?)</string>
+    <string name="can_stream">Last messages</string>
 </resources>

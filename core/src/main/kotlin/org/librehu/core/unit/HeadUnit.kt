@@ -83,6 +83,11 @@ class HeadUnit(
     private val clockFromMcu: () -> Boolean = { true },
     /** Send Android's clock to the MCU every minute. */
     private val clockToMcu: () -> Boolean = { true },
+    /**
+     * Frame disarming the MCU's watchdog, sent after each PC_READY; null = do not disarm. Default of the protocol:
+     * [McuProtocol.watchdogOff].
+     */
+    private val watchdogFrame: () -> McuFrame? = { null },
 ) : McuTransport.Listener {
     interface Listener {
         fun onStateChanged(state: VehicleState) {}
@@ -97,6 +102,12 @@ class HeadUnit(
         fun onKey(key: McuEvent.Key) {}
 
         fun onCanData(bytes: ByteArray) {}
+
+        /**
+         * The MCU answered PC_READY (version received). [watchdogDisarmed]: the watchdog frame was sent. Called after
+         * each handshake (start, wake up).
+         */
+        fun onHandshake(watchdogDisarmed: Boolean) {}
 
         /** First date/time sent by the MCU since start (its RTC keeps time while the SoC is off). */
         fun onMcuClock(time: LocalDateTime) {}
@@ -130,11 +141,52 @@ class HeadUnit(
             val ok = dsp?.init()
             log("MCU protocol: ${protocol.name}; BD37534 init: ${ok ?: "absent"}")
             applyAudio()
-            protocol.pcReady()?.let(send)
+            handshake()
         }
         executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
         executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
     }
+
+    /**
+     * The SoC comes back from standby: the MCU waits for PC_READY again (10 s at most on firmware 2024.08.09, then it
+     * cuts the SoC). Call it on screen on / resume.
+     */
+    fun wake() = executor.execute { handshake() }
+
+    // PC_READY until the MCU answers with its version (ivi-services: again after 4 s without version).
+    private var handshakeDone = false
+    private var handshakeTries = 0
+    private var handshakeTask: ScheduledFuture<*>? = null
+    private var watchdogSent = false
+
+    private fun handshake() {
+        handshakeDone = false
+        handshakeTries = 0
+        sendPcReady()
+    }
+
+    private fun sendPcReady() {
+        handshakeTask?.cancel(false)
+        handshakeTries++
+        sendIf(protocol.pcReady())
+        val wd = watchdogFrame()
+        watchdogSent = wd != null
+        if (wd != null) sendToMcu(wd)
+        if (handshakeTries < HANDSHAKE_TRIES) {
+            handshakeTask =
+                executor.schedule({ if (!handshakeDone) sendPcReady() }, HANDSHAKE_RETRY_MS, TimeUnit.MILLISECONDS)
+        } else {
+            log("MCU: no answer to PC_READY after $handshakeTries tries")
+        }
+    }
+
+    /** Power cycle of the SoC by the MCU (mutes first, like ivi-services' PowerUtil.reboot()). */
+    fun resetSoc() =
+        executor.execute {
+            applyMute(true)
+            sendIf(protocol.mute(true))
+            sendIf(protocol.resetSoc())
+        }
 
     fun sendToMcu(frame: McuFrame) {
         sender(frame)
@@ -185,6 +237,11 @@ class HeadUnit(
 
             is McuEvent.Version -> {
                 update { it.copy(mcuVersion = event.text) }
+                if (!handshakeDone) {
+                    handshakeDone = true
+                    handshakeTask?.cancel(false)
+                    listener.onHandshake(watchdogSent)
+                }
             }
 
             is McuEvent.Date -> {
@@ -364,5 +421,7 @@ class HeadUnit(
     companion object {
         const val GPIO_POLL_MS = 100L
         const val BACKLIGHT_DELAY_MS = 800L
+        const val HANDSHAKE_RETRY_MS = 4000L
+        const val HANDSHAKE_TRIES = 5
     }
 }

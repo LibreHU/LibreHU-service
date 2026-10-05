@@ -5,15 +5,20 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
+import android.widget.Toast
 import org.librehu.core.audio.Bd37534
 import org.librehu.core.mcu.McuEvent
 import org.librehu.core.mcu.McuFrame
@@ -24,6 +29,8 @@ import org.librehu.core.unit.HeadUnitSettings
 import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
+import org.librehu.service.can.CanMonitor
+import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DisplayController
 import org.librehu.service.hw.I2cDevice
 import org.librehu.service.hw.SocGpio
@@ -104,6 +111,7 @@ class LibreHuService : Service() {
             }
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
+        registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         startHardware()
     }
 
@@ -112,9 +120,16 @@ class LibreHuService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        if (intent?.action == ACTION_RESTART) {
-            stopHardware()
-            startHardware()
+        when (intent?.action) {
+            ACTION_RESTART -> {
+                stopHardware()
+                startHardware()
+            }
+
+            ACTION_RESET_SOC -> {
+                log("SoC reset requested through the MCU")
+                unit?.resetSoc()
+            }
         }
         return START_STICKY
     }
@@ -122,6 +137,7 @@ class LibreHuService : Service() {
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(wakeReceiver) }
         stopHardware()
         bluetoothModule.stop()
         display.stop()
@@ -187,7 +203,12 @@ class LibreHuService : Service() {
                         .get(this)
                         .settings.value.toMcu
                 },
+                watchdogFrame = {
+                    val w = ServiceConfig.watchdog(this)
+                    if (w.disarm) w.frame ?: protocol.watchdogOff() else null
+                },
             )
+        startToastShown = false
         val t = McuTransport(channel, headUnit, protocol)
         executor = exec
         unit = headUnit
@@ -238,7 +259,24 @@ class LibreHuService : Service() {
 
             override fun onKey(key: McuEvent.Key) = each { it.onKey(key.channel, key.values, key.released, key.learning) }
 
-            override fun onCanData(bytes: ByteArray) = each { it.onCanData(bytes) }
+            override fun onCanData(bytes: ByteArray) {
+                CanMonitor.feed(bytes)
+                each { it.onCanData(bytes) }
+            }
+
+            override fun onHandshake(watchdogDisarmed: Boolean) {
+                log(if (watchdogDisarmed) "MCU handshake, watchdog disarmed" else "MCU handshake")
+                if (startToastShown || !ServiceConfig.watchdog(this@LibreHuService).toast) return
+                startToastShown = true
+                main.post {
+                    Toast
+                        .makeText(
+                            this@LibreHuService,
+                            getString(if (watchdogDisarmed) R.string.toast_started_watchdog else R.string.toast_started),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                }
+            }
 
             override fun onMcuClock(time: LocalDateTime) = setSystemClock(time)
 
@@ -246,6 +284,24 @@ class LibreHuService : Service() {
         }
 
     private var lastState = VehicleState()
+
+    private val main = Handler(Looper.getMainLooper())
+
+    /** One toast per start of the link. */
+    @Volatile
+    private var startToastShown = false
+
+    /** Back from standby: the MCU waits for PC_READY again and cuts the SoC without it. */
+    private val wakeReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                log("Screen on: PC_READY again")
+                unit?.wake()
+            }
+        }
 
     private fun broadcastState(
         s: VehicleState,
@@ -395,6 +451,12 @@ class LibreHuService : Service() {
             override fun getObdState(): Int = obd.state.value.connection.ordinal
 
             override fun getMcuProtocol(): String = protocolName
+
+            override fun resetSoc() {
+                val u = unit ?: return
+                log("SoC reset requested through the MCU")
+                u.resetSoc()
+            }
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------
@@ -430,6 +492,7 @@ class LibreHuService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CLOCK_TOLERANCE_MS = 5_000L
         const val ACTION_RESTART = "org.librehu.service.RESTART"
+        const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
         const val PREF_FORCE = "force_with_ivi"
         const val IVI_PACKAGE = "com.jancar.services"
 
@@ -440,6 +503,11 @@ class LibreHuService : Service() {
             val intent = Intent(context, LibreHuService::class.java)
             if (restart) intent.action = ACTION_RESTART
             context.startForegroundService(intent)
+        }
+
+        /** Power cycle of the SoC by the MCU (from the app). */
+        fun resetSoc(context: Context) {
+            context.startForegroundService(Intent(context, LibreHuService::class.java).setAction(ACTION_RESET_SOC))
         }
 
         fun prefs(context: Context) = context.createDeviceProtectedStorageContext().getSharedPreferences("service", Context.MODE_PRIVATE)

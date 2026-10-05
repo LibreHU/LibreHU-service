@@ -24,6 +24,7 @@ import org.librehu.core.mcu.ProfileException
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
+import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DarkMode
 import org.librehu.service.display.DisplayController
 import org.librehu.service.mcu.ProfileStore
@@ -110,6 +111,7 @@ fun McuScreen(actions: AppActions) {
             }
             Actions { Pill(stringResource(R.string.restart), onClick = actions.restartLink) }
         }
+        WatchdogCard()
         Card(stringResource(R.string.mcu_profiles)) {
             Hint(stringResource(R.string.mcu_profiles_hint))
             for (p in profiles) {
@@ -257,5 +259,64 @@ fun DiagScreen(
         Card(stringResource(R.string.diag_log)) {
             BodyText(log.take(80).joinToString("\n").ifEmpty { "—" }, mono = true)
         }
+    }
+}
+
+/** MCU watchdog: disarm frame after each PC_READY, toast at start; the config file can impose both. */
+@Composable
+private fun WatchdogCard() {
+    val context = LocalContext.current
+    var w by remember { mutableStateOf(ServiceConfig.watchdog(context)) }
+    var confirmReset by remember { mutableStateOf(false) }
+    val link by ServiceState.link.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.watchdog_title)) {
+        Hint(stringResource(R.string.watchdog_hint))
+        val lockedDisarm = ServiceConfig.KEY_DISARM in w.fromFile
+        SwitchRow(
+            stringResource(R.string.watchdog_disarm),
+            w.disarm,
+            if (lockedDisarm) {
+                stringResource(
+                    R.string.watchdog_from_file,
+                    w.file.orEmpty(),
+                )
+            } else {
+                stringResource(R.string.watchdog_disarm_hint)
+            },
+            enabled = !lockedDisarm,
+        ) { on ->
+            ServiceConfig.setDisarm(context, on)
+            w = ServiceConfig.watchdog(context)
+        }
+        val lockedToast = ServiceConfig.KEY_TOAST in w.fromFile
+        SwitchRow(
+            stringResource(R.string.watchdog_toast),
+            w.toast,
+            if (lockedToast) stringResource(R.string.watchdog_from_file, w.file.orEmpty()) else null,
+            enabled = !lockedToast,
+        ) { on ->
+            ServiceConfig.setToast(context, on)
+            w = ServiceConfig.watchdog(context)
+        }
+        if (w.frame != null) Hint(stringResource(R.string.watchdog_custom_frame, w.frame.toString()))
+        Hint(stringResource(R.string.watchdog_file_hint))
+        Actions {
+            Pill(stringResource(R.string.watchdog_reload)) { w = ServiceConfig.watchdog(context) }
+            Pill(stringResource(R.string.mcu_reset_soc), enabled = link.state == LibreHuService.Link.RUNNING) { confirmReset = true }
+        }
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text(stringResource(R.string.mcu_reset_soc)) },
+            text = { Text(stringResource(R.string.mcu_reset_soc_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReset = false
+                    LibreHuService.resetSoc(context)
+                }) { Text(stringResource(R.string.mcu_reset_soc)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(android.R.string.cancel)) } },
+        )
     }
 }

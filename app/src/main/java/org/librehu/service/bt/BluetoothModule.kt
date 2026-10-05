@@ -381,11 +381,20 @@ class BluetoothModule(
 
     // --- Connections ---------------------------------------------------------------------------------------------
 
-    private fun connectProfiles(device: BluetoothDevice) {
+    /**
+     * [exclusive]: the user chose this phone, the other one goes (one phone at a time for calls,
+     * persist.bluetooth.maxhfpdev = 1). Never for automatic attempts: they would drop the phone being connected and
+     * make it disconnect / reconnect in a loop.
+     */
+    private fun connectProfiles(
+        device: BluetoothDevice,
+        exclusive: Boolean = false,
+    ) {
         val p = profiles ?: return
-        // One phone at a time for calls (persist.bluetooth.maxhfpdev = 1): let the other one go.
-        for (other in p.connected(p.hfp) + p.connected(p.a2dpSink)) {
-            if (other.address != device.address) disconnectProfiles(other, byUser = false)
+        if (exclusive) {
+            for (other in p.connected(p.hfp) + p.connected(p.a2dpSink)) {
+                if (other.address != device.address) disconnectProfiles(other, byUser = false)
+            }
         }
         p.setPriority(p.hfp, device, CarProfiles.PRIORITY_AUTO_CONNECT)
         p.setPriority(p.a2dpSink, device, CarProfiles.PRIORITY_AUTO_CONNECT)
@@ -420,6 +429,12 @@ class BluetoothModule(
                     .orEmpty()
                     .map { it.address }
                     .toSet()
+            // A connection under way (by the phone, the stack or a previous attempt): let it finish.
+            if (connecting(bonded)) {
+                Log.i(TAG, "Auto-connect: a connection is in progress, waiting")
+                scheduleAutoConnect()
+                return@Runnable
+            }
             val target = plan.target(attempt, history.filter { it !in userDisconnected }, bonded)
             attempt++
             if (target != null) {
@@ -444,7 +459,20 @@ class BluetoothModule(
 
     private fun canAutoConnect() = started && activeMode() && autoConnectOn() && adapter?.isEnabled == true && profiles?.hfp != null
 
-    private fun isConnected(): Boolean = hfpDevice() != null
+    /** A phone linked for calls or for music: auto-connect leaves it alone (music-only phones exist). */
+    private fun isConnected(): Boolean {
+        val p = profiles ?: return false
+        return hfpDevice() != null || p.connected(p.a2dpSink).isNotEmpty()
+    }
+
+    private fun connecting(addresses: Collection<String>): Boolean {
+        val p = profiles ?: return false
+        val a = adapter ?: return false
+        return addresses.any { address ->
+            val d = a.getRemoteDevice(address)
+            p.state(p.hfp, d) == BluetoothProfile.STATE_CONNECTING || p.state(p.a2dpSink, d) == BluetoothProfile.STATE_CONNECTING
+        }
+    }
 
     // --- Status --------------------------------------------------------------------------------------------------
 
@@ -677,7 +705,7 @@ class BluetoothModule(
                 post {
                     val d = device(address) ?: return@post
                     userDisconnected.remove(d.address)
-                    connectProfiles(d)
+                    connectProfiles(d, exclusive = true)
                 }
 
             override fun disconnect(address: String?) = post { device(address)?.let { disconnectProfiles(it, byUser = true) } }
