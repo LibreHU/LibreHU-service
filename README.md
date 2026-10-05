@@ -26,8 +26,8 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Affichage | mode sombre d'Android et luminosité selon les feux (liaison MCU, ou ivi-services tant qu'il tient la MCU) | `display/DisplayController.kt` |
 | Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, MCU, Diagnostic (trafic MCU, journal, envoi de trames) ; thème du launcher | `MainActivity`, `ui/` |
 
-Pas encore fait : correspondance touches → actions, radio (FM MT6631), caméra, multiplexeur/décodage CAN, LED de
-façade, veille (`F1`), couche de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
+Ce qui manque encore (veille, sources audio, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
+de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
 
 ## LibreHU vs ivi-services
 
