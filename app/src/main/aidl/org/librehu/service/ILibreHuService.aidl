@@ -1,6 +1,7 @@
 package org.librehu.service;
 
 import org.librehu.service.ILibreHuCallback;
+import org.librehu.service.bt.ILibreHuBluetooth;
 
 /**
  * Public API of LibreHU-service (bind with action org.librehu.service.BIND, package org.librehu.service,
@@ -57,4 +58,9 @@ interface ILibreHuService {
     /** Radio antenna power (GPIO 110 + MCU 0x43), requested by the radio app while it plays. Cut at ACC off. */
     void setRadioAntenna(boolean on);
     boolean isRadioAntennaOn();
+
+    // --- API 3 ---
+
+    /** Bluetooth (hands-free, music, phone book): see org.librehu.service.bt.ILibreHuBluetooth. */
+    ILibreHuBluetooth getBluetooth();
 }

@@ -20,7 +20,8 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Antenne radio | demandée par l'app radio (API 2 `setRadioAntenna`) : GPIO 110 + MCU `43`, seulement contact mis | `HeadUnit.kt` |
 | API | AIDL `ILibreHuService` + `ILibreHuCallback`, broadcasts `org.librehu.action.VEHICLE_STATE` / `ACC` / `REVERSE` | `app/src/main/aidl` |
 | Accès bas niveau | JNI C : tty brut 115200 8N1, `/dev/gpios_ioctl`, I2C (`I2C_SLAVE_FORCE` + `I2C_RDWR`) | `app/src/main/cpp` |
-| Diagnostic | écran : état de la liaison, entrées véhicule, réglages audio, trafic MCU | `MainActivity` |
+| Bluetooth | équivalent d'`ivi-btservice` : appels (HFP client), musique (A2DP sink + AVRCP), répertoire et journal (PBAP), appairage, reconnexion du dernier téléphone, sonnerie ; API `ILibreHuBluetooth` (API 3). Voir [docs/bluetooth.md](docs/bluetooth.md) | `app/.../bt`, `core/.../bt` |
+| Diagnostic | écran : état de la liaison, entrées véhicule, réglages audio, trafic MCU ; écran Bluetooth | `MainActivity`, `BluetoothActivity` |
 
 Pas encore fait : correspondance touches → actions, radio (FM MT6631), caméra, multiplexeur/décodage CAN, LED de
 façade, veille (`F1`), couche de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
@@ -55,7 +56,8 @@ bindService(Intent("org.librehu.service.BIND").setPackage("org.librehu.service")
 // onServiceConnected : val api = ILibreHuService.Stub.asInterface(binder)
 api.setVolume(20); api.setBalanceFade(30, 20); api.registerCallback(callback)
 ```
-Copier les deux fichiers `.aidl` dans l'app cliente (même paquet `org.librehu.service`).
+Copier les fichiers `.aidl` dans l'app cliente (même paquet `org.librehu.service`) ; pour le Bluetooth, aussi
+ceux de `org/librehu/service/bt/` et `bt/BtParcels.kt`.
 
 ## Construire
 
@@ -65,5 +67,6 @@ Copier les deux fichiers `.aidl` dans l'app cliente (même paquet `org.librehu.s
 ## Documentation
 
 - Analyse d'ivi-services et plan de réécriture : [docs/ivi-services/](docs/ivi-services/README.md)
+- Bluetooth (analyse d'ivi-btservice, module, installation) : [docs/bluetooth.md](docs/bluetooth.md)
 - Firmware MCU et protocole : [MCU-tools-app/docs/mcu_firmware.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/mcu_firmware.md)
 - Puce audio (BD37534), AIDL `IAudio` : [MCU-tools-app/docs/ivi_audio.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/ivi_audio.md)

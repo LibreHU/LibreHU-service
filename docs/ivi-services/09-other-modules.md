@@ -7,6 +7,6 @@
 | **Navigation** (`NavigationService`) | Récupère les infos de guidage des apps Gaode / MX (broadcasts) pour le combiné | Faible |
 | **Cluster** (`ClusterService`, `McuCluster`) | Envoie média, guidage, BT, heure au combiné d'instruments via la MCU | Sans objet (pas de combiné connecté sur cette carte) |
 | **DAB** (`DABService`, `DABDevice`) | Tuner DAB en SPI (API Silicon Labs / NXP dans la lib native) | Seulement si un module DAB est présent |
-| **Bluetooth** (`BluetoothServiceAgent`, `BluetoothCtrl`) | Relais vers `com.jancar.btservice` : décrocher, raccrocher, musique, état d'appel (pour le mute et les priorités) | Moyen : les priorités audio de l'appel sont à garder ; la pile BT reste celle d'Android |
+| **Bluetooth** (`BluetoothServiceAgent`, `BluetoothCtrl`) | Relais vers `com.jancar.btservice` : décrocher, raccrocher, musique, état d'appel (pour le mute et les priorités) | Moyen : les priorités audio de l'appel sont à garder ; la pile BT reste celle d'Android. Fait : [../bluetooth.md](../bluetooth.md) |
 | **Projection** (`CarPlayUtil`, `ACAndroidAutoUtil`, `HiCarUtil`, `ZLinkUtil`, `WeLinkUtil`, `SpeedPlayUtil`, `ElinkUtil`) | Coordination avec les apps de projection : focus audio, marche arrière, ACC, `vendor.iapd.start` (MFi) | Moyen : garder les signaux (ACC, marche arrière, nuit) sous forme de broadcasts standard |
 | **TBox, AVM 360, télécommande, écran secondaire** | Projets spécifiques à certains clients | Aucun |

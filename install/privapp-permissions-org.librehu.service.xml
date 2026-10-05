@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copy to /system/etc/permissions/ with the APK in /system/priv-app/LibreHU-service/ (docs/bluetooth.md). -->
+<permissions>
+    <privapp-permissions package="org.librehu.service">
+        <!-- Clock from the MCU RTC. -->
+        <permission name="android.permission.SET_TIME" />
+        <!-- Bluetooth: answer pairing requests, phone book access without prompt on the phone. -->
+        <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+    </privapp-permissions>
+</permissions>

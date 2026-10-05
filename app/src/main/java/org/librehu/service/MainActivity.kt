@@ -105,6 +105,12 @@ class MainActivity : Activity() {
                 }
             },
         )
+        buttons.addView(
+            Button(this).apply {
+                text = getString(R.string.bt_title)
+                setOnClickListener { startActivity(Intent(this@MainActivity, BluetoothActivity::class.java)) }
+            },
+        )
         root.addView(buttons)
 
         section(root, R.string.section_audio)
