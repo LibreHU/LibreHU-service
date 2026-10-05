@@ -1,5 +1,7 @@
 package org.librehu.service;
 
+import android.os.Bundle;
+
 import org.librehu.service.ILibreHuCallback;
 import org.librehu.service.bt.ILibreHuBluetooth;
 
@@ -63,4 +65,16 @@ interface ILibreHuService {
 
     /** Bluetooth (hands-free, music, phone book): see org.librehu.service.bt.ILibreHuBluetooth. */
     ILibreHuBluetooth getBluetooth();
+
+    // --- API 4 ---
+
+    /**
+     * Last OBD-II values of the ELM327 adapter: keys = org.librehu.core.obd.ObdPid names (RPM, SPEED,
+     * COOLANT_TEMP…) plus "BATTERY" (adapter voltage), values = doubles. Empty when not connected.
+     */
+    Bundle getObdValues();
+    /** 0 off, 1 connecting, 2 initialising, 3 connected, 4 error. */
+    int getObdState();
+    /** Name of the MCU protocol profile in use. */
+    String getMcuProtocol();
 }

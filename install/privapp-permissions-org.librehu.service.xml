@@ -6,5 +6,7 @@
         <permission name="android.permission.SET_TIME" />
         <!-- Bluetooth: answer pairing requests, phone book access without prompt on the phone. -->
         <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+        <!-- Display: Android dark mode following the headlights. -->
+        <permission name="android.permission.MODIFY_DAY_NIGHT_MODE" />
     </privapp-permissions>
 </permissions>

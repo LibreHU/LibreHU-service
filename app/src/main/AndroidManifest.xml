@@ -38,6 +38,19 @@
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
+    <!-- Display (display/DisplayController): system dark mode and brightness following the headlights. -->
+    <uses-permission
+        android:name="android.permission.MODIFY_DAY_NIGHT_MODE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- ELM327 OBD-II adapters on USB (obd/ObdManager). -->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+
     <queries>
         <package android:name="com.jancar.services" />
         <package android:name="com.jancar.btservice" />
@@ -53,17 +66,14 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".BluetoothActivity"
-            android:exported="false"
-            android:label="@string/bt_title" />
 
         <service
             android:name=".LibreHuService"
@@ -78,6 +88,19 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Head unit hardware service (MCU link, audio processor)" />
         </service>
+
+        <!-- OBD-II values (ELM327) for LibreHU Launcher's widget slots or any home screen. -->
+        <receiver
+            android:name=".obd.ObdWidget"
+            android:exported="true"
+            android:label="@string/obd_widget_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/obd_widget_info" />
+        </receiver>
 
         <receiver
             android:name=".BootReceiver"

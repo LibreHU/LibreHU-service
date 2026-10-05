@@ -79,6 +79,11 @@ sealed interface McuEvent {
         val on: Boolean,
     ) : McuEvent
 
+    /** Reverse gear reported by the MCU (other head units; the UJC201 reads it on a SoC GPIO). */
+    data class Reverse(
+        val on: Boolean,
+    ) : McuEvent
+
     data class Version(
         val text: String,
     ) : McuEvent

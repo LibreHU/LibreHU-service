@@ -3,6 +3,7 @@ import java.io.ByteArrayOutputStream
 plugins {
     // Version set in the root build script (buildscript classpath).
     id("com.android.application")
+    alias(libs.plugins.compose.compiler)
 }
 
 // Version from git: versionName = `git describe`, versionCode = number of commits.
@@ -42,6 +43,7 @@ android {
 
     buildFeatures {
         aidl = true
+        compose = true
     }
 
     compileOptions {
@@ -63,4 +65,14 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons)
+    implementation(libs.core.ktx)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.coroutines.android)
+    implementation(libs.usb.serial)
 }

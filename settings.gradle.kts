@@ -11,6 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // usb-serial-for-android (ELM327 USB adapters).
+        maven("https://jitpack.io")
     }
 }
 

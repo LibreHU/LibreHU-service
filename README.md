@@ -21,7 +21,10 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | API | AIDL `ILibreHuService` + `ILibreHuCallback`, broadcasts `org.librehu.action.VEHICLE_STATE` / `ACC` / `REVERSE` | `app/src/main/aidl` |
 | Accès bas niveau | JNI C : tty brut 115200 8N1, `/dev/gpios_ioctl`, I2C (`I2C_SLAVE_FORCE` + `I2C_RDWR`) | `app/src/main/cpp` |
 | Bluetooth | équivalent d'`ivi-btservice` : appels (HFP client), musique (A2DP sink + AVRCP), répertoire et journal (PBAP), appairage, reconnexion du dernier téléphone, sonnerie ; API `ILibreHuBluetooth` (API 3). Voir [docs/bluetooth.md](docs/bluetooth.md) | `app/.../bt`, `core/.../bt` |
-| Diagnostic | écran : état de la liaison, entrées véhicule, réglages audio, trafic MCU ; écran Bluetooth | `MainActivity`, `BluetoothActivity` |
+| Protocoles MCU | profils JSON importables / exportables (format, ACK, signaux, trames, câblage de la carte) ; Jancar JAC_V1 intégré, moteur générique pour les autres. Voir [docs/mcu-profiles.md](docs/mcu-profiles.md) | `core/.../mcu/McuProfile.kt`, `mcu/ProfileStore.kt` |
+| OBD-II | ELM327 en Bluetooth ou USB : valeurs moteur, tension batterie, codes défaut ; widget pour le launcher ; API 4. Voir [docs/obd.md](docs/obd.md) | `core/.../obd`, `app/.../obd` |
+| Affichage | mode sombre d'Android et luminosité selon les feux (liaison MCU, ou ivi-services tant qu'il tient la MCU) | `display/DisplayController.kt` |
+| Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, MCU, Diagnostic (trafic MCU, journal, envoi de trames) ; thème du launcher | `MainActivity`, `ui/` |
 
 Pas encore fait : correspondance touches → actions, radio (FM MT6631), caméra, multiplexeur/décodage CAN, LED de
 façade, veille (`F1`), couche de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
@@ -68,5 +71,7 @@ ceux de `org/librehu/service/bt/` et `bt/BtParcels.kt`.
 
 - Analyse d'ivi-services et plan de réécriture : [docs/ivi-services/](docs/ivi-services/README.md)
 - Bluetooth (analyse d'ivi-btservice, module, installation) : [docs/bluetooth.md](docs/bluetooth.md)
+- Profils de protocole MCU : [docs/mcu-profiles.md](docs/mcu-profiles.md)
+- OBD-II / ELM327 : [docs/obd.md](docs/obd.md)
 - Firmware MCU et protocole : [MCU-tools-app/docs/mcu_firmware.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/mcu_firmware.md)
 - Puce audio (BD37534), AIDL `IAudio` : [MCU-tools-app/docs/ivi_audio.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/ivi_audio.md)

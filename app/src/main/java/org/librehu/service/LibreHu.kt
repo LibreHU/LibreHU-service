@@ -4,7 +4,7 @@ import org.librehu.core.unit.VehicleState
 
 /** Public constants of the LibreHU-service API (AIDL [ILibreHuService] and broadcasts). */
 object LibreHu {
-    const val API_VERSION = 3
+    const val API_VERSION = 4
     const val PACKAGE = "org.librehu.service"
     const val ACTION_BIND = "org.librehu.service.BIND"
     const val PERMISSION = "org.librehu.permission.HEADUNIT"
@@ -25,6 +25,9 @@ object LibreHu {
 
     /** Sent when reverse gear changes, with the boolean extra [EXTRA_REVERSE]. */
     const val ACTION_REVERSE = "org.librehu.action.REVERSE"
+
+    /** Sent about once a second while the ELM327 is connected; extras as [ILibreHuService.getObdValues]. */
+    const val ACTION_OBD = "org.librehu.action.OBD"
 
     const val EXTRA_FLAGS = "flags"
     const val EXTRA_ACC = "acc"

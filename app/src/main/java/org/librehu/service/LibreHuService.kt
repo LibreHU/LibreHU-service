@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.RemoteCallbackList
 import android.os.RemoteException
@@ -16,15 +17,19 @@ import android.util.Log
 import org.librehu.core.audio.Bd37534
 import org.librehu.core.mcu.McuEvent
 import org.librehu.core.mcu.McuFrame
+import org.librehu.core.mcu.McuProfiles
 import org.librehu.core.mcu.McuTransport
 import org.librehu.core.unit.HeadUnit
 import org.librehu.core.unit.HeadUnitSettings
 import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
+import org.librehu.service.display.DisplayController
 import org.librehu.service.hw.I2cDevice
 import org.librehu.service.hw.SocGpio
 import org.librehu.service.hw.TtySerialChannel
+import org.librehu.service.mcu.ProfileStore
+import org.librehu.service.obd.ObdManager
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -55,10 +60,20 @@ class LibreHuService : Service() {
     @Volatile
     private var linkDetail = ""
 
+    private var protocolName = ""
+
+    /** Android dark mode and screen brightness following the headlights. */
+    private lateinit var display: DisplayController
+
+    /** ELM327 OBD-II adapter. */
+    private lateinit var obd: ObdManager
+
     override fun onCreate() {
         super.onCreate()
         startForegroundCompat()
         bluetoothModule = BluetoothModule(this).also { it.start() }
+        display = DisplayController.get(this).also { it.start() }
+        obd = ObdManager.get(this).also { it.start() }
         startHardware()
     }
 
@@ -79,6 +94,8 @@ class LibreHuService : Service() {
     override fun onDestroy() {
         stopHardware()
         bluetoothModule.stop()
+        display.stop()
+        obd.stop()
         callbacks.kill()
         super.onDestroy()
     }
@@ -90,23 +107,31 @@ class LibreHuService : Service() {
             setLink(Link.BLOCKED_BY_IVI, "com.jancar.services is enabled")
             return
         }
+        val profile = ProfileStore.get(this).current()
+        protocolName = profile.name
+        val protocol = McuProfiles.protocolFor(profile)
         val channel =
             try {
-                TtySerialChannel.open()
+                TtySerialChannel.open(profile.serial.port, profile.serial.baud)
             } catch (e: IOException) {
                 setLink(Link.NO_MCU, e.message ?: "")
                 return
             }
         val dsp =
-            try {
-                Bd37534(I2cDevice.open(Bd37534.I2C_BUS, Bd37534.I2C_ADDRESS))
-            } catch (e: IOException) {
-                log("Audio chip unavailable: ${e.message}")
+            if (profile.board.audioChip == "bd37534") {
+                try {
+                    Bd37534(I2cDevice.open(profile.board.audioBus, profile.board.audioAddress))
+                } catch (e: IOException) {
+                    log("Audio chip unavailable: ${e.message}")
+                    null
+                }
+            } else {
                 null
             }
         val exec = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "headunit") }
-        val headUnit = HeadUnit(SocGpio, dsp, PrefsSettingsStore(this), exec, unitListener)
-        val t = McuTransport(channel, headUnit)
+        val headUnit =
+            HeadUnit(SocGpio, dsp, PrefsSettingsStore(this), exec, unitListener, protocol = protocol, board = profile.board)
+        val t = McuTransport(channel, headUnit, protocol)
         executor = exec
         unit = headUnit
         transport = t
@@ -130,12 +155,15 @@ class LibreHuService : Service() {
     ) {
         link = l
         linkDetail = detail
+        ServiceState.setLink(ServiceState.Link(l, detail, protocolName))
         log("Link: $l $detail")
     }
 
     private val unitListener =
         object : HeadUnit.Listener {
             override fun onStateChanged(state: VehicleState) {
+                ServiceState.setVehicle(state)
+                display.onHeadlights(state.headlight)
                 val flags = LibreHu.flagsOf(state)
                 broadcastState(state, flags)
                 each { it.onVehicleFlags(flags) }
@@ -146,7 +174,10 @@ class LibreHuService : Service() {
             override fun onMcuFrame(
                 frame: McuFrame,
                 fromMcu: Boolean,
-            ) = each { it.onMcuFrame(frame.cmd, frame.data, fromMcu) }
+            ) {
+                ServiceState.addTraffic((if (fromMcu) "> " else "< ") + frame)
+                each { it.onMcuFrame(frame.cmd, frame.data, fromMcu) }
+            }
 
             override fun onKey(key: McuEvent.Key) = each { it.onKey(key.channel, key.values, key.released, key.learning) }
 
@@ -301,6 +332,12 @@ class LibreHuService : Service() {
             override fun isRadioAntennaOn() = unit?.radioAntennaRequested ?: false
 
             override fun getBluetooth(): ILibreHuBluetooth = bluetoothModule.binder
+
+            override fun getObdValues(): Bundle = obd.valuesBundle()
+
+            override fun getObdState(): Int = obd.state.value.connection.ordinal
+
+            override fun getMcuProtocol(): String = protocolName
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------
@@ -327,6 +364,7 @@ class LibreHuService : Service() {
 
     private fun log(message: String) {
         Log.i(TAG, message)
+        ServiceState.addLog(message)
     }
 
     companion object {

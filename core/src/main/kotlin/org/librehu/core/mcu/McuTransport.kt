@@ -17,14 +17,16 @@ interface SerialChannel : Closeable {
 }
 
 /**
- * `JAC_V1` link: one reader thread decoding frames, one writer thread sending queued frames. Frames listed in
- * [Mcu.NEEDS_ACK] are resent until the MCU acknowledges them (`C0 cmd ..`), like ivi-services does.
+ * MCU link for any [McuProtocol] (default: Jancar `JAC_V1`): one reader thread decoding frames, one writer thread
+ * sending queued frames. Frames the protocol marks as needing an acknowledgement are resent until the MCU
+ * acknowledges them (`C0 cmd ..` on Jancar), like ivi-services does.
  */
 class McuTransport(
     private val channel: SerialChannel,
     private val listener: Listener,
-    private val ackTimeoutMs: Long = 500,
-    private val maxTries: Int = 5,
+    private val protocol: McuProtocol = JacProtocol,
+    private val ackTimeoutMs: Long = protocol.ackTimeoutMs,
+    private val maxTries: Int = protocol.maxTries,
 ) : Closeable {
     interface Listener {
         /** Every valid frame received, acknowledgements included. */
@@ -53,10 +55,11 @@ class McuTransport(
     private var writer: Thread? = null
 
     private val parser =
-        JacParser { frame ->
-            if (frame.cmd == JacFrame.CMD_ACK && frame.data.isNotEmpty()) {
+        protocol.newParser { frame ->
+            val ackedCmd = protocol.ackedCommand(frame)
+            if (ackedCmd != null) {
                 synchronized(ackLock) {
-                    if (frame.u(0) == waitingAckFor) {
+                    if (ackedCmd == waitingAckFor) {
                         acked = true
                         ackLock.notifyAll()
                     }
@@ -108,8 +111,8 @@ class McuTransport(
                 } catch (_: InterruptedException) {
                     break
                 }
-            val needAck = frame.cmd in Mcu.NEEDS_ACK
-            val bytes = frame.encode()
+            val needAck = protocol.needsAck(frame)
+            val bytes = protocol.encode(frame)
             try {
                 if (!needAck) {
                     channel.write(bytes)

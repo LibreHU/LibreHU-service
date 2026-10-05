@@ -1,9 +1,12 @@
 package org.librehu.core.unit
 
 import org.librehu.core.audio.Bd37534
-import org.librehu.core.mcu.Mcu
+import org.librehu.core.mcu.BoardSpec
+import org.librehu.core.mcu.JacProtocol
 import org.librehu.core.mcu.McuEvent
 import org.librehu.core.mcu.McuFrame
+import org.librehu.core.mcu.McuProfiles
+import org.librehu.core.mcu.McuProtocol
 import org.librehu.core.mcu.McuTransport
 import java.time.LocalDateTime
 import java.util.concurrent.ScheduledExecutorService
@@ -74,6 +77,8 @@ class HeadUnit(
     private val executor: ScheduledExecutorService,
     private val listener: Listener,
     private val clock: () -> LocalDateTime = { LocalDateTime.now() },
+    private val protocol: McuProtocol = JacProtocol,
+    private val board: BoardSpec = McuProfiles.JANCAR_JAC_V1.board,
 ) : McuTransport.Listener {
     interface Listener {
         fun onStateChanged(state: VehicleState) {}
@@ -117,11 +122,11 @@ class HeadUnit(
     fun start(send: (McuFrame) -> Unit) {
         sender = send
         executor.execute {
-            gpio.set(BoardGpio.AMP_MUTE, true)
+            setGpio(board.ampMuteGpio, true)
             val ok = dsp?.init()
-            log("BD37534 init: ${ok ?: "absent"}")
+            log("MCU protocol: ${protocol.name}; BD37534 init: ${ok ?: "absent"}")
             applyAudio()
-            send(Mcu.pcReady())
+            protocol.pcReady()?.let(send)
         }
         executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
         executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
@@ -132,11 +137,23 @@ class HeadUnit(
         listener.onMcuFrame(frame, false)
     }
 
+    /** Frames the protocol does not support are null: nothing to send. */
+    private fun sendIf(frame: McuFrame?) {
+        if (frame != null) sendToMcu(frame)
+    }
+
+    private fun setGpio(
+        n: Int?,
+        high: Boolean,
+    ) {
+        if (n != null) gpio.set(n, high)
+    }
+
     // --- MCU ---------------------------------------------------------------------------------------------------
 
     override fun onFrame(frame: McuFrame) {
         listener.onMcuFrame(frame, true)
-        executor.execute { handle(McuEvent.decode(frame)) }
+        executor.execute { handle(protocol.decode(frame)) }
     }
 
     override fun onAckTimeout(frame: McuFrame) = log("MCU: no ACK for $frame")
@@ -156,6 +173,10 @@ class HeadUnit(
 
             is McuEvent.Headlight -> {
                 update { it.copy(headlight = event.on) }
+            }
+
+            is McuEvent.Reverse -> {
+                if (board.reverseGpio == null) update { it.copy(reverse = event.on) }
             }
 
             is McuEvent.Version -> {
@@ -197,8 +218,8 @@ class HeadUnit(
     private fun syncClockToMcu() {
         if (!clockReceived) return
         val now = clock()
-        sendToMcu(Mcu.date(now.year, now.monthValue, now.dayOfMonth))
-        sendToMcu(Mcu.time(now.hour, now.minute, now.second))
+        sendIf(protocol.date(now.year, now.monthValue, now.dayOfMonth))
+        sendIf(protocol.time(now.hour, now.minute, now.second))
     }
 
     // --- Radio antenna -----------------------------------------------------------------------------------------
@@ -212,8 +233,8 @@ class HeadUnit(
 
     private fun applyAntenna() {
         val on = radioAntennaRequested && state.acc
-        gpio.set(BoardGpio.RADIO_ANTENNA, on)
-        sendToMcu(Mcu.antenna(on))
+        setGpio(board.antennaGpio, on)
+        sendIf(protocol.antenna(on))
     }
 
     // --- ACC / power ---------------------------------------------------------------------------------------------
@@ -225,26 +246,26 @@ class HeadUnit(
         log("ACC ${if (on) "on" else "off"}")
         backlightTask?.cancel(false)
         if (on) {
-            sendToMcu(Mcu.mute(false))
+            sendIf(protocol.mute(false))
             applyAudio()
-            sendToMcu(Mcu.externalAmp(settings.externalAmp))
+            sendIf(protocol.externalAmp(settings.externalAmp))
             if (radioAntennaRequested) applyAntenna()
-            backlightTask = executor.schedule({ gpio.set(BoardGpio.BACKLIGHT, true) }, BACKLIGHT_DELAY_MS, TimeUnit.MILLISECONDS)
+            backlightTask = executor.schedule({ setGpio(board.backlightGpio, true) }, BACKLIGHT_DELAY_MS, TimeUnit.MILLISECONDS)
         } else {
             applyMute(true)
-            sendToMcu(Mcu.mute(true))
-            sendToMcu(Mcu.externalAmp(false))
+            sendIf(protocol.mute(true))
+            sendIf(protocol.externalAmp(false))
             if (radioAntennaRequested) applyAntenna()
-            gpio.set(BoardGpio.BACKLIGHT, false)
+            setGpio(board.backlightGpio, false)
         }
     }
 
     // --- GPIO inputs ---------------------------------------------------------------------------------------------
 
     private fun pollGpio() {
-        val reverse = activeLow(BoardGpio.REVERSE) ?: state.reverse
-        val left = activeLow(BoardGpio.TURN_LEFT) ?: state.turnLeft
-        val right = activeLow(BoardGpio.TURN_RIGHT) ?: state.turnRight
+        val reverse = board.reverseGpio?.let(::activeLow) ?: state.reverse
+        val left = board.turnLeftGpio?.let(::activeLow) ?: state.turnLeft
+        val right = board.turnRightGpio?.let(::activeLow) ?: state.turnRight
         if (reverse != state.reverse) log("Reverse ${if (reverse) "on" else "off"}")
         update { it.copy(reverse = reverse, turnLeft = left, turnRight = right) }
     }
@@ -266,7 +287,7 @@ class HeadUnit(
             settings = new
             store.save(new)
             applyAudio(old)
-            if (new.externalAmp != old.externalAmp && state.acc) sendToMcu(Mcu.externalAmp(new.externalAmp))
+            if (new.externalAmp != old.externalAmp && state.acc) sendIf(protocol.externalAmp(new.externalAmp))
             listener.onSettingsChanged(new)
         }
     }
@@ -291,7 +312,7 @@ class HeadUnit(
 
     private fun applyMute(mute: Boolean) {
         if (dsp != null && dsp.isMuted != mute) dsp.setMute(mute)
-        gpio.set(BoardGpio.AMP_MUTE, mute)
+        setGpio(board.ampMuteGpio, mute)
     }
 
     private fun HeadUnitSettings.normalized() =
