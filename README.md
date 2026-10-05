@@ -29,6 +29,63 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 Pas encore fait : correspondance touches → actions, radio (FM MT6631), caméra, multiplexeur/décodage CAN, LED de
 façade, veille (`F1`), couche de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
 
+## LibreHU vs ivi-services
+
+Comparaison avec `com.jancar.services` (analyse : [docs/ivi-services/](docs/ivi-services/README.md)). Les ✅ côté
+LibreHU sont écrits et passent la CI, **pas encore testés sur l'appareil**.
+
+Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
+
+| Domaine | Fonction | ivi-services | LibreHU | Où (LibreHU) |
+|---|---|---|---|---|
+| **MCU** | Liaison série, trames, accusés de réception, renvois | ✅ | ✅ | service (`core/mcu`) |
+| | Protocoles d'autres autoradios (profils importables / exportables) | ❌ | ✅ | service, onglet MCU |
+| | Mise à jour du firmware de la MCU | ✅ | ❌ | — |
+| **Véhicule** | Contact (ACC), frein à main, feux, version MCU | ✅ | ✅ | service |
+| | Marche arrière, clignotants (GPIO) | ✅ | ✅ | service |
+| | Diffusion aux apps | ✅ (sans contrôle d'accès) | ✅ (avec permission) | API AIDL + broadcasts |
+| **Alimentation** | Contact mis / coupé : sourdine, rétroéclairage, ampli externe | ✅ | ✅ | service |
+| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ❌ | — |
+| | Reset du hub USB, sourdine au démarrage | ✅ | 🟡 (sourdine seulement) | service |
+| | Horloge MCU ↔ Android | ✅ | ✅ | service |
+| **Audio (BD37534)** | Volume, sourdine, tonalité, balance/fader, loudness, caisson | ✅ | ✅ | service, onglet Audio |
+| | Ampli externe (sortie REM) | ✅ | ✅ | service |
+| | Choix de la source de la puce (Android, radio, AUX, AV) + volume par source | ✅ | ❌ (entrée Android fixe) | — |
+| | Priorités : appel, navigation, marche arrière, sourdines anti-« pop » | ✅ | 🟡 (focus audio pendant les appels) | module Bluetooth |
+| **Radio** | Tuner FM interne MediaTek | ✅ (app Jancar) | ✅ | app [LibreHU FM](https://github.com/LibreHU/LibreHU-FM-App) |
+| | Alimentation de l'antenne | ✅ | ✅ | service (API 2) |
+| | Tuner DAB | ✅ | ➖ | — |
+| **Bluetooth** | Appels, musique, répertoire, appairage, reconnexion | ✅ (`ivi-btservice`) | ✅ | service, onglet Bluetooth |
+| **Touches** | Lecture des touches volant / façade / molette | ✅ | ✅ (relayées brutes) | service |
+| | Choix de l'action de chaque touche | ✅ (config Jancar) | ✅ | app [LibreHU BtnRemap](https://github.com/LibreHU/LibreHU-BtnRemap-app) |
+| | Apprentissage des touches du volant | ✅ | 🟡 (trames relayées, pas d'écran) | — |
+| | Télécommande infrarouge, zones tactiles hors écran | ✅ | ❌ | — |
+| | Touche power (verrouillage écran, actions court / long) | ✅ | ❌ | — |
+| **Écran** | Luminosité jour / nuit selon les feux | ✅ | ✅ | service, onglet Affichage |
+| | Mode sombre Android selon les feux | ❌ | ✅ | service ou launcher |
+| | Rotation, économiseur d'écran, calibration tactile | ✅ | ❌ | — |
+| **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | ❌ (recul rapide Autochips toujours actif) | — |
+| | Entrées AV, blocage vidéo frein desserré | ✅ | ❌ | — |
+| **CAN (Hiworld)** | Relais des trames du boîtier | ✅ | ✅ | service (`onCanData`, `sendCanData`) |
+| | Décodage (portes, clim, volant…) | ➖ (fait par `ivi-canbus`) | 🟡 (touches volant seulement) | app BtnRemap |
+| **Véhicule (extra)** | OBD-II par ELM327 (valeurs moteur, codes défaut) | ❌ | ✅ | service, onglet OBD + widget |
+| | Pression des pneus (TPMS USB) | ❌ (app à part) | ✅ | [LibreHU Launcher](https://github.com/LibreHU/LibreHU-Launcher-App) (+ widget) |
+| **Matériel divers** | LED de façade, ventilateur, G-sensor | ✅ | ❌ | — |
+| | Accès I2C brut pour les apps | ✅ (ouvert à toutes) | ❌ (volontairement) | — |
+| **Système** | Réinitialisation usine, reboot, journal logcat | ✅ | 🟡 (journal + trafic MCU) | onglet Diagnostic |
+| | Heure GPS, fermeture / ouverture d'apps | ✅ | 🟡 (arrêt forcé depuis le launcher) | launcher |
+| **Média / projection** | Scanner de fichiers et lecteurs Jancar | ✅ | ➖ (MediaStore / MediaSession d'Android) | — |
+| | Coordination CarPlay / Android Auto / HiCar… | ✅ | ❌ | — |
+| **Spécifique clients** | Voix aispeech, combiné, TBox, caméra 360°, TV | ✅ | ➖ | — |
+| **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (7 onglets) | service |
+
+Reste à faire pour se passer d'ivi-services, par ordre d'importance :
+1. mise en veille après la coupure du contact (sinon risque de décharger la batterie) ;
+2. choix de la source de la puce audio et priorités (navigation, marche arrière) ;
+3. caméra de recul après le démarrage d'Android ;
+4. touche power, rotation, économiseur d'écran ;
+5. mise à jour de la MCU, LED de façade, infrarouge.
+
 ## Installer et tester
 
 1. Récupérer l'APK de l'Action **Build** (artefact `LibreHU-service-debug-…`) et l'installer : `adb install`.
