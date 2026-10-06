@@ -333,4 +333,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="vol_overlay_touch">Adjust by touch</string>
     <string name="vol_overlay_touch_hint">Slide on the bar to set the volume, touch the speaker to mute</string>
     <string name="vol_overlay_preview">Preview</string>
+    <string name="obd_dash_title">OBD dashboard</string>
+    <string name="obd_dash_analog">OBD dials</string>
+    <string name="obd_dash_digital">OBD digital cluster</string>
+    <string name="obd_dash_analog_description">Speed and revs on round dials, plus the other OBD values, car dashboard style</string>
+    <string name="obd_dash_digital_description">Big speed, segmented rev bar and value tiles, digital cluster style</string>
 </resources>

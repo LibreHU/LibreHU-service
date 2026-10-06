@@ -114,6 +114,30 @@
                 android:resource="@xml/obd_widget_info" />
         </receiver>
 
+        <!-- OBD-II dashboards (analog dials / digital cluster), Android Auto style. -->
+        <receiver
+            android:name=".obd.ObdDashAnalogWidget"
+            android:exported="true"
+            android:label="@string/obd_dash_analog">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/obd_dash_analog_info" />
+        </receiver>
+        <receiver
+            android:name=".obd.ObdDashDigitalWidget"
+            android:exported="true"
+            android:label="@string/obd_dash_digital">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/obd_dash_digital_info" />
+        </receiver>
+
         <receiver
             android:name=".BootReceiver"
             android:directBootAware="true"

@@ -30,6 +30,7 @@ class ObdWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(context) ?: return
             val ids = manager.getAppWidgetIds(ComponentName(context, ObdWidget::class.java))
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views(context))
+            ObdDashWidget.refreshAll(context)
         }
 
         private fun views(context: Context): RemoteViews {

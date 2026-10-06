@@ -333,4 +333,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="vol_overlay_touch">Réglage au toucher</string>
     <string name="vol_overlay_touch_hint">Glisser sur la barre pour régler, toucher le haut-parleur pour couper le son</string>
     <string name="vol_overlay_preview">Aperçu</string>
+    <string name="obd_dash_title">Tableau de bord OBD</string>
+    <string name="obd_dash_analog">Compteurs OBD</string>
+    <string name="obd_dash_digital">Combiné OBD numérique</string>
+    <string name="obd_dash_analog_description">Vitesse et régime sur cadrans ronds, plus les autres valeurs OBD, façon tableau de bord</string>
+    <string name="obd_dash_digital_description">Grande vitesse, barre de régime segmentée et tuiles de valeurs, façon combiné numérique</string>
 </resources>
