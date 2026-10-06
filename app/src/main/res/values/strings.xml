@@ -431,4 +431,16 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="invert_headlight">Invert headlights</string>
     <string name="invert_turn_left">Invert left turn signal</string>
     <string name="invert_turn_right">Invert right turn signal</string>
+    <string name="bright_overlay">Brightness panel</string>
+    <string name="bright_overlay_hint">Shown over the apps when Android\'s screen brightness changes (touch keys, launcher control center, apps), not for the automatic changes with the headlights. Same look as the volume panel.</string>
+    <string name="bright_overlay_enable">Show the brightness panel</string>
+    <string name="bright_overlay_number">Brightness in %</string>
+    <string name="bright_overlay_touch_hint">Slide on the bar to set the brightness</string>
+    <string name="overlay_offset_vertical">Height on the edge</string>
+    <string name="overlay_offset_horizontal">Place along the edge</string>
+    <string name="overlay_centre">centred</string>
+    <string name="overlay_margin">Distance from the edge</string>
+    <string name="overlay_size_xs">Extra small</string>
+    <string name="overlay_size_xl">Extra large</string>
+    <string name="overlay_opacity">Background opacity</string>
 </resources>

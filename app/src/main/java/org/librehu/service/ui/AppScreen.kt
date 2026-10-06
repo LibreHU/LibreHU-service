@@ -44,12 +44,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.librehu.core.audio.Bd37534
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
 import org.librehu.service.obd.ObdConnection
 import org.librehu.service.obd.ObdLabels
 import org.librehu.service.obd.ObdManager
+import org.librehu.service.overlay.OverlayKind
 
 enum class Tab(
     val icon: ImageVector,
@@ -273,7 +275,7 @@ fun AudioScreen(client: ServiceClient) {
             SliderRow(stringResource(R.string.volume), a.volume, 0..a.maxVolume) { v -> client.call { it.setVolume(v) } }
             SwitchRow(stringResource(R.string.mute), a.muted) { on -> client.call { it.setMuted(on) } }
         }
-        VolumeOverlayCard(a.volume, a.muted)
+        LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         Card(stringResource(R.string.audio_tone)) {
             SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }
             SliderRow(stringResource(R.string.middle), a.middle, 0..20, ::db) { v -> client.call { it.setTone(a.bass, v, a.treble) } }

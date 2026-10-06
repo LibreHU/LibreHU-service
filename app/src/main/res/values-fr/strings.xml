@@ -431,4 +431,16 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="invert_headlight">Inverser les feux</string>
     <string name="invert_turn_left">Inverser le clignotant gauche</string>
     <string name="invert_turn_right">Inverser le clignotant droit</string>
+    <string name="bright_overlay">Indicateur de luminosité</string>
+    <string name="bright_overlay_hint">Affiché par-dessus les applis quand la luminosité d\'Android change (touches tactiles, centre de contrôle du launcher, applis), pas pour les changements automatiques avec les feux. Même aspect que l\'indicateur de volume.</string>
+    <string name="bright_overlay_enable">Afficher l\'indicateur de luminosité</string>
+    <string name="bright_overlay_number">Luminosité en %</string>
+    <string name="bright_overlay_touch_hint">Glisser sur la barre pour régler la luminosité</string>
+    <string name="overlay_offset_vertical">Hauteur sur le bord</string>
+    <string name="overlay_offset_horizontal">Place le long du bord</string>
+    <string name="overlay_centre">centré</string>
+    <string name="overlay_margin">Distance au bord</string>
+    <string name="overlay_size_xs">Très petit</string>
+    <string name="overlay_size_xl">Très grand</string>
+    <string name="overlay_opacity">Opacité du fond</string>
 </resources>

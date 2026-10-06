@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.librehu.service.LibreHuService
 import org.librehu.service.ServiceState
+import org.librehu.service.overlay.LevelOverlay
+import org.librehu.service.root.RootShell
 
 /** Android dark mode choice. */
 enum class DarkMode { UNCHANGED, LIGHT, DARK, HEADLIGHTS }
@@ -136,7 +138,21 @@ class DisplayController private constructor(
         }
     }
 
+    /** Brightness chosen by the user (brightness panel): WRITE_SETTINGS, else root. */
+    fun setUserBrightness(value: Int) {
+        val v = value.coerceIn(MIN_BRIGHTNESS, 255)
+        if (canWriteSettings()) {
+            val r = app.contentResolver
+            Settings.System.putInt(r, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            Settings.System.putInt(r, Settings.System.SCREEN_BRIGHTNESS, v)
+        } else {
+            Thread { RootShell.run("settings put system screen_brightness_mode 0; settings put system screen_brightness $v") }.start()
+        }
+    }
+
     private fun setBrightness(value: Int) {
+        // Automatic change (headlights): no brightness panel for it.
+        LevelOverlay.brightness(app).quiet(1_500)
         if (!canWriteSettings()) {
             _brightnessAllowed.value = false
             return

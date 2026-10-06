@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +19,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.RemoteCallbackList
 import android.os.RemoteException
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import org.librehu.core.audio.Bd37534
@@ -44,7 +46,7 @@ import org.librehu.service.hw.SocGpio
 import org.librehu.service.hw.TtySerialChannel
 import org.librehu.service.mcu.ProfileStore
 import org.librehu.service.obd.ObdManager
-import org.librehu.service.overlay.VolumeOverlay
+import org.librehu.service.overlay.LevelOverlay
 import org.librehu.service.root.RootShell
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
@@ -120,10 +122,18 @@ class LibreHuService : Service() {
                     }
                 it.start()
             }
-        VolumeOverlay.get(this).apply {
-            onSetVolume = { v -> unit?.changeSettings { it.copy(volume = v, muted = false) } }
-            onToggleMute = { unit?.changeSettings { it.copy(muted = !it.muted) } }
+        LevelOverlay.volume(this).apply {
+            onSetLevel = { v -> unit?.changeSettings { it.copy(volume = v, muted = false) } }
+            onIcon = { unit?.changeSettings { it.copy(muted = !it.muted) } }
         }
+        LevelOverlay.brightness(this).onSetLevel = { v -> display.setUserBrightness(v) }
+        // Brightness panel on every change of Android's brightness (touch keys, launcher, apps).
+        lastBrightness = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1)
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS),
+            false,
+            brightnessObserver,
+        )
         touchKeys =
             TouchKeys.get(this).also {
                 it.volumeHook = { step -> changeVolume(step) }
@@ -156,6 +166,7 @@ class LibreHuService : Service() {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(wakeReceiver) }
+        runCatching { contentResolver.unregisterContentObserver(brightnessObserver) }
         stopHardware()
         bluetoothModule.stop()
         display.stop()
@@ -284,7 +295,7 @@ class LibreHuService : Service() {
                 if (old != null &&
                     old != shownVolume
                 ) {
-                    VolumeOverlay.get(this@LibreHuService).show(settings.volume, Bd37534.MAX_VOLUME, settings.muted)
+                    LevelOverlay.volume(this@LibreHuService).show(settings.volume, Bd37534.MAX_VOLUME, settings.muted)
                 }
                 each { it.onAudioChanged() }
             }
@@ -551,6 +562,18 @@ class LibreHuService : Service() {
             u?.resetSoc()
         }, "reboot").start()
     }
+
+    private var lastBrightness = -1
+
+    private val brightnessObserver =
+        object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                val v = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1)
+                if (v < 0 || v == lastBrightness) return
+                lastBrightness = v
+                LevelOverlay.brightness(this@LibreHuService).show(v, 255)
+            }
+        }
 
     /** Traffic line: the frame, and what it means on Jancar MCUs. */
     private fun describe(

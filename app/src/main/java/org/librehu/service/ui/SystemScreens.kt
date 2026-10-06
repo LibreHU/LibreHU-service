@@ -1,6 +1,7 @@
 package org.librehu.service.ui
 
 import android.content.Context
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
@@ -33,12 +34,14 @@ import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DarkMode
 import org.librehu.service.display.DisplayController
 import org.librehu.service.mcu.ProfileStore
+import org.librehu.service.overlay.OverlayKind
 
 // --- Display -----------------------------------------------------------------------------------------------------
 
 @Composable
 fun DisplayScreen(actions: AppActions) {
-    val display = DisplayController.get(LocalContext.current)
+    val context = LocalContext.current
+    val display = DisplayController.get(context)
     val s by display.settings.collectAsStateWithLifecycle()
     val lights by display.headlights.collectAsStateWithLifecycle()
     val darkAllowed by display.darkModeAllowed.collectAsStateWithLifecycle()
@@ -83,6 +86,9 @@ fun DisplayScreen(actions: AppActions) {
                 Hint(stringResource(R.string.display_write_denied))
                 Actions { Pill(stringResource(R.string.display_grant), onClick = actions.openWriteSettings) }
             }
+        }
+        LevelOverlayCard(OverlayKind.BRIGHTNESS) { o ->
+            o.show(Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128), 255, force = true)
         }
     }
 }
