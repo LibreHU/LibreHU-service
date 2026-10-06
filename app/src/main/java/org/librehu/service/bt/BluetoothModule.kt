@@ -88,9 +88,25 @@ class BluetoothModule(
         register()
         profiles = CarProfiles(context, a) { main.post(::onProfilesChanged) }
         btMedia.start()
+        org.librehu.service.touch.TouchKeys
+            .get(context)
+            .playPauseHook = ::playPauseIfBluetooth
         phonebook.start()
         refreshStatus()
         restartAutoConnect()
+    }
+
+    /**
+     * Play / pause key while the phone's music is the source (connected, and playing or nothing else playing): through
+     * [BtMedia.playPause], which remembers the last toggle (YouTube, Tidal report their state late). False otherwise.
+     */
+    private fun playPauseIfBluetooth(): Boolean {
+        val info = btMedia.info
+        if (!info.connected) return false
+        val audio = context.getSystemService(android.media.AudioManager::class.java)
+        if (!info.playing && audio?.isMusicActive == true) return false
+        main.post { btMedia.playPause() }
+        return true
     }
 
     fun stop() {
@@ -102,6 +118,9 @@ class BluetoothModule(
         } catch (_: IllegalArgumentException) {
         }
         btMedia.stop()
+        org.librehu.service.touch.TouchKeys
+            .get(context)
+            .playPauseHook = null
         phonebook.stop()
         ringer.release()
         profiles?.close()

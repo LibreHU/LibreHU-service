@@ -470,4 +470,13 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="access_allowed">Allowed</string>
     <string name="access_denied">Denied</string>
     <string name="access_pending">Not decided</string>
+    <string name="safe_shutdown_preparing">Preparing for shutdown…</string>
+    <string name="safe_shutdown_ready">You can cut the ignition or unplug the unit</string>
+    <string name="safe_shutdown_hint">Sound cut, media paused, data written to the storage. The head unit stays on until the power is cut.</string>
+    <string name="safe_shutdown_resume">Resume</string>
+    <string name="safe_shutdown">Safe shutdown</string>
+    <string name="boot_apps">Start at boot</string>
+    <string name="boot_apps_hint">LibreHU apps that start by themselves at boot. Turning one off makes the start quicker; the app still works when opened (needs root).</string>
+    <string name="boot_apps_none">No LibreHU app starts at boot.</string>
+    <string name="boot_apps_failed">Could not change it (root needed).</string>
 </resources>

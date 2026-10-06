@@ -84,6 +84,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Safe shutdown message (power/SafeShutdownActivity). -->
+        <activity
+            android:name=".power.SafeShutdownActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
         <!-- Touch panel calibration (touch/TouchCalibrationActivity): full screen, opened from the Touch panel tab. -->
         <activity
             android:name=".touch.TouchCalibrationActivity"

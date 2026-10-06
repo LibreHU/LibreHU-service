@@ -167,6 +167,15 @@ class LibreHuService : Service() {
                 reboot()
             }
 
+            ACTION_SAFE_SHUTDOWN -> {
+                safeShutdown()
+            }
+
+            org.librehu.service.power.SafeShutdownActivity.ACTION_RESUME -> {
+                log("Safe shutdown cancelled: sound back")
+                unit?.setForcedMute(false)
+            }
+
             ACTION_AUDIO_SOURCE -> {
                 val u = unit
                 if (u != null) {
@@ -574,6 +583,29 @@ class LibreHuService : Service() {
     }
 
     /**
+     * Safe shutdown (not a power off): sound cut, media paused, everything written to the storage, then a screen
+     * saying the ignition can be cut or the unit unplugged. The SoC keeps running; "Resume" on that screen undoes it.
+     */
+    private fun safeShutdown() {
+        log("Safe shutdown")
+        org.librehu.service.power.SafeShutdownActivity
+            .show(this, ready = false)
+        unit?.setForcedMute(true)
+        val audio = getSystemService(android.media.AudioManager::class.java)
+        audio?.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE))
+        audio?.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE))
+        Thread({
+            // sync(2) needs no privilege: every file system writes its dirty pages now.
+            runCatching { ProcessBuilder("sync").start().waitFor() }
+            Thread.sleep(SAFE_SHUTDOWN_SETTLE_MS)
+            runCatching { ProcessBuilder("sync").start().waitFor() }
+            log("Safe shutdown: storage written, ready to cut")
+            org.librehu.service.power.SafeShutdownActivity
+                .show(this, ready = true)
+        }, "safe-shutdown").start()
+    }
+
+    /**
      * Restart of the head unit, as ivi-services' PowerUtil.reboot() does it: audio muted (chip, amplifier, MCU), then
      * Android's reboot (the MCU keeps the power on and gets PC_READY again at boot). ivi-services never sends the
      * MCU's SoC reset (`0E`); it is only the fallback when Android cannot reboot (no permission, no root).
@@ -638,6 +670,10 @@ class LibreHuService : Service() {
             java.util.UUID
                 .randomUUID()
                 .toString()
+
+        /** Safe shutdown screen (power menu of LibreHU Launcher, shortcuts): sound cut, storage written, message. */
+        const val ACTION_SAFE_SHUTDOWN = "org.librehu.service.SAFE_SHUTDOWN"
+        private const val SAFE_SHUTDOWN_SETTLE_MS = 1500L
 
         /** Sound processor input: extra "source" = "aux", "android", or nothing to toggle (shortcuts, other apps). */
         const val ACTION_AUDIO_SOURCE = "org.librehu.service.AUDIO_SOURCE"

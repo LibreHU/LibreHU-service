@@ -470,4 +470,13 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="access_allowed">Autorisée</string>
     <string name="access_denied">Refusée</string>
     <string name="access_pending">Non décidé</string>
+    <string name="safe_shutdown_preparing">Préparation de l\'arrêt…</string>
+    <string name="safe_shutdown_ready">Vous pouvez couper le contact ou débrancher l\'autoradio</string>
+    <string name="safe_shutdown_hint">Son coupé, lecture en pause, données écrites sur le stockage. L\'autoradio reste allumé jusqu\'à la coupure de l\'alimentation.</string>
+    <string name="safe_shutdown_resume">Reprendre</string>
+    <string name="safe_shutdown">Arrêt sécurisé</string>
+    <string name="boot_apps">Démarrage automatique</string>
+    <string name="boot_apps_hint">Applis LibreHU qui démarrent seules au démarrage. En désactiver accélère le démarrage ; l\'appli fonctionne toujours quand on l\'ouvre (root nécessaire).</string>
+    <string name="boot_apps_none">Aucune appli LibreHU ne démarre seule.</string>
+    <string name="boot_apps_failed">Impossible de changer (root nécessaire).</string>
 </resources>

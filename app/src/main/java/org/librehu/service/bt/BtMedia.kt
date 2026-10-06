@@ -153,8 +153,21 @@ internal class BtMedia(
         playerState.set(false)
     }
 
+    // Last toggle: YouTube / Tidal often report their new state late or never, so a second press soon after would
+    // repeat the same command ("press twice to resume").
+    private var toggledAt = 0L
+    private var toggledToPlay = false
+    private var reportedAtToggle = false
+
     fun playPause() {
-        if (info.playing) pause() else play()
+        val reported = info.playing
+        val now = SystemClock.uptimeMillis()
+        val stale = now - toggledAt < TOGGLE_TRUST_MS && reported == reportedAtToggle
+        val playing = if (stale) toggledToPlay else reported
+        toggledAt = now
+        reportedAtToggle = reported
+        toggledToPlay = !playing
+        if (playing) pause() else play()
     }
 
     fun next() = controls()?.skipToNext()
@@ -217,6 +230,7 @@ internal class BtMedia(
         const val TAG = "LibreHU-BT"
         const val BOUNCE_MS = 2_000L
         const val RECOVERY_GAP_MS = 5_000L
+        const val TOGGLE_TRUST_MS = 4_000L
         const val BLUETOOTH_PACKAGE = "com.android.bluetooth"
         const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
         val KNOWN =

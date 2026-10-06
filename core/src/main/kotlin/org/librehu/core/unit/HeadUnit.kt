@@ -140,6 +140,17 @@ class HeadUnit(
     var source = SOURCE_ANDROID
         private set
 
+    /** Audio cut whatever the settings (safe shutdown screen). */
+    @Volatile
+    private var forcedMute = false
+
+    /** Safe shutdown: sound cut (chip, amplifier) without touching the user's mute setting; false brings it back. */
+    fun setForcedMute(on: Boolean) =
+        executor.execute {
+            forcedMute = on
+            applyMute(settings.muted || !state.acc || on)
+        }
+
     /** Antenna requested by the radio app; powered only while ACC is on. */
     @Volatile
     var radioAntennaRequested = false
@@ -464,7 +475,7 @@ class HeadUnit(
                 dsp.setSubwoofer(s.subwoofer, s.subLevel)
             }
         }
-        applyMute(s.muted || !state.acc)
+        applyMute(s.muted || !state.acc || forcedMute)
     }
 
     private fun applyMute(mute: Boolean) {

@@ -123,6 +123,7 @@ fun McuScreen(actions: AppActions) {
             Actions { Pill(stringResource(R.string.restart), onClick = actions.restartLink) }
         }
         WatchdogCard()
+        BootAppsCard()
         Card(stringResource(R.string.vehicle_inputs)) {
             var inverted by remember { mutableStateOf(LibreHuService.invertedInputs(context)) }
             Hint(stringResource(R.string.invert_hint))
@@ -380,6 +381,11 @@ private fun WatchdogCard() {
         Actions {
             Pill(stringResource(R.string.watchdog_reload)) { w = ServiceConfig.watchdog(context) }
             Pill(stringResource(R.string.mcu_reset_soc), enabled = link.state == LibreHuService.Link.RUNNING) { confirmReset = true }
+            Pill(stringResource(R.string.safe_shutdown)) {
+                context.startForegroundService(
+                    android.content.Intent(context, LibreHuService::class.java).setAction(LibreHuService.ACTION_SAFE_SHUTDOWN),
+                )
+            }
         }
     }
     if (confirmReset) {
@@ -439,5 +445,36 @@ private fun AccessCard() {
                 }
             }
         }
+    }
+}
+
+/** LibreHU apps started at boot (their boot receivers), each can be turned off (root). */
+@Composable
+private fun BootAppsCard() {
+    val context = LocalContext.current
+    var apps by remember {
+        mutableStateOf(
+            org.librehu.service.power.BootApps
+                .list(context),
+        )
+    }
+    var message by remember { mutableStateOf("") }
+    Card(stringResource(R.string.boot_apps)) {
+        Hint(stringResource(R.string.boot_apps_hint))
+        if (apps.isEmpty()) Hint(stringResource(R.string.boot_apps_none))
+        for (a in apps) {
+            SwitchRow(a.label, a.enabled, a.pkg) { on ->
+                Thread {
+                    val ok =
+                        org.librehu.service.power.BootApps
+                            .set(a, on)
+                    message = if (ok) "" else context.getString(R.string.boot_apps_failed)
+                    apps =
+                        org.librehu.service.power.BootApps
+                            .list(context)
+                }.start()
+            }
+        }
+        if (message.isNotEmpty()) Hint(message)
     }
 }

@@ -54,6 +54,10 @@ class TouchKeys private constructor(
     @Volatile
     var volumeHook: ((Int) -> Boolean)? = null
 
+    /** Play / pause of the phone's music when it is the source (set by the Bluetooth module); true when handled. */
+    @Volatile
+    var playPauseHook: (() -> Boolean)? = null
+
     /** While learning, zones do not fire. */
     @Volatile
     var learning = false
@@ -168,7 +172,7 @@ class TouchKeys private constructor(
             }
 
             TouchAction.PLAY_PAUSE -> {
-                media(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                if (playPauseHook?.invoke() != true) media(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             }
 
             TouchAction.NEXT -> {
