@@ -16,8 +16,8 @@ class CanVehicleTest {
 
     @Test
     fun clioStateMessage() {
-        // ACC + handbrake, wheel key 2 (volume -) pressed, steering -12.5° (0xFF83).
-        val v = clio.decode(frame(0x11, 0x09, 0, 0x22, 1, 0, 0, 0xFF, 0x83)).associateBy { it.key }
+        // ACC + handbrake, wheel key 2 (volume -) pressed, steering -12.5° (sign + magnitude: 0x807D).
+        val v = clio.decode(frame(0x11, 0x09, 0, 0x22, 1, 0, 0, 0x80, 0x7D)).associateBy { it.key }
         assertEquals(true, v["ACC"]!!.flag)
         assertEquals(false, v["lights"]!!.flag)
         assertEquals(true, v["handbrake"]!!.flag)
@@ -28,8 +28,8 @@ class CanVehicleTest {
 
     @Test
     fun outsideTemperatureAndRadar() {
-        val clim = clio.decode(frame(0x31, *IntArray(11), 100)).single()
-        assertEquals(10.0, clim.number!!, 1e-9)
+        val clim = clio.decode(frame(0x31, *IntArray(11), 100)).associateBy { it.key }
+        assertEquals(10.0, clim["outside_temp"]!!.number!!, 1e-9)
         val radar = clio.decode(frame(0x41, 0, 1, 4, 7, 4, 4, 4, 4))
         // 7 is out of range (4 - 7 < 0): dropped, like CliOS' min_value.
         assertEquals(7, radar.size)
@@ -37,9 +37,37 @@ class CanVehicleTest {
     }
 
     @Test
+    fun hiworldLnp002Values() {
+        // Steering to the right: positive magnitude.
+        val right = clio.decode(frame(0x11, 0, 0, 0, 0, 0, 0, 0x01, 0x2C)).associateBy { it.key }
+        assertEquals(30.0, right["steering_angle"]!!.number!!, 1e-9)
+        // Trip computer: 5.8 L/100 km, 47.3 km/h, 1234.5 km, 2 h 15 min, 71.6 L; 0xFFFF = not available.
+        val trip =
+            clio
+                .decode(frame(0x14, 0, 58, 0x01, 0xD9, 0x00, 0x30, 0x39, 15, 0, 2, 0x02, 0xCC, 0xFF, 0xFF))
+                .associateBy { it.key }
+        assertEquals(5.8, trip["avg_consumption"]!!.number!!, 1e-9)
+        assertEquals(47.3, trip["avg_speed"]!!.number!!, 1e-9)
+        assertEquals(1234.5, trip["distance"]!!.number!!, 1e-9)
+        assertEquals(15.0, trip["time_minutes"]!!.number!!, 1e-9)
+        assertEquals(2.0, trip["time_hours"]!!.number!!, 1e-9)
+        assertEquals(71.6, trip["fuel_used"]!!.number!!, 1e-9)
+        assertNull(trip["green_distance"])
+        // Tyres in 0.1 kPa from D2.
+        val tpms = clio.decode(frame(0x48, 0, 0, 0x08, 0xFC, 0x08, 0xFC, 0x08, 0x98, 0x08, 0x98)).associateBy { it.key }
+        assertEquals(230.0, tpms["front_left"]!!.number!!, 1e-9)
+        assertEquals(220.0, tpms["rear_right"]!!.number!!, 1e-9)
+        // Climate: 21.5 °C left, HI right.
+        val clim = clio.decode(frame(0x31, 0x41, 0, 0, 0, 0, 3, 43, 255, 0, 0, 0, 100)).associateBy { it.key }
+        assertEquals(true, clim["AC"]!!.flag)
+        assertEquals(21.5, clim["temp_left"]!!.number!!, 1e-9)
+        assertEquals("HI", clim["temp_right"]!!.text)
+    }
+
+    @Test
     fun unknownCommandAndShortFrames() {
         assertNull(clio.describe(frame(0x99, 1)))
-        assertTrue(clio.decode(frame(0x31, 1, 2)).isEmpty())
+        assertTrue(clio.decode(frame(0x48, 1, 2)).isEmpty())
     }
 
     @Test

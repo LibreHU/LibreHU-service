@@ -32,7 +32,7 @@ qui porte la même information. Pour les données moteur (régime, vitesse, temp
     "0x11": { "name": "State", "signals": {
       "status":   { "start_byte": 0, "bits": { "ACC": 0, "lights": 1 } },
       "key":      { "start_byte": 2, "mask": "0x1F", "values": { "1": "volume +" } },
-      "steering": { "start_byte": 6, "size": 2, "signed": true, "factor": 0.1, "unit": "°" }
+      "steering": { "start_byte": 6, "size": 2, "sign_magnitude": true, "factor": 0.1, "unit": "°" }
     } }
   }
 }
@@ -46,6 +46,7 @@ Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans Cl
 | `endian` | `big` | `big` ou `little` |
 | `mask`, `shift` | — , 0 | masque hexa puis décalage à droite |
 | `signed`, `bit_length` | false, size × 8 | entier signé sur `bit_length` bits |
+| `sign_magnitude` | false | bit de poids fort = signe moins, le reste = valeur (angle de volant Hiworld) |
 | `factor`, `offset` | 1, 0 | valeur = brut × factor + offset |
 | `min_value`, `max_value` | — | valeur ignorée hors bornes |
 | `bits` | — | drapeaux nommés : numéro de bit (0 = poids faible) dans l'entier lu |

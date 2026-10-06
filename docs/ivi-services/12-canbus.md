@@ -44,23 +44,30 @@ Dans le décodeur, les index de champ sont comptés **depuis le début de la tra
 ## 12.4 Trames reçues du boîtier (Renault LNP002) [A]
 | CMD | Longueur min | Contenu |
 |---|---|---|
-| `0x11` | 10 | octet 4 : bit0 ACC, bit1 feux (ILL), bit2 marche arrière, bit3 frein de parking, bit7 mute SOS ; octet 6 & 0x1F : **touche volant**, octet 7 : état de la touche ; octets 10-11 : angle de volant (signé, gros-boutiste, ÷10, ±540°) |
+| `0x11` | 10 | octet 4 : bit0 ACC, bit1 feux (ILL), bit2 marche arrière, bit3 frein de parking, bit7 mute SOS ; octet 6 & 0x1F : **touche volant**, octet 7 : état de la touche ; octets 10-11 : angle de volant (gros-boutiste, **signe + valeur** : bit 15 = gauche, ÷10, ±540°) |
 | `0x12` | 10 | octet 6 : portes (bit7 AVG, bit6 AVD, bit5 ARG, bit4 ARD, bit3 coffre) |
 | `0x13` | 10 | octets 12-13 : inclinaison / dévers (ordinateur de bord) |
-| `0x14` | 14 | conso moyenne (÷10), vitesse moyenne (÷10), kilométrage total (24 bits ÷10), temps de conduite, carburant, kilométrage « vert » |
+| `0x14` | 14 | octets 4-5 conso moyenne (÷10 L/100 km), 6-7 vitesse moyenne (÷10 km/h), 8-10 distance (24 bits ÷10 km ; l'app Hiworld décale l'octet 8 de 8 bits au lieu de 16), 11 minutes et 12-13 heures de conduite, 14-15 carburant (÷10 L), 16-17 distance « verte » (÷10) ; 0xFFFF = non disponible |
 | `0x21` | 2 | touches de façade |
 | `0x22` | 2 | molette (volume) |
 | `0x23` | 2 | sélection du panneau de clim |
 | `0x31` | 12 | **clim** : AC, recyclage, dégivrage AV/AR, mode de soufflage, vitesse (max 8), températures G/D (×0,5 °C ; 254 = LO, 255 = HI ; 16,5..30,5), **température extérieure** (octet 15 × 0,5 − 40) |
 | `0x41` | 12 | **radar** AR (G, CG, CD, D) puis AV (4 capteurs), valeur 0..4 inversée (4 − v), octet 12 : affichage |
-| `0x48` | 19 | pression des pneus (TPMS) |
-| `0x61`, `0x62` | 12 | réglages véhicule (`HdCarSet`), 0x62 : échéance d'entretien |
+| `0x42` | 12 | radar latéral : droite (AV, AV-milieu, AR-milieu, AR) puis gauche |
+| `0x48` | 19 | pression des pneus : octets 6-7 AVG, 8-9 AVD, 10-11 ARG, 12-13 ARD (gros-boutiste, ÷10 = kPa, unité par défaut de l'app) |
+| `0x60` | 10 | aide au stationnement (octet 4 & 0x0F : mode) |
+| `0x61`, `0x62` | 12 | réglages véhicule (`HdCarSet`), 0x62 octets 6-7 : échéance d'entretien (km) |
 | `0xE8` | 0 | vue panoramique (AVM), si le véhicule la supporte |
 | `0xF0` | 17 | version du boîtier (17 octets ASCII) |
 
 **Touches volant** (octet 6 & 0x1F) : 1 volume +, 2 volume −, 3 mute (décroche / raccroche pendant un appel),
-4 navigation, 8 droite, 9 gauche, 10 mode, 13 précédent (long : recherche), 14 suivant (long : recherche),
-15 OK, 16 téléphone (décrocher / raccrocher), 37 répétition, 49 accueil. Les codes 7 et 24 sont mal décompilés.
+4 navigation, 5 précédent (décroche), 6 suivant (raccroche), 8 droite, 9 gauche, 10 mode, 13 précédent (long :
+recherche), 14 suivant (long : recherche), 15 OK, 16 téléphone (décrocher / raccrocher), 18 mute, 19 décrocher,
+20 raccrocher, 21 balayage (décroche), 24 commande vocale. Les codes 37 (répétition) et 49 (accueil) du décodeur
+ne peuvent pas arriver après le masque 0x1F.
+
+Confirmé par l'app Hiworld elle-même (`com.can.activity` v1.0.3924, classe `HdRenaultProtocolLNP002`, même
+décodeur que celui d'ivi-canbus).
 
 ## 12.5 Trames envoyées au boîtier [A]
 - Type de véhicule : `buildCarTypePacket` (type 0x00 pour la Clio 3 d'après le logcat ; la trame est probablement
