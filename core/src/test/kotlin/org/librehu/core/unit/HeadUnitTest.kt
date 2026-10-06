@@ -136,4 +136,40 @@ class HeadUnitTest {
         assertEquals(false, outputs[BoardGpio.RADIO_ANTENNA])
         executor.shutdownNow()
     }
+
+    @Test
+    fun shortAccDropDuringEngineStartIsIgnored() {
+        val delayed = HeadUnit(gpio, chip, store, executor, object : HeadUnit.Listener {}, accOffDelayMs = { 300L })
+        delayed.start { sent += it }
+        delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
+        settle(HeadUnit.BACKLIGHT_DELAY_MS + 200)
+        assertEquals(true, outputs[BoardGpio.BACKLIGHT])
+
+        // Cranking: ACC off for less than the delay.
+        delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 0))
+        settle(100)
+        delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
+        settle(400)
+        assertTrue(delayed.state.acc)
+        assertEquals(true, outputs[BoardGpio.BACKLIGHT])
+        assertEquals(Mcu.externalAmp(true), sent.last { it.cmd == Mcu.CMD_EXT_AMP })
+
+        // Really off: cut once the delay is over.
+        delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 0))
+        settle(100)
+        assertTrue(delayed.state.acc)
+        settle(400)
+        assertEquals(false, delayed.state.acc)
+        assertEquals(false, outputs[BoardGpio.BACKLIGHT])
+        executor.shutdownNow()
+    }
+
+    @Test
+    fun sleepTimerFrame() {
+        unit.start { sent += it }
+        unit.setSleepTimer(8)
+        settle()
+        assertEquals(McuFrame.of(Mcu.CMD_SLEEP_TIMER, 8), sent.last())
+        executor.shutdownNow()
+    }
 }

@@ -479,4 +479,19 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="boot_apps_hint">Applis LibreHU qui démarrent seules au démarrage. En désactiver accélère le démarrage ; l\'appli fonctionne toujours quand on l\'ouvre (root nécessaire).</string>
     <string name="boot_apps_none">Aucune appli LibreHU ne démarre seule.</string>
     <string name="boot_apps_failed">Impossible de changer (root nécessaire).</string>
+    <string name="standby_title">Coupure du contact et veille</string>
+    <string name="standby_acc_delay">Délai avant coupure (démarrage moteur)</string>
+    <string name="standby_acc_delay_hint">Le + après-contact chute pendant le démarrage du moteur : une coupure plus courte que ce délai garde l\'écran, le son et l\'ampli. La MCU attend elle-même 1 s et coupe le SoC 15 s après le contact : 10 s au plus.</string>
+    <string name="standby_mode_off">Écran éteint seulement</string>
+    <string name="standby_mode_sleep">Veille</string>
+    <string name="standby_mode_shutdown">Extinction</string>
+    <string name="standby_mode_off_hint">Comme avant : écran, son et ampli coupés ; la MCU coupe le SoC d\'elle-même (démarrage à froid au prochain contact, sauf si elle garde une durée de veille réglée par Jancar).</string>
+    <string name="standby_mode_sleep_hint">Médias en pause, écran d\'accueil, données écrites, minuterie de veille de la MCU, Android en veille : démarrage instantané au retour du contact. Pas encore testé sur l\'UJC201 : essayer d\'abord avec une durée courte.</string>
+    <string name="standby_mode_shutdown_hint">Médias en pause, données écrites, minuterie de la MCU à 0 : la MCU coupe le SoC (démarrage à froid au prochain contact).</string>
+    <string name="standby_max">Extinction après</string>
+    <string name="standby_days">%1$d jours</string>
+    <string name="standby_max_hint">Envoyé à la MCU par tranches de 7 h (F1 %1$d). La MCU coupe aussi tout si la batterie devient trop faible.</string>
+    <string name="standby_radios">Mode avion et GPS coupés en veille</string>
+    <string name="standby_radios_hint">Rétablis au réveil (root).</string>
+    <string name="standby_media">Reprendre la lecture au réveil</string>
 </resources>

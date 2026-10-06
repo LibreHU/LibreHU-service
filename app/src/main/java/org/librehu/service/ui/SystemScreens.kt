@@ -122,6 +122,7 @@ fun McuScreen(actions: AppActions) {
             }
             Actions { Pill(stringResource(R.string.restart), onClick = actions.restartLink) }
         }
+        StandbyCard()
         WatchdogCard()
         BootAppsCard()
         Card(stringResource(R.string.vehicle_inputs)) {
@@ -444,6 +445,59 @@ private fun AccessCard() {
                     }
                 }
             }
+        }
+    }
+}
+
+/** Engine-start delay and what happens once the ignition is off (standby, power off). */
+@Composable
+private fun StandbyCard() {
+    val standby =
+        org.librehu.service.power.Standby
+            .get(LocalContext.current)
+    val s by standby.settings.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.standby_title)) {
+        SliderRow(
+            stringResource(R.string.standby_acc_delay),
+            s.accOffDelaySec,
+            0..org.librehu.service.power.StandbySettings.MAX_ACC_OFF_DELAY_SEC,
+            { if (it == 0) "0" else "$it s" },
+        ) { v -> standby.update { it.copy(accOffDelaySec = v) } }
+        Hint(stringResource(R.string.standby_acc_delay_hint))
+        Gap()
+        Choices(
+            listOf(
+                org.librehu.service.power.StandbyMode.OFF to stringResource(R.string.standby_mode_off),
+                org.librehu.service.power.StandbyMode.SLEEP to stringResource(R.string.standby_mode_sleep),
+                org.librehu.service.power.StandbyMode.SHUTDOWN to stringResource(R.string.standby_mode_shutdown),
+            ),
+            s.mode,
+        ) { m -> standby.update { it.copy(mode = m) } }
+        Hint(
+            stringResource(
+                when (s.mode) {
+                    org.librehu.service.power.StandbyMode.OFF -> R.string.standby_mode_off_hint
+                    org.librehu.service.power.StandbyMode.SLEEP -> R.string.standby_mode_sleep_hint
+                    org.librehu.service.power.StandbyMode.SHUTDOWN -> R.string.standby_mode_shutdown_hint
+                },
+            ),
+        )
+        if (s.mode == org.librehu.service.power.StandbyMode.SLEEP) {
+            Gap()
+            BodyText(stringResource(R.string.standby_max))
+            Choices(
+                org.librehu.service.power.StandbySettings.HOURS_CHOICES.map { h ->
+                    h to if (h % 24 == 0) stringResource(R.string.standby_days, h / 24) else "$h h"
+                },
+                s.maxHours,
+            ) { h -> standby.update { it.copy(maxHours = h) } }
+            Hint(stringResource(R.string.standby_max_hint, s.mcuUnits))
+            SwitchRow(stringResource(R.string.standby_radios), s.radiosOff, stringResource(R.string.standby_radios_hint)) { on ->
+                standby.update { it.copy(radiosOff = on) }
+            }
+        }
+        if (s.mode != org.librehu.service.power.StandbyMode.OFF) {
+            SwitchRow(stringResource(R.string.standby_media), s.resumeMedia) { on -> standby.update { it.copy(resumeMedia = on) } }
         }
     }
 }

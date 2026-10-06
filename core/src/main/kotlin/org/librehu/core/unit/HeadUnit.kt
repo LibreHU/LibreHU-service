@@ -96,6 +96,11 @@ class HeadUnit(
     /** Inputs reported the other way round (MCU frames and SoC GPIO alike). */
     private val inverted: () -> Set<VehicleInput> = { emptySet() },
     private val now: () -> Long = { System.currentTimeMillis() },
+    /**
+     * Ignition off ignored for this long (ms): the ACC line drops while the engine cranks. Screen, sound and amplifier
+     * stay on, and nothing is reported, when it comes back within that time.
+     */
+    private val accOffDelayMs: () -> Long = { 0L },
 ) : McuTransport.Listener {
     interface Listener {
         fun onStateChanged(state: VehicleState) {}
@@ -256,7 +261,7 @@ class HeadUnit(
         if (!state.mcuOnline) update { it.copy(mcuOnline = true) }
         when (event) {
             is McuEvent.Acc -> {
-                setAcc(event.on)
+                onAccInput(event.on)
             }
 
             is McuEvent.Handbrake -> {
@@ -371,6 +376,33 @@ class HeadUnit(
     }
 
     // --- ACC / power ---------------------------------------------------------------------------------------------
+
+    private var accOffTask: ScheduledFuture<*>? = null
+
+    /** ACC from the MCU: on at once, off only after [accOffDelayMs] without coming back (engine start). */
+    private fun onAccInput(on: Boolean) {
+        val pending = accOffTask
+        if (on && pending != null) {
+            pending.cancel(false)
+            accOffTask = null
+            log("ACC back before the off delay: ignored (engine start?)")
+        }
+        val delay = accOffDelayMs().coerceIn(0, MAX_ACC_OFF_DELAY_MS)
+        if (on || !state.acc || delay == 0L) {
+            setAcc(on)
+            return
+        }
+        if (pending != null && !pending.isDone) return
+        log("ACC off: waiting $delay ms")
+        accOffTask =
+            executor.schedule({
+                accOffTask = null
+                setAcc(false)
+            }, delay, TimeUnit.MILLISECONDS)
+    }
+
+    /** Standby length of the MCU after the ignition is cut ([McuProtocol.sleepTimer]). */
+    fun setSleepTimer(units: Int) = executor.execute { sendIf(protocol.sleepTimer(units)) }
 
     private fun setAcc(on: Boolean) {
         val changed = on != state.acc
@@ -510,6 +542,9 @@ class HeadUnit(
         const val SOURCE_ANDROID = 0
         const val SOURCE_AUX = 1
         const val BACKLIGHT_DELAY_MS = 800L
+
+        /** The MCU cuts the SoC 15 s after the ignition: the off delay and the standby preparation fit before. */
+        const val MAX_ACC_OFF_DELAY_MS = 10_000L
         const val HANDSHAKE_RETRY_MS = 4000L
         const val HANDSHAKE_TRIES = 5
     }

@@ -146,6 +146,11 @@ class LibreHuService : Service() {
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        org.librehu.service.power.Standby.get(this).apply {
+            sleepTimer = { units -> unit?.setSleepTimer(units) }
+            handshake = { unit?.wake() }
+            log = { this@LibreHuService.log(it) }
+        }
     }
 
     override fun onStartCommand(
@@ -270,6 +275,11 @@ class LibreHuService : Service() {
                     val w = ServiceConfig.watchdog(this)
                     if (w.disarm) w.frame ?: protocol.watchdogOff() else null
                 },
+                accOffDelayMs = {
+                    org.librehu.service.power.Standby
+                        .get(this)
+                        .accOffDelayMs()
+                },
             )
         startToastShown = false
         shownVolume = headUnit.settings.volume to headUnit.settings.muted
@@ -312,6 +322,9 @@ class LibreHuService : Service() {
         object : HeadUnit.Listener {
             override fun onStateChanged(state: VehicleState) {
                 ServiceState.setVehicle(state)
+                org.librehu.service.power.Standby
+                    .get(this@LibreHuService)
+                    .onAcc(state.acc)
                 display.onHeadlights(state.headlight)
                 val flags = LibreHu.flagsOf(state)
                 broadcastState(state, flags)

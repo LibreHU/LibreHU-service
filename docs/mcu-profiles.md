@@ -50,7 +50,7 @@ exportable depuis l'onglet **MCU** de l'app (« Importer un profil », bouton d'
 | `frame.checksum` | `none`, `sum8`, `xor8` ou `twos8` (complément à deux), calculé de `checksumFrom` à l'octet avant le contrôle, plus `checksumAdjust` (ex. Hiworld : `sum8`, `checksumFrom` 2, `checksumAdjust` -1) |
 | `ack` | trame d'acquittement (`cmd`, octet portant la commande acquittée), commandes à renvoyer tant qu'elles ne sont pas acquittées ; absent = pas d'acquittement |
 | `inputs` | signaux reçus : `acc`, `handbrake`, `headlight`, `backlight`, `reverse` (booléens : octet `byte`, `mask`, `invert`), `version` (ASCII), `date`, `time` (`fields`), `key` (canal puis valeurs), `can` (octets bruts). `match` filtre sur des octets de données. Le premier qui correspond gagne |
-| `outputs` | trames envoyées (`pcReady`, `muteOn`/`Off`, `ampOn`/`Off`, `antennaOn`/`Off`, `date`, `time`, `can`) : commande puis données, avec `{yearHi} {yearLo} {month} {day} {hour} {minute} {second} {data}`. Une sortie absente n'est pas envoyée |
+| `outputs` | trames envoyées (`pcReady`, `muteOn`/`Off`, `ampOn`/`Off`, `antennaOn`/`Off`, `date`, `time`, `can`, `queryClock`, `watchdogOff`, `resetSoc`, `sleepTimer`) : commande puis données, avec `{yearHi} {yearLo} {month} {day} {hour} {minute} {second} {units} {data}` (`{units}` : durée de veille de la MCU, `F1 {units}` sur Jancar). Une sortie absente n'est pas envoyée |
 | `board` | GPIO de la SoC (marche arrière, clignotants, rétroéclairage, mute ampli, antenne) ; `null` = non câblé. `audioChip` : `bd37534` ou `null` (puce audio non pilotée) |
 
 Un profil invalide est refusé avec la raison (champ manquant, hexadécimal faux, sortie inconnue…).

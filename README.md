@@ -32,10 +32,11 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Touches du volant (CAN) | touches relayées par le boîtier Hiworld (`0x11`) transformées en actions (volume, piste, sourdine, appli…) comme les touches de façade ; actives par défaut quand ivi-services est désactivé ; code de la dernière touche affiché pour trouver les boutons inconnus. Voir [docs/can-vehicles.md](docs/can-vehicles.md#touches-du-volant) | `core/.../can/HiworldWheelKeys.kt`, `can/CanWheelKeys.kt`, onglet CAN |
 | Contrôle d'accès | façon SuperSU : applis `org.librehu.*` et système autorisées d'office, les autres sur notification Autoriser / Refuser ; liste dans Diagnostic → Accès au service | `ServiceAccess.kt` |
 | Arrêt sécurisé | sourdine, pause des lecteurs, écriture des données (`sync`), écran noir « vous pouvez couper le contact » ; le SoC reste allumé, « Reprendre » relance tout (bouton dans la carte Watchdog, intent `org.librehu.service.SAFE_SHUTDOWN`) | `power/SafeShutdownActivity.kt`, `LibreHuService.kt` |
+| Contact coupé, veille | délai avant coupure réglable (0..10 s : le + après-contact chute au démarrage du moteur, écran / son / ampli gardés) ; puis au choix écran éteint seulement, **veille** (médias en pause, accueil, mode avion et GPS coupés, `sync`, minuterie MCU `F1` par tranches de 7 h jusqu'à 14 jours, Android en veille ; réveil : PC_READY, écran, radios, reprise de la lecture) ou **extinction** (`F1 0`). Voir [docs/power.md](docs/power.md) | `core/.../unit/HeadUnit.kt`, `power/Standby.kt`, onglet MCU |
 | Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; onglet MCU, carte Démarrage | `power/BootApps.kt` |
 | Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, GPS et heure, Dalle tactile, MCU, CAN, Outils MCU, Diagnostic (trafic MCU décodé, journal, envoi de trames, export) ; thème du launcher | `MainActivity`, `ui/` |
 
-Ce qui manque encore (veille automatique, sources radio / AV, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
+Ce qui manque encore (sources radio / AV, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
 de compatibilité `com.jancar.services.*`.
 
 ## LibreHU vs ivi-services
@@ -54,7 +55,8 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Marche arrière, clignotants (GPIO) | ✅ | ✅ | service |
 | | Diffusion aux apps | ✅ (sans contrôle d'accès) | ✅ (contrôle d'accès façon SuperSU) | API AIDL + broadcasts |
 | **Alimentation** | Contact mis / coupé : sourdine, rétroéclairage, ampli externe | ✅ | ✅ | service |
-| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | 🟡 (arrêt sécurisé manuel, pas de veille MCU) | service, carte Watchdog |
+| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ✅ (sans fermeture des applis ; non testé) | service, onglet MCU |
+| | Coupure brève du contact au démarrage du moteur ignorée | 🟡 (minuterie « ACC long off », écran coupé quand même) | ✅ (délai réglable) | service, onglet MCU |
 | | Choix des applis lancées au démarrage | ❌ | ✅ (root) | service, onglet MCU |
 | | Reset du hub USB, sourdine au démarrage | ✅ | 🟡 (sourdine seulement) | service |
 | | Horloge MCU ↔ Android | ✅ | ✅ | service |
@@ -93,8 +95,7 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (9 onglets) | service |
 
 Reste à faire pour se passer d'ivi-services, par ordre d'importance :
-1. mise en veille automatique après la coupure du contact (l'arrêt sécurisé est manuel ; sinon risque de décharger
-   la batterie) ;
+1. valider la veille sur l'appareil (sortie de suspension, consommation) ;
 2. sources radio / AV de la puce audio et priorités (navigation, marche arrière) ;
 3. caméra de recul après le démarrage d'Android ;
 4. touche power, rotation, économiseur d'écran ;
@@ -148,5 +149,6 @@ ceux de `org/librehu/service/bt/` et `bt/BtParcels.kt`.
 - Profils de protocole MCU : [docs/mcu-profiles.md](docs/mcu-profiles.md)
 - OBD-II / ELM327 : [docs/obd.md](docs/obd.md)
 - Profils de voiture (décodage CAN) : [docs/can-vehicles.md](docs/can-vehicles.md)
+- Contact coupé, veille et extinction : [docs/power.md](docs/power.md)
 - Firmware MCU et protocole : [MCU-tools-app/docs/mcu_firmware.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/mcu_firmware.md)
 - Puce audio (BD37534), AIDL `IAudio` : [MCU-tools-app/docs/ivi_audio.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/ivi_audio.md)

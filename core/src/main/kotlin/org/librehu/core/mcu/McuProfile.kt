@@ -110,6 +110,7 @@ data class McuProfile(
                 "queryClock",
                 "watchdogOff",
                 "resetSoc",
+                "sleepTimer",
             )
     }
 }
@@ -190,6 +191,7 @@ object McuProfiles {
                     "queryClock" to "F0 09 00",
                     "watchdogOff" to "1F 05",
                     "resetSoc" to "0E 00 00 00",
+                    "sleepTimer" to "F1 {units}",
                 ),
             board =
                 BoardSpec(
@@ -746,4 +748,6 @@ class ProfileProtocol(
     override fun watchdogOff() = out("watchdogOff")
 
     override fun resetSoc() = out("resetSoc")
+
+    override fun sleepTimer(units: Int) = out("sleepTimer", mapOf("units" to units.coerceIn(0, 255)))
 }

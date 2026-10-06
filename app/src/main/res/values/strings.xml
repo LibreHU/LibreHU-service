@@ -479,4 +479,19 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="boot_apps_hint">LibreHU apps that start by themselves at boot. Turning one off makes the start quicker; the app still works when opened (needs root).</string>
     <string name="boot_apps_none">No LibreHU app starts at boot.</string>
     <string name="boot_apps_failed">Could not change it (root needed).</string>
+    <string name="standby_title">Ignition off and standby</string>
+    <string name="standby_acc_delay">Delay before cutting (engine start)</string>
+    <string name="standby_acc_delay_hint">The ignition line drops while the engine cranks: a cut shorter than this keeps the screen, sound and amplifier on. The MCU itself waits 1 s, and cuts the SoC 15 s after the ignition: 10 s at most.</string>
+    <string name="standby_mode_off">Screen off only</string>
+    <string name="standby_mode_sleep">Standby</string>
+    <string name="standby_mode_shutdown">Power off</string>
+    <string name="standby_mode_off_hint">As before: screen, sound and amplifier off; the MCU cuts the SoC by itself (cold boot at the next start, unless it still has a standby time set by Jancar).</string>
+    <string name="standby_mode_sleep_hint">Media paused, home screen, storage written, MCU standby timer, Android asleep: instant start when the ignition comes back. Not tested on the UJC201 yet: try it with a short time first.</string>
+    <string name="standby_mode_shutdown_hint">Media paused, storage written, MCU timer at 0: the MCU cuts the SoC (cold boot at the next start).</string>
+    <string name="standby_max">Power off after</string>
+    <string name="standby_days">%1$d days</string>
+    <string name="standby_max_hint">Sent to the MCU in steps of 7 h (F1 %1$d). The MCU also cuts everything when the battery gets too low.</string>
+    <string name="standby_radios">Airplane mode and GPS off while asleep</string>
+    <string name="standby_radios_hint">Back on at wake up (root).</string>
+    <string name="standby_media">Resume the media at wake up</string>
 </resources>

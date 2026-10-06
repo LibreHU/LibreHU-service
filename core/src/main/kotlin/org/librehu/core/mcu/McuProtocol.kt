@@ -73,6 +73,12 @@ interface McuProtocol {
 
     /** Restarts the SoC through the MCU (power cycle of the SoC rails). */
     fun resetSoc(): McuFrame? = null
+
+    /**
+     * Standby length after the ignition is cut, in the MCU's units (420 min on the UJC201); 0 = no standby, the MCU
+     * cuts the SoC.
+     */
+    fun sleepTimer(units: Int): McuFrame? = null
 }
 
 /** Jancar `JAC_V1` (UJC201 / AC8257), implemented natively: [JacFrame], [JacParser], [Mcu], [McuEvent.decode]. */
@@ -125,6 +131,8 @@ object JacProtocol : McuProtocol {
         minute: Int,
         second: Int,
     ) = Mcu.time(hour, minute, second)
+
+    override fun sleepTimer(units: Int) = Mcu.sleepTimer(units)
 
     override fun canData(bytes: ByteArray) = Mcu.canData(bytes)
 
