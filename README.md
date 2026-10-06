@@ -27,7 +27,7 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Dalle tactile | calibration 5 points (matrice du pilote Goodix, essai 20 s avec retour automatique, réappliquée au démarrage) ; sans ivi-services, la calibration d'usine Jancar (`pointercal[-LxH].xml`) est réappliquée au démarrage (sinon tactile décalé, comme dans TWRP) ; touches de façade sérigraphiées hors écran = zones de la dalle, actions appui court / long / répétition (root). Voir [docs/touch.md](docs/touch.md) | `core/.../touch`, `app/.../touch` |
 | Watchdog MCU | PC_READY renvoyé jusqu'à la réponse du MCU (toutes les 4 s) et au réveil de veille (le MCU coupe le SoC après 10 s sans) ; trame de désarmement `1F 05` (réglable, fichier `librehu-service.conf`) ; notification au démarrage ; redémarrage via le MCU (`0E`, API 5) | `HeadUnit.kt`, `config/ServiceConfig.kt` |
 | Indicateur de volume | panneau façon Android par-dessus les applis à chaque changement du volume de la puce (vertical / horizontal, bord, taille, durée, réglage au toucher), couleurs du launcher ; remplace la barre de volume d'ivi-services | `overlay/VolumeOverlay.kt`, onglet Audio |
-| CAN | messages du boîtier (Hiworld `5A A5`) reconstitués, par commande avec octets modifiés, décodage Renault LNP002 connu, export texte | `core/.../can`, onglet CAN |
+| CAN | messages du boîtier (Hiworld `5A A5`) reconstitués, par commande avec octets modifiés, export texte ; **profils de voiture** sélectionnables / importables (JSON, syntaxe des signaux de CliOS) : Renault Clio 3 LNP002 intégré, valeurs décodées. Voir [docs/can-vehicles.md](docs/can-vehicles.md) | `core/.../can`, `can/CanVehicleStore.kt`, onglet CAN |
 | Outils MCU | repris de [MCU-tools-app](https://github.com/LibreHU/MCU-tools-app) : état du MCU (version, ACC, frein, feux, mute, antenne, date / heure, dernière touche, compteurs), commandes (mute, antenne, REM, PWM, LED de façade, seuils batterie, heure, apprentissage des touches, vitesse du boîtier CAN), simulation de trames MCU dans le vrai décodeur (rien n'est écrit sur le port) ; trafic décodé, `80` bloquée, `01` / `0E` / `F1` confirmées, export du journal, board id et puce audio | `core/.../mcu/JacDebug.kt`, `ui/McuToolsScreen.kt` |
 | Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, GPS et heure, Dalle tactile, MCU, CAN, Outils MCU, Diagnostic (trafic MCU décodé, journal, envoi de trames, export) ; thème du launcher | `MainActivity`, `ui/` |
 
@@ -138,5 +138,6 @@ ceux de `org/librehu/service/bt/` et `bt/BtParcels.kt`.
 - Bluetooth (analyse d'ivi-btservice, module, installation) : [docs/bluetooth.md](docs/bluetooth.md)
 - Profils de protocole MCU : [docs/mcu-profiles.md](docs/mcu-profiles.md)
 - OBD-II / ELM327 : [docs/obd.md](docs/obd.md)
+- Profils de voiture (décodage CAN) : [docs/can-vehicles.md](docs/can-vehicles.md)
 - Firmware MCU et protocole : [MCU-tools-app/docs/mcu_firmware.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/mcu_firmware.md)
 - Puce audio (BD37534), AIDL `IAudio` : [MCU-tools-app/docs/ivi_audio.md](https://github.com/LibreHU/MCU-tools-app/blob/main/docs/ivi_audio.md)

@@ -300,7 +300,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="mcu_reset_soc">Redémarrer via le MCU</string>
     <string name="mcu_reset_soc_confirm">Le MCU coupe l\'alimentation du SoC et la remet (commande MCU 0E), comme un reset matériel : ce qui n\'est pas enregistré est perdu.</string>
     <string name="tab_can">CAN</string>
-    <string name="can_hint">Messages du boîtier CAN relayés par le MCU (trames 10), reconstitués selon le format Hiworld (5A A5 LEN CMD … CS). Octets modifiés en orange ; texte pour les messages Renault (LNP002) connus.</string>
+    <string name="can_hint">Messages du boîtier CAN relayés par le MCU (trames 10), reconstitués selon le format Hiworld (5A A5 LEN CMD … CS). Octets modifiés en orange ; texte pour les messages connus du profil de voiture choisi.</string>
     <string name="can_counts">%1$d octets reçus · %2$d messages · %3$d octets hors message</string>
     <string name="can_export">Exporter</string>
     <string name="can_exported">Écrit : %1$s</string>
@@ -411,4 +411,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="risk_confirm">Cette commande peut éteindre ou redémarrer l\'autoradio, même en roulant.\n\n%1$s</string>
     <string name="risk_blocked_title">Commande 80 bloquée</string>
     <string name="risk_blocked">80 lance le bootloader du MCU et peut le rendre inutilisable : elle n\'est jamais envoyée d\'ici.</string>
+    <string name="can_vehicle">Modèle de voiture (décodage)</string>
+    <string name="can_vehicle_hint">Le boîtier CAN (Hiworld) traduit le bus CAN de la voiture en ses propres messages, qui dépendent de la voiture et du protocole réglé dans le boîtier. Le profil choisi indique comment les lire ; importer un profil JSON pour une autre voiture (docs/can-vehicles.md).</string>
+    <string name="can_vehicle_messages">%1$d messages décodés</string>
+    <string name="can_values">Valeurs décodées</string>
+    <string name="can_values_none">Aucun message connu reçu pour l\'instant avec ce profil.</string>
 </resources>

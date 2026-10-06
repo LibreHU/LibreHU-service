@@ -17,8 +17,8 @@ class HiworldTest {
         assertEquals(2, got.size)
         assertTrue(got.all { it.checksumOk })
         assertEquals(0x12, got[0].cmd)
-        assertEquals("portes ouvertes : AVG, coffre", HiworldRenault.describe(got[0]))
-        assertEquals("version : H1N5", HiworldRenault.describe(got[1]))
+        assertEquals("Doors · front left, trunk", CanVehicles.RENAULT_CLIO3_HIWORLD.describe(got[0]))
+        assertEquals("Box version · version H1N5", CanVehicles.RENAULT_CLIO3_HIWORLD.describe(got[1]))
         assertEquals(2, p.skipped)
     }
 

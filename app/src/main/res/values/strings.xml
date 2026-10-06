@@ -300,7 +300,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="mcu_reset_soc">Restart through the MCU</string>
     <string name="mcu_reset_soc_confirm">The MCU cuts the power of the SoC and turns it back on (MCU command 0E), like a hard reset: unsaved data is lost.</string>
     <string name="tab_can">CAN</string>
-    <string name="can_hint">Messages of the CAN box relayed by the MCU (frames 10), rebuilt with the Hiworld framing (5A A5 LEN CMD … CS). Changed bytes in orange; text for the known Renault (LNP002) messages.</string>
+    <string name="can_hint">Messages of the CAN box relayed by the MCU (frames 10), rebuilt with the Hiworld framing (5A A5 LEN CMD … CS). Changed bytes in orange; text for the messages the selected car profile knows.</string>
     <string name="can_counts">%1$d bytes received · %2$d messages · %3$d bytes outside messages</string>
     <string name="can_export">Export</string>
     <string name="can_exported">Written: %1$s</string>
@@ -411,4 +411,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="risk_confirm">This command can turn off or restart the head unit, even while driving.\n\n%1$s</string>
     <string name="risk_blocked_title">Command 80 blocked</string>
     <string name="risk_blocked">80 starts the MCU bootloader and can leave it unusable: it is never sent from here.</string>
+    <string name="can_vehicle">Car model (decoding)</string>
+    <string name="can_vehicle_hint">The CAN box (Hiworld) translates the car\'s CAN bus into its own messages, which depend on the car and on the protocol set in the box. The selected profile tells how to read them; import a JSON profile for another car (docs/can-vehicles.md).</string>
+    <string name="can_vehicle_messages">%1$d decoded messages</string>
+    <string name="can_values">Decoded values</string>
+    <string name="can_values_none">No known message received yet with this profile.</string>
 </resources>

@@ -34,6 +34,7 @@ import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
 import org.librehu.service.can.CanMonitor
+import org.librehu.service.can.CanVehicleStore
 import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DisplayController
 import org.librehu.service.hw.I2cDevice
@@ -97,6 +98,7 @@ class LibreHuService : Service() {
         bluetoothModule = BluetoothModule(this).also { it.start() }
         display = DisplayController.get(this).also { it.start() }
         obd = ObdManager.get(this).also { it.start() }
+        CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
             TimeController.get(this).also {
                 it.mcu =

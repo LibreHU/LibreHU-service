@@ -4,9 +4,11 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.librehu.core.can.CanValue
+import org.librehu.core.can.CanVehicle
+import org.librehu.core.can.CanVehicles
 import org.librehu.core.can.CanboxFrame
 import org.librehu.core.can.HiworldParser
-import org.librehu.core.can.HiworldRenault
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,6 +52,19 @@ object CanMonitor {
     @Volatile
     var paused = false
 
+    /** Car profile decoding the messages (set by [CanVehicleStore]); a change clears the decoded values. */
+    @Volatile
+    var vehicle: CanVehicle = CanVehicles.RENAULT_CLIO3_HIWORLD
+        set(value) {
+            field = value
+            _values.value = emptyMap()
+        }
+
+    private val _values = MutableStateFlow<Map<String, CanValue>>(emptyMap())
+
+    /** Last value of each decoded signal, keyed by message and signal. */
+    val values: StateFlow<Map<String, CanValue>> = _values.asStateFlow()
+
     private val parser = HiworldParser(::onFrame)
 
     /** All messages since the start, for the export (bounded). */
@@ -68,6 +83,8 @@ object CanMonitor {
         val line = CanLine(now, f)
         history.addLast(line)
         while (history.size > 20_000) history.removeFirst()
+        val decoded = vehicle.decode(f)
+        if (decoded.isNotEmpty()) _values.value = _values.value + decoded.associateBy { "%02X.%s".format(f.cmd, it.key) }
         if (paused) return
         val old = _byCmd.value[f.cmd]
         val changed =
@@ -77,7 +94,7 @@ object CanMonitor {
                 (0 until maxOf(old.data.size, f.data.size)).filter { i -> old.data.getOrNull(i) != f.data.getOrNull(i) }.toSet()
             }
         _byCmd.value = _byCmd.value +
-            (f.cmd to CanEntry(f.cmd, f.data, f.checksumOk, (old?.count ?: 0) + 1, now, changed, HiworldRenault.describe(f)))
+            (f.cmd to CanEntry(f.cmd, f.data, f.checksumOk, (old?.count ?: 0) + 1, now, changed, vehicle.describe(f)))
         _lines.value = (listOf(line) + _lines.value).take(MAX_LINES)
     }
 
@@ -85,6 +102,7 @@ object CanMonitor {
     fun clear() {
         _byCmd.value = emptyMap()
         _lines.value = emptyList()
+        _values.value = emptyMap()
         history.clear()
     }
 
@@ -97,11 +115,12 @@ object CanMonitor {
         val file = File(dir, "can-$stamp.txt")
         file.bufferedWriter().use { w ->
             w.write("# LibreHU CAN box log (Hiworld framing), $stamp, ${_rawBytes.value} bytes, $skipped skipped\n")
+            w.write("# Car profile: ${vehicle.name} (${vehicle.id})\n")
             for (l in history) {
                 w.write(time.format(Date(l.at)))
                 w.write("  ")
                 w.write(l.frame.toString())
-                HiworldRenault.describe(l.frame)?.let { w.write("  # $it") }
+                vehicle.describe(l.frame)?.let { w.write("  # $it") }
                 w.write("\n")
             }
         }

@@ -20,7 +20,9 @@ import org.librehu.service.ui.CarTheme
 import org.librehu.service.ui.ServiceClient
 import org.librehu.service.ui.Tab
 import org.librehu.service.ui.ThemeFollower
+import org.librehu.service.ui.exportCanVehicle
 import org.librehu.service.ui.exportProfile
+import org.librehu.service.ui.importCanVehicle
 import org.librehu.service.ui.importProfile
 import org.librehu.service.ui.profileFileName
 
@@ -45,6 +47,20 @@ class MainActivity : ComponentActivity() {
             val id = exporting
             exporting = null
             if (uri != null && id != null) toast(exportProfile(this, id, uri))
+        }
+
+    private var exportingVehicle: String? = null
+
+    private val canImportLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) toast(importCanVehicle(this, uri))
+        }
+
+    private val canExportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            val id = exportingVehicle
+            exportingVehicle = null
+            if (uri != null && id != null) toast(exportCanVehicle(this, id, uri))
         }
 
     private val logLauncher =
@@ -93,6 +109,11 @@ class MainActivity : ComponentActivity() {
                 openLocationSettings = { openSettings(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
                 openDateSettings = { openSettings(Settings.ACTION_DATE_SETTINGS) },
                 calibrateTouch = { startActivity(Intent(this, TouchCalibrationActivity::class.java)) },
+                importCanVehicle = { canImportLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                exportCanVehicle = { id ->
+                    exportingVehicle = id
+                    canExportLauncher.launch("$id.json")
+                },
                 exportLog = {
                     val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
                     logLauncher.launch("librehu-$stamp.log")

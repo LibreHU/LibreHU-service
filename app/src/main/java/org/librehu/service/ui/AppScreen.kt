@@ -79,6 +79,8 @@ class AppActions(
     val openDateSettings: () -> Unit,
     val calibrateTouch: () -> Unit,
     val exportLog: () -> Unit,
+    val importCanVehicle: () -> Unit,
+    val exportCanVehicle: (String) -> Unit,
 )
 
 /** Android Auto-like layout: icon rail on the left, the selected settings page on the right. */
@@ -112,7 +114,7 @@ fun AppScreen(
                 Tab.GPS -> GpsTimeScreen(actions)
                 Tab.TOUCH -> TouchScreen(actions)
                 Tab.MCU -> McuScreen(actions)
-                Tab.CAN -> CanScreen()
+                Tab.CAN -> CanScreen(actions)
                 Tab.MCU_TOOLS -> McuToolsScreen(client)
                 Tab.DIAG -> DiagScreen(client, actions)
             }
