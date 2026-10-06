@@ -30,6 +30,7 @@ internal class BtMedia(
         private set
 
     private var a2dpConnected = false
+    private val playerState = AvrcpPlayerState(context)
 
     // Bounce detection (see [onState]).
     private var playingSince = 0L
@@ -90,6 +91,8 @@ internal class BtMedia(
     private fun takeFocusIfIdle() {
         val audio = context.getSystemService(AudioManager::class.java)
         if (audio?.isMusicActive == true) return
+        // This ROM's sink pauses the phone unless the player is "in the foreground" (see AvrcpPlayerState).
+        playerState.set(true)
         controller?.transportControls?.prepare()
     }
 
@@ -123,9 +126,13 @@ internal class BtMedia(
         }
     }
 
-    fun start() = connectBrowser()
+    fun start() {
+        playerState.start()
+        connectBrowser()
+    }
 
     fun stop() {
+        playerState.stop()
         controller?.unregisterCallback(controllerCallback)
         controller = null
         browser?.disconnect()
@@ -135,6 +142,7 @@ internal class BtMedia(
     /** prepare() first: the focus, without which the sink pauses the phone again (see [takeFocusIfIdle]). */
     fun play() {
         val c = controls() ?: return
+        playerState.set(true)
         c.prepare()
         c.play()
     }
@@ -142,6 +150,7 @@ internal class BtMedia(
     fun pause() {
         pausedByCar = true
         controls()?.pause()
+        playerState.set(false)
     }
 
     fun playPause() {
@@ -155,6 +164,7 @@ internal class BtMedia(
     fun stopPlayback() {
         pausedByCar = true
         controls()?.stop()
+        playerState.set(false)
     }
 
     private fun controls(): MediaController.TransportControls? {
