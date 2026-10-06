@@ -15,7 +15,7 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Véhicule | ACC, frein à main, feux, version MCU (trames MCU) ; marche arrière et clignotants (GPIO 2 / 7 / 6, actifs bas ; clignotants filtrés comme ivi-services, entrée bloquée à 0 sans clignoter = non branchée, désactivables) | `core/.../unit/HeadUnit.kt` |
 | Alimentation | `1F 01` au démarrage ; ACC on : démute (MCU `08 00`, GPIO 166, puce), rétroéclairage GPIO 5 après 800 ms, ampli externe `44` ; ACC off : mute, rétroéclairage coupé, `44 00` | idem |
 | Horloge | heure Android réglée depuis la RTC de la MCU une fois par démarrage (si `SET_TIME`), puis heure Android envoyée à la MCU chaque minute ; heure GPS périodique (15 min à 12 h) ; chaque sens activable, synchro manuelle. Voir [docs/gps-time.md](docs/gps-time.md) | `HeadUnit.kt`, `time/TimeController.kt` |
-| Audio | pilote **ROHM BD37534** (I2C 6 @0x40) : séquence d'init de Jancar, entrée Android, volume (courbe 0..40), mute doux, graves/médiums/aigus, balance/fader 4 voies, loudness, caisson on/off + niveau ; réglages mémorisés | `core/.../audio/Bd37534.kt` |
+| Audio | pilote **ROHM BD37534** (I2C 6 @0x40) : séquence d'init de Jancar, source Android ou **AUX** (entrée 0, +5 dB ; onglet Audio, API 6, intent `org.librehu.service.AUDIO_SOURCE`), volume (courbe 0..40), mute doux, graves/médiums/aigus, balance/fader 4 voies, loudness, caisson on/off + niveau ; réglages mémorisés | `core/.../audio/Bd37534.kt` |
 | Touches, CAN | trames `20`/`30` et `10` relayées brutes aux clients ; envoi CAN (`10`) | API |
 | Antenne radio | demandée par l'app radio (API 2 `setRadioAntenna`) : GPIO 110 + MCU `43`, seulement contact mis | `HeadUnit.kt` |
 | API | AIDL `ILibreHuService` + `ILibreHuCallback`, broadcasts `org.librehu.action.VEHICLE_STATE` / `ACC` / `REVERSE` | `app/src/main/aidl` |
@@ -53,7 +53,7 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ❌ | — |
 | | Reset du hub USB, sourdine au démarrage | ✅ | 🟡 (sourdine seulement) | service |
 | | Horloge MCU ↔ Android | ✅ | ✅ | service |
-| **Audio (BD37534)** | Volume, sourdine, tonalité, balance/fader, loudness, caisson | ✅ | ✅ | service, onglet Audio |
+| **Audio (BD37534)** | Volume, sourdine, tonalité, balance/fader, loudness, caisson, source Android / AUX | ✅ | ✅ | service, onglet Audio |
 | | Ampli externe (sortie REM) | ✅ | ✅ | service |
 | | Choix de la source de la puce (Android, radio, AUX, AV) + volume par source | ✅ | ❌ (entrée Android fixe) | — |
 | | Priorités : appel, navigation, marche arrière, sourdines anti-« pop » | ✅ | 🟡 (focus audio pendant les appels) | module Bluetooth |

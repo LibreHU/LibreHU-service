@@ -275,6 +275,16 @@ fun AudioScreen(client: ServiceClient) {
             SliderRow(stringResource(R.string.volume), a.volume, 0..a.maxVolume) { v -> client.call { it.setVolume(v) } }
             SwitchRow(stringResource(R.string.mute), a.muted) { on -> client.call { it.setMuted(on) } }
         }
+        Card(stringResource(R.string.audio_source)) {
+            Hint(stringResource(R.string.audio_source_hint))
+            Choices(
+                listOf(0 to stringResource(R.string.audio_source_android), 1 to stringResource(R.string.audio_source_aux)),
+                a.source,
+            ) { v ->
+                client.call { it.setAudioSource(v) }
+                client.refreshAudio()
+            }
+        }
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         Card(stringResource(R.string.audio_tone)) {
             SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }

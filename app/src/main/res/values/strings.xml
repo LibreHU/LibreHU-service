@@ -451,4 +451,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_keys_code">Key %1$d (%2$s)</string>
     <string name="can_keys_change">Change</string>
     <string name="can_keys_defaults">Default actions</string>
+    <string name="audio_source">Source</string>
+    <string name="audio_source_hint">Input of the sound processor. AUX: the jack goes straight to the speakers and the Android sound is not heard until you come back to Android. Back to Android at each start. Also org.librehu.service.AUDIO_SOURCE (extra source = aux / android, none = toggle).</string>
+    <string name="audio_source_android">Android</string>
+    <string name="audio_source_aux">AUX</string>
 </resources>

@@ -451,4 +451,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_keys_code">Touche %1$d (%2$s)</string>
     <string name="can_keys_change">Modifier</string>
     <string name="can_keys_defaults">Actions par défaut</string>
+    <string name="audio_source">Source</string>
+    <string name="audio_source_hint">Entrée de la puce audio. AUX : la prise jack va directement aux haut-parleurs et le son Android n\'est plus entendu jusqu\'au retour sur Android. Retour sur Android à chaque démarrage. Aussi org.librehu.service.AUDIO_SOURCE (extra source = aux / android, rien = bascule).</string>
+    <string name="audio_source_android">Android</string>
+    <string name="audio_source_aux">AUX</string>
 </resources>

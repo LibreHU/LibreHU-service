@@ -162,6 +162,10 @@ class Bd37534(
         /** Physical input of the Android/PC audio on board A0_AN (`mPCPhyAudioChannel`). */
         const val INPUT_ANDROID = 11
 
+        /** AUX / AV input and its gain (`Platform_AutoChips_8257_37534`: input 0, +5 dB). */
+        const val INPUT_AUX = 0
+        const val AUX_GAIN_DB = 5
+
         /** Speakers in the order FL, FR, RL, RR. */
         val SPEAKER_REGISTERS = intArrayOf(FADER_FRONT_1, FADER_FRONT_2, FADER_REAR_1, FADER_REAR_2)
 

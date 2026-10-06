@@ -82,4 +82,10 @@ interface ILibreHuService {
 
     /** Restarts the head unit through the MCU (power cycle of the SoC, MCU command 0E): works even when Android hangs. */
     void resetSoc();
+
+    // --- API 6 ---
+
+    /** Input of the sound processor: 0 = Android (default at each start), 1 = AUX jack. */
+    void setAudioSource(int source);
+    int getAudioSource();
 }

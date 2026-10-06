@@ -34,6 +34,8 @@ data class AudioState(
     val subwoofer: Boolean = false,
     val subLevel: Int = 6,
     val externalAmp: Boolean = false,
+    /** 0 = Android, 1 = AUX. */
+    val source: Int = 0,
 )
 
 data class PairingRequest(
@@ -173,6 +175,7 @@ class ServiceClient(
                     subwoofer = s.isSubwooferOn,
                     subLevel = s.subwooferLevel,
                     externalAmp = s.isExternalAmpEnabled,
+                    source = s.audioSource,
                 )
         }
     }

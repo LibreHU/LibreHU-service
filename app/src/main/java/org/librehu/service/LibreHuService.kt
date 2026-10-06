@@ -162,6 +162,19 @@ class LibreHuService : Service() {
             ACTION_RESET_SOC -> {
                 reboot()
             }
+
+            ACTION_AUDIO_SOURCE -> {
+                val u = unit
+                if (u != null) {
+                    val source =
+                        when (intent.getStringExtra(EXTRA_SOURCE)) {
+                            "aux" -> HeadUnit.SOURCE_AUX
+                            "android" -> HeadUnit.SOURCE_ANDROID
+                            else -> if (u.source == HeadUnit.SOURCE_AUX) HeadUnit.SOURCE_ANDROID else HeadUnit.SOURCE_AUX
+                        }
+                    u.setSource(source)
+                }
+            }
         }
         return START_STICKY
     }
@@ -515,6 +528,12 @@ class LibreHuService : Service() {
             override fun getMcuProtocol(): String = protocolName
 
             override fun resetSoc() = reboot()
+
+            override fun setAudioSource(source: Int) {
+                unit?.setSource(source)
+            }
+
+            override fun getAudioSource(): Int = unit?.source ?: HeadUnit.SOURCE_ANDROID
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------
@@ -597,6 +616,10 @@ class LibreHuService : Service() {
         private const val CLOCK_TOLERANCE_MS = 5_000L
         const val ACTION_RESTART = "org.librehu.service.RESTART"
         const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
+
+        /** Sound processor input: extra "source" = "aux", "android", or nothing to toggle (shortcuts, other apps). */
+        const val ACTION_AUDIO_SOURCE = "org.librehu.service.AUDIO_SOURCE"
+        const val EXTRA_SOURCE = "source"
         const val PREF_FORCE = "force_with_ivi"
         const val PREF_TURN_GPIO = "turn_gpio"
         const val PREF_INVERTED = "inverted_inputs"

@@ -135,6 +135,11 @@ class HeadUnit(
     private var backlightTask: ScheduledFuture<*>? = null
     private var mcuDate: McuEvent.Date? = null
 
+    /** Input of the sound processor: the Android audio or the AUX jack (not saved: Android again at each start). */
+    @Volatile
+    var source = SOURCE_ANDROID
+        private set
+
     /** Antenna requested by the radio app; powered only while ACC is on. */
     @Volatile
     var radioAntennaRequested = false
@@ -325,6 +330,22 @@ class HeadUnit(
 
     // --- Radio antenna -----------------------------------------------------------------------------------------
 
+    /**
+     * Selects the input of the sound processor, as ivi-services' `platformSwitchAudioTo`: short anti-pop mute, input
+     * (AUX = 0 at +5 dB, Android = 11 at 0 dB), then the previous mute state. While on AUX, Android's audio is not heard.
+     */
+    fun setSource(value: Int) =
+        executor.execute {
+            val aux = value == SOURCE_AUX
+            source = if (aux) SOURCE_AUX else SOURCE_ANDROID
+            val dsp = dsp ?: return@execute
+            val wasMuted = dsp.isMuted
+            if (!wasMuted) dsp.setMute(true)
+            if (aux) dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB) else dsp.setInput(Bd37534.INPUT_ANDROID, 0)
+            if (!wasMuted) dsp.setMute(false)
+            log("Audio source: ${if (aux) "AUX" else "Android"}")
+        }
+
     fun setRadioAntenna(on: Boolean) {
         executor.execute {
             radioAntennaRequested = on
@@ -475,6 +496,8 @@ class HeadUnit(
 
     companion object {
         const val GPIO_POLL_MS = 100L
+        const val SOURCE_ANDROID = 0
+        const val SOURCE_AUX = 1
         const val BACKLIGHT_DELAY_MS = 800L
         const val HANDSHAKE_RETRY_MS = 4000L
         const val HANDSHAKE_TRIES = 5

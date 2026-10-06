@@ -4,7 +4,7 @@ import org.librehu.core.unit.VehicleState
 
 /** Public constants of the LibreHU-service API (AIDL [ILibreHuService] and broadcasts). */
 object LibreHu {
-    const val API_VERSION = 5
+    const val API_VERSION = 6
     const val PACKAGE = "org.librehu.service"
     const val ACTION_BIND = "org.librehu.service.BIND"
     const val PERMISSION = "org.librehu.permission.HEADUNIT"
