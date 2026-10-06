@@ -201,6 +201,7 @@ fun HomeScreen(
             if (link.state == LibreHuService.Link.RUNNING) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Tile(stringResource(R.string.flag_acc), onOff(v.acc))
+                    Tile(stringResource(R.string.flag_powered), onOff(v.powered))
                     Tile(stringResource(R.string.flag_handbrake), onOff(v.handbrake))
                     Tile(stringResource(R.string.flag_headlight), onOff(v.headlight))
                     Tile(stringResource(R.string.flag_reverse), onOff(v.reverse))

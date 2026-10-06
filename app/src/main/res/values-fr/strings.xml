@@ -527,4 +527,5 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="adiag_no_player">Aucune appli ne joue.</string>
     <string name="adiag_registers">Registres du BD37534 (dernières valeurs écrites)</string>
     <string name="adiag_no_chip">Aucune puce audio pilotée (liaison arrêtée ou autre carte).</string>
+    <string name="flag_powered">Alimenté (écran, son)</string>
 </resources>

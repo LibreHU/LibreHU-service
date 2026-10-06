@@ -326,7 +326,7 @@ class LibreHuService : Service() {
                 ServiceState.setVehicle(state)
                 org.librehu.service.power.Standby
                     .get(this@LibreHuService)
-                    .onAcc(state.acc)
+                    .onAcc(state.powered)
                 display.onHeadlights(state.headlight)
                 val flags = LibreHu.flagsOf(state)
                 broadcastState(state, flags)
@@ -418,7 +418,8 @@ class LibreHuService : Service() {
                 .putExtra(LibreHu.EXTRA_ACC, s.acc)
                 .putExtra(LibreHu.EXTRA_REVERSE, s.reverse)
                 .putExtra(LibreHu.EXTRA_HANDBRAKE, s.handbrake)
-                .putExtra(LibreHu.EXTRA_HEADLIGHT, s.headlight),
+                .putExtra(LibreHu.EXTRA_HEADLIGHT, s.headlight)
+                .putExtra(LibreHu.EXTRA_POWERED, s.powered),
         )
         if (old.acc != s.acc) sendBroadcast(Intent(LibreHu.ACTION_ACC).putExtra(LibreHu.EXTRA_ACC, s.acc))
         if (old.reverse != s.reverse) {

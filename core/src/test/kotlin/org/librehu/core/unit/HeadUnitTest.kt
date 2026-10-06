@@ -150,16 +150,19 @@ class HeadUnitTest {
         settle(100)
         delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
         settle(400)
-        assertTrue(delayed.state.acc)
+        assertTrue(delayed.state.acc && delayed.state.powered)
         assertEquals(true, outputs[BoardGpio.BACKLIGHT])
         assertEquals(Mcu.externalAmp(true), sent.last { it.cmd == Mcu.CMD_EXT_AMP })
 
         // Really off: cut once the delay is over.
         delayed.onFrame(McuFrame.of(Mcu.CMD_ACC, 0))
         settle(100)
-        assertTrue(delayed.state.acc)
-        settle(400)
+        // The ignition is reported off at once, the power stays until the delay is over.
         assertEquals(false, delayed.state.acc)
+        assertTrue(delayed.state.powered)
+        assertEquals(true, outputs[BoardGpio.BACKLIGHT])
+        settle(400)
+        assertEquals(false, delayed.state.powered)
         assertEquals(false, outputs[BoardGpio.BACKLIGHT])
         executor.shutdownNow()
     }

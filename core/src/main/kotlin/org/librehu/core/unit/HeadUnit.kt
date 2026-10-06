@@ -39,7 +39,13 @@ enum class VehicleInput { REVERSE, HANDBRAKE, HEADLIGHT, TURN_LEFT, TURN_RIGHT }
 
 data class VehicleState(
     val mcuOnline: Boolean = false,
+    /** Ignition line as the MCU reports it, at once. */
     val acc: Boolean = false,
+    /**
+     * Head unit powered as if the ignition were on: follows [acc], but goes off only after the engine-start delay
+     * (screen, sound, amplifier and standby follow this one).
+     */
+    val powered: Boolean = false,
     val handbrake: Boolean = false,
     val headlight: Boolean = false,
     val reverse: Boolean = false,
@@ -153,7 +159,7 @@ class HeadUnit(
     fun setForcedMute(on: Boolean) =
         executor.execute {
             forcedMute = on
-            applyMute(settings.muted || !state.acc || on)
+            applyMute(settings.muted || !state.powered || on)
         }
 
     /** Antenna requested by the radio app; powered only while ACC is on. */
@@ -370,7 +376,7 @@ class HeadUnit(
     }
 
     private fun applyAntenna() {
-        val on = radioAntennaRequested && state.acc
+        val on = radioAntennaRequested && state.powered
         setGpio(board.antennaGpio, on)
         sendIf(protocol.antenna(on))
     }
@@ -379,8 +385,15 @@ class HeadUnit(
 
     private var accOffTask: ScheduledFuture<*>? = null
 
-    /** ACC from the MCU: on at once, off only after [accOffDelayMs] without coming back (engine start). */
+    /**
+     * ACC from the MCU: reported at once ([VehicleState.acc]); the head unit is powered on at once and off only after
+     * [accOffDelayMs] without the ignition coming back (engine start).
+     */
     private fun onAccInput(on: Boolean) {
+        if (on != state.acc) {
+            log("ACC ${if (on) "on" else "off"}")
+            update { it.copy(acc = on) }
+        }
         val pending = accOffTask
         if (on && pending != null) {
             pending.cancel(false)
@@ -388,27 +401,27 @@ class HeadUnit(
             log("ACC back before the off delay: ignored (engine start?)")
         }
         val delay = accOffDelayMs().coerceIn(0, MAX_ACC_OFF_DELAY_MS)
-        if (on || !state.acc || delay == 0L) {
-            setAcc(on)
+        if (on || !state.powered || delay == 0L) {
+            setPower(on)
             return
         }
         if (pending != null && !pending.isDone) return
-        log("ACC off: waiting $delay ms")
+        log("ACC off: power kept $delay ms")
         accOffTask =
             executor.schedule({
                 accOffTask = null
-                setAcc(false)
+                setPower(false)
             }, delay, TimeUnit.MILLISECONDS)
     }
 
     /** Standby length of the MCU after the ignition is cut ([McuProtocol.sleepTimer]). */
     fun setSleepTimer(units: Int) = executor.execute { sendIf(protocol.sleepTimer(units)) }
 
-    private fun setAcc(on: Boolean) {
-        val changed = on != state.acc
-        update { it.copy(acc = on) }
+    private fun setPower(on: Boolean) {
+        val changed = on != state.powered
+        update { it.copy(powered = on) }
         if (!changed && on) return
-        log("ACC ${if (on) "on" else "off"}")
+        log("Power ${if (on) "on" else "off"}")
         backlightTask?.cancel(false)
         if (on) {
             sendIf(protocol.mute(false))
@@ -487,7 +500,7 @@ class HeadUnit(
             settings = new
             store.save(new)
             applyAudio(old)
-            if (new.externalAmp != old.externalAmp && state.acc) sendIf(protocol.externalAmp(new.externalAmp))
+            if (new.externalAmp != old.externalAmp && state.powered) sendIf(protocol.externalAmp(new.externalAmp))
             listener.onSettingsChanged(new)
         }
     }
@@ -507,7 +520,7 @@ class HeadUnit(
                 dsp.setSubwoofer(s.subwoofer, s.subLevel)
             }
         }
-        applyMute(s.muted || !state.acc || forcedMute)
+        applyMute(s.muted || !state.powered || forcedMute)
     }
 
     private fun applyMute(mute: Boolean) {

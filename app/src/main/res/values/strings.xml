@@ -527,4 +527,5 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="adiag_no_player">No app is playing.</string>
     <string name="adiag_registers">BD37534 registers (last written)</string>
     <string name="adiag_no_chip">No audio chip driven (link stopped or other board).</string>
+    <string name="flag_powered">Powered (screen, sound)</string>
 </resources>

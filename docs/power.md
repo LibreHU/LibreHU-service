@@ -19,7 +19,14 @@ ivi-services envoyait `F1 [minutes / 60 / 6]` (il comptait des tranches de 6 h) 
 
 Le + après-contact chute pendant que le démarreur tourne. Une coupure de plus d'1 s arrive jusqu'au service : sans
 délai, il éteignait l'écran, le son et l'ampli. Le service attend maintenant le délai réglé (3 s par défaut, 0..10 s)
-avant d'en tenir compte (`HeadUnit.onAccInput`) ; si le contact revient avant, rien n'est coupé ni annoncé aux applis.
+avant de couper l'écran, le son et l'ampli (`HeadUnit.onAccInput`) ; si le contact revient avant, rien n'est coupé.
+
+Deux états sont exposés aux applis :
+
+| État | API | Suit |
+|---|---|---|
+| contact (`acc`) | `FLAG_ACC`, extra `acc`, `org.librehu.action.ACC` | le fil ACC tel que la MCU l'annonce, tout de suite |
+| alimenté (`powered`) | `FLAG_POWERED` (bit 7), extra `powered` | le contact, mais ne passe à « non » qu'après le délai : écran, son, ampli et veille suivent celui-ci |
 10 s au plus : la préparation de la veille doit tenir avant la coupure du SoC par la MCU (15 s).
 
 ## Modes

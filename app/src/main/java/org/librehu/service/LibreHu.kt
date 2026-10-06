@@ -17,6 +17,12 @@ object LibreHu {
     const val FLAG_TURN_LEFT = 1 shl 5
     const val FLAG_TURN_RIGHT = 1 shl 6
 
+    /**
+     * Head unit powered (screen, sound): like [FLAG_ACC], but kept during the engine-start delay after the ignition
+     * goes off. [FLAG_ACC] is the ignition line itself, reported at once.
+     */
+    const val FLAG_POWERED = 1 shl 7
+
     /** Sent on every vehicle state change, with [EXTRA_FLAGS] and one boolean extra per flag. */
     const val ACTION_VEHICLE_STATE = "org.librehu.action.VEHICLE_STATE"
 
@@ -34,6 +40,7 @@ object LibreHu {
     const val EXTRA_REVERSE = "reverse"
     const val EXTRA_HANDBRAKE = "handbrake"
     const val EXTRA_HEADLIGHT = "headlight"
+    const val EXTRA_POWERED = "powered"
 
     fun flagsOf(s: VehicleState): Int {
         var f = 0
@@ -44,6 +51,7 @@ object LibreHu {
         if (s.reverse) f = f or FLAG_REVERSE
         if (s.turnLeft) f = f or FLAG_TURN_LEFT
         if (s.turnRight) f = f or FLAG_TURN_RIGHT
+        if (s.powered) f = f or FLAG_POWERED
         return f
     }
 }
