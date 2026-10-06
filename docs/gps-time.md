@@ -20,3 +20,15 @@ Boutons : synchro GPS immédiate, envoyer à la MCU, relire la MCU (`F0 09 00`),
 
 Régler l'heure d'Android demande `SET_TIME` (installation privilégiée, voir `install/`). Le GPS et la MCU donnent
 l'heure UTC / locale, pas le **fuseau horaire** : il se règle dans Android.
+
+## Satellites à 0 dB, réinitialisation
+
+Des satellites « en vue » à 0 dB ne sont pas reçus : leur position vient de l'almanach gardé par la puce, et aucun
+signal n'arrive (antenne débranchée ou masquée, autoradio à l'intérieur). Vérifier l'antenne avant tout.
+
+- **Réinitialiser le GPS (démarrage à froid)** : `LocationManager.sendExtraCommand("gps", "delete_aiding_data")`
+  (éphémérides, almanach, position, heure effacées), puis `force_time_injection` et `force_xtra_injection`. Le
+  premier fix suivant est plus long.
+- **Redémarrer le GNSS (root)** : la même chose, plus le redémarrage du démon GNSS de MediaTek (`mnld` : `stop` /
+  `start` s'il est un service init, sinon `killall`, init le relance). Nom du service non vérifié sur l'UJC201.
+

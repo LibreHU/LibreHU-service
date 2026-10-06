@@ -494,4 +494,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="standby_radios">Airplane mode and GPS off while asleep</string>
     <string name="standby_radios_hint">Back on at wake up (root).</string>
     <string name="standby_media">Resume the media at wake up</string>
+    <string name="gps_reset">Reset GPS (cold start)</string>
+    <string name="gps_restart_daemon">Restart GNSS (root)</string>
+    <string name="gps_no_signal">Satellites listed but no signal (0 dB): their positions come from the stored almanac, nothing is received. Check the GPS antenna (plugged in, not under a metal roof, outside) before resetting.</string>
 </resources>

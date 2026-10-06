@@ -65,7 +65,12 @@ fun GpsTimeScreen(actions: AppActions) {
             )
             if (gps.message.isNotEmpty()) Hint(gps.message)
             if (!gps.enabled) Actions { Pill(stringResource(R.string.gps_open_settings), onClick = actions.openLocationSettings) }
-            Actions { Pill(stringResource(R.string.bt_permissions), onClick = actions.requestBtPermissions) }
+            Actions {
+                Pill(stringResource(R.string.bt_permissions), onClick = actions.requestBtPermissions)
+                Pill(stringResource(R.string.gps_reset), enabled = gps.enabled) { time.resetGps() }
+                Pill(stringResource(R.string.gps_restart_daemon), enabled = gps.enabled) { time.resetGps(restartDaemon = true) }
+            }
+            if (gps.satellites.isNotEmpty() && gps.satellites.all { it.cn0 < 1f }) Hint(stringResource(R.string.gps_no_signal))
             if (fix != null) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Tile(stringResource(R.string.gps_position), "%.5f, %.5f".format(fix.latitude, fix.longitude))

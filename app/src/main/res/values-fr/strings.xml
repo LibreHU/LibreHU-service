@@ -494,4 +494,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="standby_radios">Mode avion et GPS coupés en veille</string>
     <string name="standby_radios_hint">Rétablis au réveil (root).</string>
     <string name="standby_media">Reprendre la lecture au réveil</string>
+    <string name="gps_reset">Réinitialiser le GPS (démarrage à froid)</string>
+    <string name="gps_restart_daemon">Redémarrer le GNSS (root)</string>
+    <string name="gps_no_signal">Satellites listés mais aucun signal (0 dB) : leur position vient de l\'almanach mémorisé, rien n\'est reçu. Vérifier l\'antenne GPS (branchée, pas sous un toit métallique, à l\'extérieur) avant de réinitialiser.</string>
 </resources>

@@ -191,6 +191,55 @@ class TimeController private constructor(
         finishSync(message)
     }
 
+    /**
+     * Cold start of the GNSS: aiding data deleted (ephemeris, almanac, position, time), then time and XTRA injected
+     * again (`LocationManager.sendExtraCommand`, public API). [restartDaemon]: also restarts MediaTek's GNSS daemon
+     * (`mnld`) as root, when the chip itself seems stuck. The next fix takes longer (no ephemeris).
+     */
+    fun resetGps(restartDaemon: Boolean = false) =
+        Thread({
+            val listening = _gps.value.listening
+            main.post {
+                if (listening) {
+                    runCatching {
+                        lm.unregisterGnssStatusCallback(gnssCallback)
+                        lm.removeUpdates(locationListener)
+                    }
+                    _gps.value = _gps.value.copy(listening = false)
+                }
+            }
+            val deleted = runCatching { lm.sendExtraCommand(LocationManager.GPS_PROVIDER, "delete_aiding_data", null) }.getOrDefault(false)
+            var daemon: Boolean? = null
+            if (restartDaemon) {
+                daemon =
+                    org.librehu.service.root.RootShell.run(
+                        "if [ -n \"$(getprop init.svc.mnld)\" ]; then stop mnld; sleep 1; start mnld; else killall mnld; fi",
+                        timeoutS = 15,
+                    ) != null
+            }
+            Thread.sleep(GPS_RESET_SETTLE_MS)
+            runCatching { lm.sendExtraCommand(LocationManager.GPS_PROVIDER, "force_time_injection", null) }
+            runCatching { lm.sendExtraCommand(LocationManager.GPS_PROVIDER, "force_xtra_injection", null) }
+            main.post {
+                _gps.value =
+                    _gps.value.copy(
+                        satellites = emptyList(),
+                        fix = null,
+                        firstFixMs = -1,
+                        message =
+                            buildString {
+                                append(if (deleted) "GPS reset (cold start)" else "GPS reset refused by the provider")
+                                if (daemon !=
+                                    null
+                                ) {
+                                    append(if (daemon) ", GNSS daemon restarted" else ", GNSS daemon restart failed (root?)")
+                                }
+                            },
+                    )
+                updateListening()
+            }
+        }, "gps-reset").start()
+
     private fun finishSync(message: String) {
         syncPending = false
         main.removeCallbacks(giveUp)
@@ -236,6 +285,7 @@ class TimeController private constructor(
     }
 
     companion object {
+        private const val GPS_RESET_SETTLE_MS = 1500L
         private const val TAG = "LibreHU-Time"
         private const val TOLERANCE_MS = 2_000L
         private const val SYNC_TIMEOUT_MS = 5 * 60_000L
