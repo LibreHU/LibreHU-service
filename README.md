@@ -116,9 +116,12 @@ gauche, l'effet réel de `0x2C = 0x00` (coupure caisson), et la logique des GPIO
 ## Utiliser l'API depuis une app
 
 ```xml
-<uses-permission android:name="org.librehu.permission.HEADUNIT" />
 <queries><package android:name="org.librehu.service" /></queries>
 ```
+Accès contrôlé par le service, à la manière de SuperSU : les applis LibreHU (`org.librehu.*`) sont autorisées
+automatiquement, quel que soit l'ordre d'installation ; toute autre appli reçoit une `SecurityException` jusqu'à
+ce que l'utilisateur l'autorise (notification « … veut utiliser LibreHU-service », ou Diagnostic → Accès au service).
+La permission `org.librehu.permission.HEADUNIT` reste déclarée pour les anciennes versions des applis.
 ```kotlin
 bindService(Intent("org.librehu.service.BIND").setPackage("org.librehu.service"), connection, BIND_AUTO_CREATE)
 // onServiceConnected : val api = ILibreHuService.Stub.asInterface(binder)

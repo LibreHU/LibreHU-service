@@ -458,4 +458,16 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="touch_learn">Apprendre une touche</string>
     <string name="touch_learn_prompt">Maintenez le doigt sur la touche à affecter pendant %1$d secondes.</string>
     <string name="touch_learn_live">Appui : %1$d, %2$d</string>
+    <string name="access_channel">Demandes d\'accès</string>
+    <string name="access_request_title">%1$s veut utiliser LibreHU-service</string>
+    <string name="access_request_text">%1$s demande l\'API de l\'autoradio (volume, MCU, CAN…).</string>
+    <string name="access_allow">Autoriser</string>
+    <string name="access_deny">Refuser</string>
+    <string name="access_title">Accès au service</string>
+    <string name="access_hint">Applis autorisées à utiliser l\'API du service. Les applis LibreHU sont autorisées automatiquement (quel que soit l\'ordre d\'installation) ; toute autre appli demande d\'abord, par une notification.</string>
+    <string name="access_none">Aucune appli n\'a encore utilisé l\'API.</string>
+    <string name="access_auto">LibreHU (automatique)</string>
+    <string name="access_allowed">Autorisée</string>
+    <string name="access_denied">Refusée</string>
+    <string name="access_pending">Non décidé</string>
 </resources>

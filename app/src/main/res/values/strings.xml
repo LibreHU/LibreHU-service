@@ -458,4 +458,16 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="touch_learn">Learn a key</string>
     <string name="touch_learn_prompt">Keep your finger on the key to set for %1$d seconds.</string>
     <string name="touch_learn_live">Touch: %1$d, %2$d</string>
+    <string name="access_channel">Access requests</string>
+    <string name="access_request_title">%1$s wants to use LibreHU-service</string>
+    <string name="access_request_text">%1$s asks for the head unit API (volume, MCU, CAN…).</string>
+    <string name="access_allow">Allow</string>
+    <string name="access_deny">Deny</string>
+    <string name="access_title">Access to the service</string>
+    <string name="access_hint">Apps allowed to use the service\'s API. LibreHU apps are allowed automatically (whatever the install order); any other app asks first, with a notification.</string>
+    <string name="access_none">No app has used the API yet.</string>
+    <string name="access_auto">LibreHU (automatic)</string>
+    <string name="access_allowed">Allowed</string>
+    <string name="access_denied">Denied</string>
+    <string name="access_pending">Not decided</string>
 </resources>

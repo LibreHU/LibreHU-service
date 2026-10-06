@@ -96,8 +96,8 @@
             android:name=".LibreHuService"
             android:directBootAware="true"
             android:exported="true"
-            android:foregroundServiceType="specialUse"
-            android:permission="org.librehu.permission.HEADUNIT">
+            android:foregroundServiceType="specialUse">
+            <!-- No android:permission: callers are checked by ServiceAccess (LibreHU apps allowed, others asked). -->
             <intent-filter>
                 <action android:name="org.librehu.service.BIND" />
             </intent-filter>
@@ -105,6 +105,10 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Head unit hardware service (MCU link, audio processor)" />
         </service>
+
+        <receiver
+            android:name=".AccessReceiver"
+            android:exported="false" />
 
         <!-- OBD-II values (ELM327) for LibreHU Launcher's widget slots or any home screen. -->
         <receiver

@@ -6,8 +6,9 @@ import org.librehu.service.ILibreHuCallback;
 import org.librehu.service.bt.ILibreHuBluetooth;
 
 /**
- * Public API of LibreHU-service (bind with action org.librehu.service.BIND, package org.librehu.service,
- * permission org.librehu.permission.HEADUNIT).
+ * Public API of LibreHU-service (bind with action org.librehu.service.BIND, package org.librehu.service).
+ * Access: LibreHU apps (org.librehu.*) are allowed automatically; any other app gets a SecurityException until the
+ * user allows it (notification, or LibreHU-service → Diagnostic → Access to the service).
  *
  * Vehicle flags: see the FLAG_* constants of org.librehu.service.LibreHu.
  * Ranges: volume 0..getMaxVolume(), tone 0..20 (10 = flat), balance/fade 0..60 (30 = centre, balance 0 = left,

@@ -269,6 +269,7 @@ fun DiagScreen(
             }.getOrNull()
         }
     Page(stringResource(R.string.tab_diag)) {
+        AccessCard()
         Card(stringResource(R.string.diag_state)) {
             BodyText(
                 listOf(
@@ -394,5 +395,49 @@ private fun WatchdogCard() {
             },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(android.R.string.cancel)) } },
         )
+    }
+}
+
+/** Apps using the service's API: LibreHU ones allowed automatically, others allowed or denied here. */
+@Composable
+private fun AccessCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val access =
+        org.librehu.service.ServiceAccess
+            .get(context)
+    val entries by access.entries.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.access_title)) {
+        Hint(stringResource(R.string.access_hint))
+        if (entries.isEmpty()) Hint(stringResource(R.string.access_none))
+        for (e in entries) {
+            val auto =
+                org.librehu.service.ServiceAccess
+                    .isLibreHu(e.pkg)
+            ListRow(
+                e.label,
+                e.pkg + "  ·  " +
+                    stringResource(
+                        when {
+                            auto -> R.string.access_auto
+                            e.decision == org.librehu.service.ServiceAccess.Decision.ALLOWED -> R.string.access_allowed
+                            e.decision == org.librehu.service.ServiceAccess.Decision.DENIED -> R.string.access_denied
+                            else -> R.string.access_pending
+                        },
+                    ),
+            ) {
+                if (!auto) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Pill(
+                            stringResource(R.string.access_allow),
+                            selected = e.decision == org.librehu.service.ServiceAccess.Decision.ALLOWED,
+                        ) { access.set(e.pkg, org.librehu.service.ServiceAccess.Decision.ALLOWED) }
+                        Pill(
+                            stringResource(R.string.access_deny),
+                            selected = e.decision == org.librehu.service.ServiceAccess.Decision.DENIED,
+                        ) { access.set(e.pkg, org.librehu.service.ServiceAccess.Decision.DENIED) }
+                    }
+                }
+            }
+        }
     }
 }

@@ -153,13 +153,17 @@ class LibreHuService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        // Restart and SoC reset only from this app (the service is exported for binding, so anyone can start it).
+        val internal = intent?.getStringExtra(EXTRA_TOKEN) == TOKEN
         when (intent?.action) {
             ACTION_RESTART -> {
+                if (!internal) return START_STICKY
                 stopHardware()
                 startHardware()
             }
 
             ACTION_RESET_SOC -> {
+                if (!internal) return START_STICKY
                 reboot()
             }
 
@@ -430,6 +434,17 @@ class LibreHuService : Service() {
 
     private val binder =
         object : ILibreHuService.Stub() {
+            /** Every call of the API goes through [ServiceAccess] (SecurityException for apps not allowed). */
+            override fun onTransact(
+                code: Int,
+                data: android.os.Parcel,
+                reply: android.os.Parcel?,
+                flags: Int,
+            ): Boolean {
+                if (code != INTERFACE_TRANSACTION) ServiceAccess.get(this@LibreHuService).enforceCaller()
+                return super.onTransact(code, data, reply, flags)
+            }
+
             private fun settings() = unit?.settings ?: PrefsSettingsStore(this@LibreHuService).load()
 
             private fun change(transform: (HeadUnitSettings) -> HeadUnitSettings) {
@@ -616,6 +631,13 @@ class LibreHuService : Service() {
         private const val CLOCK_TOLERANCE_MS = 5_000L
         const val ACTION_RESTART = "org.librehu.service.RESTART"
         const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
+        private const val EXTRA_TOKEN = "token"
+
+        /** Secret of this process, carried by the start intents of this app only. */
+        private val TOKEN =
+            java.util.UUID
+                .randomUUID()
+                .toString()
 
         /** Sound processor input: extra "source" = "aux", "android", or nothing to toggle (shortcuts, other apps). */
         const val ACTION_AUDIO_SOURCE = "org.librehu.service.AUDIO_SOURCE"
@@ -651,12 +673,14 @@ class LibreHuService : Service() {
         ) {
             val intent = Intent(context, LibreHuService::class.java)
             if (restart) intent.action = ACTION_RESTART
-            context.startForegroundService(intent)
+            context.startForegroundService(intent.putExtra(EXTRA_TOKEN, TOKEN))
         }
 
         /** Power cycle of the SoC by the MCU (from the app). */
         fun resetSoc(context: Context) {
-            context.startForegroundService(Intent(context, LibreHuService::class.java).setAction(ACTION_RESET_SOC))
+            context.startForegroundService(
+                Intent(context, LibreHuService::class.java).setAction(ACTION_RESET_SOC).putExtra(EXTRA_TOKEN, TOKEN),
+            )
         }
 
         fun prefs(context: Context) = context.createDeviceProtectedStorageContext().getSharedPreferences("service", Context.MODE_PRIVATE)
