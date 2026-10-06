@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.TouchApp
@@ -59,6 +60,7 @@ enum class Tab(
 ) {
     HOME(Icons.Default.Home, R.string.tab_home),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
+    AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
     OBD(Icons.Default.DirectionsCar, R.string.tab_obd),
     DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
@@ -83,6 +85,7 @@ class AppActions(
     val exportLog: () -> Unit,
     val importCanVehicle: () -> Unit,
     val exportCanVehicle: (String) -> Unit,
+    val requestAudioPermission: () -> Unit = {},
 )
 
 /** Android Auto-like layout: icon rail on the left, the selected settings page on the right. */
@@ -110,6 +113,7 @@ fun AppScreen(
             when (tab) {
                 Tab.HOME -> HomeScreen(client, onTab)
                 Tab.AUDIO -> AudioScreen(client)
+                Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
                 Tab.BLUETOOTH -> BluetoothScreen(client, actions)
                 Tab.OBD -> ObdScreen(client)
                 Tab.DISPLAY -> DisplayScreen(actions)

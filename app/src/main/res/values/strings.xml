@@ -497,4 +497,34 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="gps_reset">Reset GPS (cold start)</string>
     <string name="gps_restart_daemon">Restart GNSS (root)</string>
     <string name="gps_no_signal">Satellites listed but no signal (0 dB): their positions come from the stored almanac, nothing is received. Check the GPS antenna (plugged in, not under a metal roof, outside) before resetting.</string>
+    <string name="tab_audio_diag">Audio diag</string>
+    <string name="adiag_levels">Levels</string>
+    <string name="adiag_meter_error">Level meter unavailable (%1$s): it needs the microphone permission (Visualizer of the output mix).</string>
+    <string name="adiag_permission">Allow</string>
+    <string name="adiag_android_peak">Android · peak</string>
+    <string name="adiag_android_rms">Android · RMS</string>
+    <string name="adiag_speakers_hint">Speakers: estimated (the BD37534 cannot be read back over I2C) = Android level + volume + fader of each output.</string>
+    <string name="adiag_fl">Front left</string>
+    <string name="adiag_fr">Front right</string>
+    <string name="adiag_rl">Rear left</string>
+    <string name="adiag_rr">Rear right</string>
+    <string name="adiag_sub">Subwoofer</string>
+    <string name="adiag_all">All</string>
+    <string name="adiag_off">off</string>
+    <string name="adiag_chain">Source %1$s · volume %2$d (%3$d dB) · %4$s</string>
+    <string name="adiag_test">Speaker test</string>
+    <string name="adiag_test_hint">1 kHz tone for 1.5 s on one speaker (balance / fader moved to it, then back), 50 Hz on the subwoofer. Checks wiring and which fader of the chip is on which side.</string>
+    <string name="adiag_streams">Android streams</string>
+    <string name="adiag_streams_hint">Volume of each Android stream (before the chip). ● = playing.</string>
+    <string name="adiag_mode">Audio mode: %1$s</string>
+    <string name="adiag_stream_music">Media</string>
+    <string name="adiag_stream_call">Call</string>
+    <string name="adiag_stream_ring">Ringtone</string>
+    <string name="adiag_stream_notification">Notifications</string>
+    <string name="adiag_stream_alarm">Alarms</string>
+    <string name="adiag_stream_system">System</string>
+    <string name="adiag_players">Active players</string>
+    <string name="adiag_no_player">No app is playing.</string>
+    <string name="adiag_registers">BD37534 registers (last written)</string>
+    <string name="adiag_no_chip">No audio chip driven (link stopped or other board).</string>
 </resources>

@@ -295,11 +295,13 @@ class LibreHuService : Service() {
             headUnit.simulate(f)
         }
         headUnit.start(t::send)
+        ServiceState.dsp = dsp
         setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
     }
 
     private fun stopHardware() {
         ServiceState.simulator = null
+        ServiceState.dsp = null
         transport?.close()
         executor?.shutdownNow()
         transport = null

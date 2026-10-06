@@ -15,6 +15,10 @@ import java.util.Locale
  * this only saves the settings app from polling.
  */
 object ServiceState {
+    /** Audio chip driven by the running link (registers last written, for the audio diagnostics). */
+    @Volatile
+    var dsp: org.librehu.core.audio.Bd37534? = null
+
     data class Link(
         val state: LibreHuService.Link = LibreHuService.Link.STOPPED,
         val detail: String = "",

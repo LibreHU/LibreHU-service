@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
                     logLauncher.launch("librehu-$stamp.log")
                 },
+                requestAudioPermission = { permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO)) },
             )
         setContent {
             CarTheme {

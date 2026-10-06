@@ -497,4 +497,34 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="gps_reset">Réinitialiser le GPS (démarrage à froid)</string>
     <string name="gps_restart_daemon">Redémarrer le GNSS (root)</string>
     <string name="gps_no_signal">Satellites listés mais aucun signal (0 dB) : leur position vient de l\'almanach mémorisé, rien n\'est reçu. Vérifier l\'antenne GPS (branchée, pas sous un toit métallique, à l\'extérieur) avant de réinitialiser.</string>
+    <string name="tab_audio_diag">Diag audio</string>
+    <string name="adiag_levels">Niveaux</string>
+    <string name="adiag_meter_error">Vu-mètre indisponible (%1$s) : il faut l\'autorisation micro (Visualizer de la sortie d\'Android).</string>
+    <string name="adiag_permission">Autoriser</string>
+    <string name="adiag_android_peak">Android · crête</string>
+    <string name="adiag_android_rms">Android · RMS</string>
+    <string name="adiag_speakers_hint">Haut-parleurs : estimés (le BD37534 ne se relit pas en I2C) = niveau Android + volume + fader de chaque sortie.</string>
+    <string name="adiag_fl">Avant gauche</string>
+    <string name="adiag_fr">Avant droit</string>
+    <string name="adiag_rl">Arrière gauche</string>
+    <string name="adiag_rr">Arrière droit</string>
+    <string name="adiag_sub">Caisson</string>
+    <string name="adiag_all">Tous</string>
+    <string name="adiag_off">coupé</string>
+    <string name="adiag_chain">Source %1$s · volume %2$d (%3$d dB) · %4$s</string>
+    <string name="adiag_test">Test des haut-parleurs</string>
+    <string name="adiag_test_hint">Son de 1 kHz pendant 1,5 s sur un haut-parleur (balance / fader poussés vers lui, puis remis), 50 Hz sur le caisson. Vérifie le câblage et quel fader de la puce est de quel côté.</string>
+    <string name="adiag_streams">Flux Android</string>
+    <string name="adiag_streams_hint">Volume de chaque flux Android (avant la puce). ● = en lecture.</string>
+    <string name="adiag_mode">Mode audio : %1$s</string>
+    <string name="adiag_stream_music">Média</string>
+    <string name="adiag_stream_call">Appel</string>
+    <string name="adiag_stream_ring">Sonnerie</string>
+    <string name="adiag_stream_notification">Notifications</string>
+    <string name="adiag_stream_alarm">Alarmes</string>
+    <string name="adiag_stream_system">Système</string>
+    <string name="adiag_players">Lecteurs actifs</string>
+    <string name="adiag_no_player">Aucune appli ne joue.</string>
+    <string name="adiag_registers">Registres du BD37534 (dernières valeurs écrites)</string>
+    <string name="adiag_no_chip">Aucune puce audio pilotée (liaison arrêtée ou autre carte).</string>
 </resources>
