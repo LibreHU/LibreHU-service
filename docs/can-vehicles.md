@@ -56,3 +56,16 @@ Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans Cl
 
 Pour une nouvelle voiture : choisir `hiworld-generic`, capturer (onglet CAN, export) en actionnant chaque commande,
 repérer les octets qui changent (en orange), écrire le profil, l'importer.
+
+## Touches du volant
+
+Avec un profil dont le message `0x11` a un signal `wheel_key` (Clio 3 LNP002, profils Hiworld semblables), le
+service lit les touches du volant relayées par le boîtier : D1 bit 3 = événement touche, D2 & 0x1F = code, D3 = 1 à
+l'appui (`core/.../can/HiworldWheelKeys.kt`). Chaque code reçoit une action comme les touches de façade (onglet CAN,
+carte Touches du volant). Codes par défaut, d'après `HdRenaultProtocolLNP002` de l'appli Hiworld : 1 volume +,
+2 volume −, 3 sourdine, 5 / 13 précédent, 6 / 14 suivant, 18 sourdine. Les codes 4 et 17 arrivent aussi d'une
+commande de Clio 3 sans sens connu : rien tant qu'aucune action n'est choisie. La carte affiche le code de la
+dernière touche pour identifier un bouton.
+
+Actif par défaut quand ivi-services est désactivé (sinon `ivi-canbus` agit aussi et chaque appui compte double).
+Un bouton qui ne change pas « dernière touche » n'est pas transmis par le boîtier : rien à faire côté Android.

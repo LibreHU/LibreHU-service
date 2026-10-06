@@ -29,10 +29,14 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Indicateurs de volume et de luminosité | panneaux façon Android par-dessus les applis : volume de la puce (remplace la barre d'ivi-services) et luminosité d'Android (touches, centre de contrôle, applis ; pas les changements automatiques des feux). Chacun activable, style vertical / horizontal, bord, place le long du bord, distance, 5 tailles, opacité, durée, valeur affichée, réglage au toucher ; couleurs du launcher | `overlay/LevelOverlay.kt`, onglets Audio et Affichage |
 | CAN | messages du boîtier (Hiworld `5A A5`) reconstitués, par commande avec octets modifiés, export texte ; **profils de voiture** sélectionnables / importables (JSON, syntaxe des signaux de CliOS) : Renault Clio 3 LNP002 intégré, valeurs décodées. Voir [docs/can-vehicles.md](docs/can-vehicles.md) | `core/.../can`, `can/CanVehicleStore.kt`, onglet CAN |
 | Outils MCU | repris de [MCU-tools-app](https://github.com/LibreHU/MCU-tools-app) : état du MCU (version, ACC, frein, feux, mute, antenne, date / heure, dernière touche, compteurs), commandes (mute, antenne, REM, PWM, LED de façade, seuils batterie, heure, apprentissage des touches, vitesse du boîtier CAN), simulation de trames MCU dans le vrai décodeur (rien n'est écrit sur le port) ; trafic décodé, `80` bloquée, `01` / `0E` / `F1` confirmées, export du journal, board id et puce audio | `core/.../mcu/JacDebug.kt`, `ui/McuToolsScreen.kt` |
+| Touches du volant (CAN) | touches relayées par le boîtier Hiworld (`0x11`) transformées en actions (volume, piste, sourdine, appli…) comme les touches de façade ; actives par défaut quand ivi-services est désactivé ; code de la dernière touche affiché pour trouver les boutons inconnus. Voir [docs/can-vehicles.md](docs/can-vehicles.md#touches-du-volant) | `core/.../can/HiworldWheelKeys.kt`, `can/CanWheelKeys.kt`, onglet CAN |
+| Contrôle d'accès | façon SuperSU : applis `org.librehu.*` et système autorisées d'office, les autres sur notification Autoriser / Refuser ; liste dans Diagnostic → Accès au service | `ServiceAccess.kt` |
+| Arrêt sécurisé | sourdine, pause des lecteurs, écriture des données (`sync`), écran noir « vous pouvez couper le contact » ; le SoC reste allumé, « Reprendre » relance tout (bouton dans la carte Watchdog, intent `org.librehu.service.SAFE_SHUTDOWN`) | `power/SafeShutdownActivity.kt`, `LibreHuService.kt` |
+| Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; onglet MCU, carte Démarrage | `power/BootApps.kt` |
 | Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, GPS et heure, Dalle tactile, MCU, CAN, Outils MCU, Diagnostic (trafic MCU décodé, journal, envoi de trames, export) ; thème du launcher | `MainActivity`, `ui/` |
 
-Ce qui manque encore (veille, sources audio, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
-de compatibilité `com.jancar.services.*`, permission `signature|privileged`.
+Ce qui manque encore (veille automatique, sources radio / AV, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
+de compatibilité `com.jancar.services.*`.
 
 ## LibreHU vs ivi-services
 
@@ -48,14 +52,15 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Mise à jour du firmware de la MCU | ✅ | ❌ | — |
 | **Véhicule** | Contact (ACC), frein à main, feux, version MCU | ✅ | ✅ | service |
 | | Marche arrière, clignotants (GPIO) | ✅ | ✅ | service |
-| | Diffusion aux apps | ✅ (sans contrôle d'accès) | ✅ (avec permission) | API AIDL + broadcasts |
+| | Diffusion aux apps | ✅ (sans contrôle d'accès) | ✅ (contrôle d'accès façon SuperSU) | API AIDL + broadcasts |
 | **Alimentation** | Contact mis / coupé : sourdine, rétroéclairage, ampli externe | ✅ | ✅ | service |
-| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ❌ | — |
+| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | 🟡 (arrêt sécurisé manuel, pas de veille MCU) | service, carte Watchdog |
+| | Choix des applis lancées au démarrage | ❌ | ✅ (root) | service, onglet MCU |
 | | Reset du hub USB, sourdine au démarrage | ✅ | 🟡 (sourdine seulement) | service |
 | | Horloge MCU ↔ Android | ✅ | ✅ | service |
 | **Audio (BD37534)** | Volume, sourdine, tonalité, balance/fader, loudness, caisson, source Android / AUX | ✅ | ✅ | service, onglet Audio |
 | | Ampli externe (sortie REM) | ✅ | ✅ | service |
-| | Choix de la source de la puce (Android, radio, AUX, AV) + volume par source | ✅ | ❌ (entrée Android fixe) | — |
+| | Choix de la source de la puce (Android, radio, AUX, AV) + volume par source | ✅ | 🟡 (Android / AUX, pas de volume par source) | service, onglet Audio |
 | | Priorités : appel, navigation, marche arrière, sourdines anti-« pop » | ✅ | 🟡 (focus audio pendant les appels) | module Bluetooth |
 | **Radio** | Tuner FM interne MediaTek | ✅ (app Jancar) | ✅ | app [LibreHU FM](https://github.com/LibreHU/LibreHU-FM-App) |
 | | Alimentation de l'antenne | ✅ | ✅ | service (API 2) |
@@ -63,8 +68,8 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | **Bluetooth** | Appels, musique, répertoire, appairage, reconnexion | ✅ (`ivi-btservice`) | ✅ | service, onglet Bluetooth |
 | **Touches** | Lecture des touches volant / façade / molette | ✅ | ✅ (relayées brutes) | service |
 | | Choix de l'action de chaque touche | ✅ (config Jancar) | ✅ | app [LibreHU BtnRemap](https://github.com/LibreHU/LibreHU-BtnRemap-app) |
-| | Apprentissage des touches du volant | ✅ | 🟡 (trames relayées, pas d'écran) | — |
-| | Zones tactiles hors écran (touches de façade) | ✅ (`touch_key.xml`) | ✅ (root) | service, onglet Dalle tactile |
+| | Touches du volant via le boîtier CAN | ✅ (`ivi-canbus`) | ✅ (actions au choix) | service, onglet CAN |
+| | Zones tactiles hors écran (touches de façade) | ✅ (`touch_key.xml`) | ✅ (root ; apprentissage par appui de 2 s) | service, onglet Dalle tactile |
 | | Télécommande infrarouge | ✅ | ❌ | — |
 | | Touche power (verrouillage écran, actions court / long) | ✅ | ❌ | — |
 | **Écran** | Luminosité jour / nuit selon les feux | ✅ | ✅ | service, onglet Affichage |
@@ -74,7 +79,7 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | ❌ (recul rapide Autochips toujours actif) | — |
 | | Entrées AV, blocage vidéo frein desserré | ✅ | ❌ | — |
 | **CAN (Hiworld)** | Relais des trames du boîtier | ✅ | ✅ | service (`onCanData`, `sendCanData`) |
-| | Décodage (portes, clim, volant…) | ➖ (fait par `ivi-canbus`) | 🟡 (touches volant seulement) | app BtnRemap |
+| | Décodage (portes, clim, volant…) | ➖ (fait par `ivi-canbus`) | 🟡 (profils de voiture : valeurs affichées, touches volant) | service, onglet CAN |
 | **Véhicule (extra)** | OBD-II par ELM327 (valeurs moteur, codes défaut) | ❌ | ✅ | service, onglet OBD + widget |
 | | Pression des pneus (TPMS USB) | ❌ (app à part) | ✅ | [LibreHU Launcher](https://github.com/LibreHU/LibreHU-Launcher-App) (+ widget) |
 | **Matériel divers** | LED de façade, ventilateur, G-sensor | ✅ | ❌ | — |
@@ -88,8 +93,9 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (9 onglets) | service |
 
 Reste à faire pour se passer d'ivi-services, par ordre d'importance :
-1. mise en veille après la coupure du contact (sinon risque de décharger la batterie) ;
-2. choix de la source de la puce audio et priorités (navigation, marche arrière) ;
+1. mise en veille automatique après la coupure du contact (l'arrêt sécurisé est manuel ; sinon risque de décharger
+   la batterie) ;
+2. sources radio / AV de la puce audio et priorités (navigation, marche arrière) ;
 3. caméra de recul après le démarrage d'Android ;
 4. touche power, rotation, économiseur d'écran ;
 5. mise à jour de la MCU, LED de façade, infrarouge.

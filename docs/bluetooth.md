@@ -96,6 +96,17 @@ pas le **focus audio** (SRC_STR_START / SRC_PLAY sans focus). La session média 
 `prepare()`, pas sur `play()`. LibreHU appelle donc `prepare()` à la connexion A2DP (si aucune autre appli ne joue,
 FM par exemple) et avant chaque `play()`.
 
+Sur l'UJC201, la pile Bluetooth d'Autochips met aussi en pause le téléphone 0,4 s après le début de la lecture tant
+qu'aucun lecteur ne s'est déclaré « au premier plan ». LibreHU appelle donc `setPlayerState` du contrôleur AVRCP
+d'Autochips, comme `A2dpUtil.setPlayerState` de Jancar (`AvrcpPlayerState.kt`).
+
+## Lecture / pause : « il faut appuyer deux fois »
+
+Certains lecteurs (YouTube, Tidal) renvoient leur nouvel état AVRCP en retard ou pas du tout : un 2ᵉ appui sur
+lecture/pause renvoyait alors la même commande. Le service (`BtMedia.playPause`) et le launcher retiennent le dernier
+basculement pendant 4 s : si l'état annoncé n'a pas changé depuis, ils considèrent que le lecteur est dans l'état
+demandé et envoient la commande inverse.
+
 ## Déconnexions / reconnexions en boucle
 
 La reconnexion automatique n'essaie plus un autre téléphone tant qu'une connexion est en cours, considère un

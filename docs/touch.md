@@ -61,8 +61,13 @@ Les deux derniers boutons (luminosité) n'avaient pas d'action LibreHU et leurs 
 centres à 79 points) : un appui va maintenant à la zone dont le centre est le plus proche. La lecture des touches est
 activée par défaut quand ivi-services est désactivé.
 
-Pour ajouter une touche : activer la lecture, appuyer sur le bouton de façade, « Ajouter le dernier appui », choisir
-l'action, « Tester ».
+Pour ajouter une touche : activer la lecture, « Ajouter une touche », puis **maintenir le bouton de façade appuyé
+2 s** jusqu'à la fin de la barre de progression ; choisir l'action, « Tester ». Le service ne retient qu'un appui
+commencé après l'ouverture de la fenêtre, tenu 2 s sans bouger de plus de 40 points, et prend la position médiane
+(`core/.../touch/TouchHoldLearner.kt`) : l'appui sur le bouton « Ajouter » de l'écran, ou un doigt qui glisse, n'est
+plus pris pour la touche (c'était le défaut de l'ancien « Ajouter le dernier appui »). Pendant l'apprentissage, les
+touches existantes ne déclenchent pas leur action. « Réapprendre la position » refait la même chose pour une zone
+existante.
 
 **Conflit** : ivi-services gère aussi ces zones (`/jancar/config/touch_key.xml`). Tant qu'il tourne, laisser l'option
 désactivée ou vider ses zones, sinon chaque appui déclenche deux actions.
