@@ -215,6 +215,9 @@ class HeadUnit(
         executor.execute { handle(protocol.decode(frame)) }
     }
 
+    /** Debug: handles [frame] as if the MCU had sent it. Nothing is written to the port. */
+    fun simulate(frame: McuFrame) = executor.execute { handle(protocol.decode(frame)) }
+
     override fun onAckTimeout(frame: McuFrame) = log("MCU: no ACK for $frame")
 
     override fun onError(e: Exception) = log("MCU link error: ${e.message}")

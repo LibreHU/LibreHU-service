@@ -14,11 +14,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.librehu.core.mcu.JacDebug
+import org.librehu.core.mcu.Mcu
+import org.librehu.core.mcu.McuFrame
 import org.librehu.core.mcu.McuProfiles
 import org.librehu.core.mcu.ProfileException
 import org.librehu.service.LibreHuService
@@ -227,6 +231,19 @@ fun DiagScreen(
     var paused by remember { mutableStateOf(ServiceState.trafficPaused) }
     var raw by remember { mutableStateOf("") }
     var rawError by remember { mutableStateOf(false) }
+    var hideAcks by remember { mutableStateOf(ServiceState.hideAcks) }
+    val jancar by rememberUpdatedState(link.jancar)
+    val sender = rememberMcuSender(client) { jancar }
+    val running = link.state == LibreHuService.Link.RUNNING
+    val boardId =
+        remember {
+            runCatching {
+                java.io
+                    .File(JacDebug.BOARD_ID_NODE)
+                    .readText()
+                    .trim()
+            }.getOrNull()
+        }
     Page(stringResource(R.string.tab_diag)) {
         Card(stringResource(R.string.diag_state)) {
             BodyText(
@@ -234,6 +251,7 @@ fun DiagScreen(
                     "link=${link.state} ${link.detail}",
                     "protocol=${link.protocol}",
                     "api=${client.api != null} bt=${client.bt != null}",
+                    "board=${boardId ?: "?"} audio=${JacDebug.audioChip(boardId) ?: "?"}",
                     "vehicle=$v",
                 ).joinToString("\n"),
                 mono = true,
@@ -245,15 +263,30 @@ fun DiagScreen(
             OutlinedTextField(value = raw, onValueChange = {
                 raw = it
                 rawError = false
-            }, singleLine = true, isError = rawError, label = { Text("1F 01") })
-            Actions {
-                Pill(stringResource(R.string.diag_send_button), enabled = link.state == LibreHuService.Link.RUNNING) {
-                    try {
-                        val f = McuProfiles.template(raw, emptyMap(), ByteArray(0))
-                        client.call { it.sendMcuFrame(f.cmd, f.data) }
-                    } catch (_: Exception) {
-                        rawError = true
+            }, singleLine = true, isError = rawError, label = { Text("F0 0A 00") })
+            val parsed = remember(raw) { runCatching { McuProfiles.template(raw, emptyMap(), ByteArray(0)) }.getOrNull() }
+            if (parsed != null) {
+                val tag =
+                    when (sender.risk(parsed)) {
+                        JacDebug.Risk.BLOCKED -> "  —  " + stringResource(R.string.diag_blocked_tag)
+                        JacDebug.Risk.CONFIRM -> "  —  " + stringResource(R.string.diag_confirm_tag)
+                        JacDebug.Risk.NONE -> ""
                     }
+                val meaning = if (link.jancar) "   " + JacDebug.describe(parsed, false) else ""
+                BodyText(stringResource(R.string.diag_preview, sender.wire(parsed) + meaning + tag), mono = true)
+            }
+            Actions {
+                Pill(stringResource(R.string.diag_send_button), enabled = running) {
+                    if (parsed == null) rawError = true else sender.send(parsed)
+                }
+            }
+            if (link.jancar) {
+                Hint(stringResource(R.string.diag_queries))
+                Actions {
+                    for (q in JacDebug.QUERIES) {
+                        Pill(JacDebug.nameFromMcu(q) + " ?", enabled = running) { sender.send(Mcu.query(q)) }
+                    }
+                    Pill("OPTION ?", enabled = running) { sender.send(McuFrame.of(Mcu.CMD_QUERY, Mcu.CMD_CONFIG, JacDebug.CFG_OPTION)) }
                 }
             }
         }
@@ -264,6 +297,13 @@ fun DiagScreen(
                     ServiceState.trafficPaused = paused
                 }
                 Pill(stringResource(R.string.diag_clear)) { ServiceState.clearTraffic() }
+                Pill(stringResource(R.string.diag_export), icon = Icons.Default.FileUpload, onClick = actions.exportLog)
+            }
+            if (link.jancar) {
+                SwitchRow(stringResource(R.string.diag_hide_ack), hideAcks) { on ->
+                    hideAcks = on
+                    ServiceState.hideAcks = on
+                }
             }
             BodyText(traffic.take(80).joinToString("\n").ifEmpty { "—" }, mono = true)
         }
@@ -271,6 +311,7 @@ fun DiagScreen(
             BodyText(log.take(80).joinToString("\n").ifEmpty { "—" }, mono = true)
         }
     }
+    McuSenderDialogs(sender)
 }
 
 /** MCU watchdog: disarm frame after each PC_READY, toast at start; the config file can impose both. */

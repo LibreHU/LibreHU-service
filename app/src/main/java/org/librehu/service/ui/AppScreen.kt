@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
@@ -63,6 +64,7 @@ enum class Tab(
     TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
     MCU(Icons.Default.Memory, R.string.tab_mcu),
     CAN(Icons.Default.Cable, R.string.tab_can),
+    MCU_TOOLS(Icons.Default.Build, R.string.tab_mcu_tools),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
 }
 
@@ -76,6 +78,7 @@ class AppActions(
     val openLocationSettings: () -> Unit,
     val openDateSettings: () -> Unit,
     val calibrateTouch: () -> Unit,
+    val exportLog: () -> Unit,
 )
 
 /** Android Auto-like layout: icon rail on the left, the selected settings page on the right. */
@@ -110,6 +113,7 @@ fun AppScreen(
                 Tab.TOUCH -> TouchScreen(actions)
                 Tab.MCU -> McuScreen(actions)
                 Tab.CAN -> CanScreen()
+                Tab.MCU_TOOLS -> McuToolsScreen(client)
                 Tab.DIAG -> DiagScreen(client, actions)
             }
         }

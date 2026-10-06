@@ -47,6 +47,17 @@ class MainActivity : ComponentActivity() {
             if (uri != null && id != null) toast(exportProfile(this, id, uri))
         }
 
+    private val logLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+            if (uri == null) return@registerForActivityResult
+            try {
+                contentResolver.openOutputStream(uri)?.use { it.write(ServiceState.dump().toByteArray()) }
+                toast(getString(R.string.diag_exported))
+            } catch (e: Exception) {
+                toast(getString(R.string.mcu_import_error, e.message ?: e.javaClass.simpleName))
+            }
+        }
+
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { client.refreshDevices() }
 
@@ -82,6 +93,10 @@ class MainActivity : ComponentActivity() {
                 openLocationSettings = { openSettings(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
                 openDateSettings = { openSettings(Settings.ACTION_DATE_SETTINGS) },
                 calibrateTouch = { startActivity(Intent(this, TouchCalibrationActivity::class.java)) },
+                exportLog = {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+                    logLauncher.launch("librehu-$stamp.log")
+                },
             )
         setContent {
             CarTheme {

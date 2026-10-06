@@ -75,6 +75,18 @@ class HeadUnitTest {
     }
 
     @Test
+    fun simulatedFrameIsDecodedButNotSent() {
+        unit.start { sent += it }
+        settle()
+        val before = sent.size
+        unit.simulate(McuFrame.of(Mcu.CMD_HANDBRAKE, 1))
+        settle()
+        assertTrue(unit.state.handbrake)
+        assertEquals(before, sent.size)
+        executor.shutdownNow()
+    }
+
+    @Test
     fun reverseFromGpioAndSettingsPersisted() {
         unit.start { sent += it }
         inputs[BoardGpio.REVERSE] = 0

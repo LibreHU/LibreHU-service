@@ -20,9 +20,13 @@ import android.os.RemoteException
 import android.util.Log
 import android.widget.Toast
 import org.librehu.core.audio.Bd37534
+import org.librehu.core.mcu.JacDebug
+import org.librehu.core.mcu.JacFrame
+import org.librehu.core.mcu.JacProtocol
 import org.librehu.core.mcu.McuEvent
 import org.librehu.core.mcu.McuFrame
 import org.librehu.core.mcu.McuProfiles
+import org.librehu.core.mcu.McuProtocol
 import org.librehu.core.mcu.McuTransport
 import org.librehu.core.unit.HeadUnit
 import org.librehu.core.unit.HeadUnitSettings
@@ -72,6 +76,8 @@ class LibreHuService : Service() {
     private var linkDetail = ""
 
     private var protocolName = ""
+    private var jancar = false
+    private var protocol: McuProtocol? = null
 
     /** Android dark mode and screen brightness following the headlights. */
     private lateinit var display: DisplayController
@@ -170,6 +176,8 @@ class LibreHuService : Service() {
         val profile = ProfileStore.get(this).current()
         protocolName = profile.name
         val protocol = McuProfiles.protocolFor(profile)
+        jancar = protocol === JacProtocol
+        this.protocol = protocol
         val channel =
             try {
                 TtySerialChannel.open(profile.serial.port, profile.serial.baud)
@@ -221,11 +229,18 @@ class LibreHuService : Service() {
         unit = headUnit
         transport = t
         t.start()
+        ServiceState.resetMcu()
+        ServiceState.simulator = { f ->
+            ServiceState.addTraffic("~ SIM " + describe(f, true))
+            ServiceState.updateMcu { it.onReceived(f, protocol.decode(f), jancar, simulated = true) }
+            headUnit.simulate(f)
+        }
         headUnit.start(t::send)
         setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
     }
 
     private fun stopHardware() {
+        ServiceState.simulator = null
         transport?.close()
         executor?.shutdownNow()
         transport = null
@@ -240,7 +255,7 @@ class LibreHuService : Service() {
     ) {
         link = l
         linkDetail = detail
-        ServiceState.setLink(ServiceState.Link(l, detail, protocolName))
+        ServiceState.setLink(ServiceState.Link(l, detail, protocolName, jancar))
         log("Link: $l $detail")
     }
 
@@ -270,7 +285,10 @@ class LibreHuService : Service() {
                 frame: McuFrame,
                 fromMcu: Boolean,
             ) {
-                ServiceState.addTraffic((if (fromMcu) "> " else "< ") + frame)
+                val ack = fromMcu && jancar && frame.cmd == JacFrame.CMD_ACK
+                if (!(ack && ServiceState.hideAcks)) ServiceState.addTraffic((if (fromMcu) "> " else "< ") + describe(frame, fromMcu))
+                val p = protocol
+                ServiceState.updateMcu { if (fromMcu && p != null) it.onReceived(frame, p.decode(frame), jancar) else it.onSent() }
                 each { it.onMcuFrame(frame.cmd, frame.data, fromMcu) }
             }
 
@@ -501,6 +519,12 @@ class LibreHuService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
     }
+
+    /** Traffic line: the frame, and what it means on Jancar MCUs. */
+    private fun describe(
+        f: McuFrame,
+        fromMcu: Boolean,
+    ): String = if (jancar) "$f   ${JacDebug.describe(f, fromMcu)}" else f.toString()
 
     private fun log(message: String) {
         Log.i(TAG, message)
