@@ -67,6 +67,11 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
+        <!-- Single-colour icon: LibreHU Launcher draws it in the colours of its theme. -->
+        <meta-data
+            android:name="org.librehu.themed_icon"
+            android:resource="@drawable/ic_launcher_mono" />
+
 
         <activity
             android:name=".MainActivity"

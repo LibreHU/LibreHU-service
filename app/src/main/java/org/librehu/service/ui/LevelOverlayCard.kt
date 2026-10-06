@@ -89,11 +89,12 @@ fun LevelOverlayCard(
             }
         Choices(edges, s.edge) { e -> overlay.update { it.copy(edge = e) } }
         val side = s.style == OverlayStyle.VERTICAL
+        val centre = stringResource(R.string.overlay_centre)
         SliderRow(
             stringResource(if (side) R.string.overlay_offset_vertical else R.string.overlay_offset_horizontal),
             s.offset,
             -40..40,
-            { if (it == 0) stringResource(R.string.overlay_centre) else "%+d %%".format(it) },
+            { if (it == 0) centre else "%+d %%".format(it) },
         ) { v -> overlay.update { it.copy(offset = v) } }
         SliderRow(stringResource(R.string.overlay_margin), s.margin, 0..120, { "$it dp" }) { v -> overlay.update { it.copy(margin = v) } }
         BodyText(stringResource(R.string.vol_overlay_size))
