@@ -45,6 +45,7 @@ fun TouchScreen(actions: AppActions) {
     val readerError by panel.readerError.collectAsStateWithLifecycle()
     val lastAction by keys.lastAction.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TouchZone?>(null) }
+    var confirmFactory by remember { mutableStateOf(false) }
     var matrixText by remember { mutableStateOf("") }
     var root by remember { mutableStateOf<Boolean?>(null) }
     var message by remember { mutableStateOf("") }
@@ -127,9 +128,25 @@ fun TouchScreen(actions: AppActions) {
                     val s = last ?: return@Pill
                     editing = TouchZone(keys.nextId(), "", s.x, s.y)
                 }
+                Pill(stringResource(R.string.touch_factory)) { confirmFactory = true }
             }
             Hint(stringResource(R.string.touch_add_hint))
         }
+    }
+
+    if (confirmFactory) {
+        AlertDialog(
+            onDismissRequest = { confirmFactory = false },
+            title = { Text(stringResource(R.string.touch_factory)) },
+            text = { Text(stringResource(R.string.touch_factory_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmFactory = false
+                    Thread { keys.loadFactory() }.start()
+                }) { Text(stringResource(android.R.string.ok)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmFactory = false }) { Text(stringResource(android.R.string.cancel)) } },
+        )
     }
 
     editing?.let { z ->
@@ -171,6 +188,7 @@ private fun ZoneDialog(
                 }
                 SliderRow(stringResource(R.string.touch_zone_radius), z.radius, 10..150) { z = z.copy(radius = it) }
                 SwitchRow(stringResource(R.string.touch_zone_repeat), z.repeat) { z = z.copy(repeat = it) }
+                SliderRow(stringResource(R.string.touch_zone_long_ms), z.longMs, 200..2000, { "$it ms" }) { z = z.copy(longMs = it) }
                 Choices(
                     listOf(false to stringResource(R.string.touch_zone_click), true to stringResource(R.string.touch_zone_long)),
                     pickingLong,
@@ -242,5 +260,11 @@ fun actionName(a: TouchAction): String =
             TouchAction.SCREEN_OFF -> R.string.ta_screen_off
             TouchAction.LAUNCH_APP -> R.string.ta_launch
             TouchAction.KEYCODE -> R.string.ta_keycode
+            TouchAction.BRIGHTNESS_UP -> R.string.ta_brightness_up
+            TouchAction.BRIGHTNESS_DOWN -> R.string.ta_brightness_down
+            TouchAction.POWER_MENU -> R.string.ta_power_menu
+            TouchAction.ALL_APPS -> R.string.ta_all_apps
+            TouchAction.LOCK -> R.string.ta_lock
+            TouchAction.STANDBY_CLOCK -> R.string.ta_standby
         },
     )

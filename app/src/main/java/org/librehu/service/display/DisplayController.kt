@@ -22,7 +22,7 @@ import org.librehu.service.ServiceState
 enum class DarkMode { UNCHANGED, LIGHT, DARK, HEADLIGHTS }
 
 data class DisplaySettings(
-    val darkMode: DarkMode = DarkMode.UNCHANGED,
+    val darkMode: DarkMode = DarkMode.HEADLIGHTS,
     /** Lower the screen brightness while the headlights are on. */
     val dimWithHeadlights: Boolean = false,
     /** Android brightness 0..255. */

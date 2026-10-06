@@ -416,4 +416,19 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_vehicle_messages">%1$d decoded messages</string>
     <string name="can_values">Decoded values</string>
     <string name="can_values_none">No known message received yet with this profile.</string>
+    <string name="ta_brightness_up">Brightness +</string>
+    <string name="ta_brightness_down">Brightness -</string>
+    <string name="ta_power_menu">Power menu (launcher)</string>
+    <string name="ta_all_apps">App drawer (launcher)</string>
+    <string name="ta_lock">Lock screen (launcher)</string>
+    <string name="ta_standby">Standby clock (launcher)</string>
+    <string name="touch_zone_long_ms">Long press after</string>
+    <string name="touch_factory">Factory mapping</string>
+    <string name="touch_factory_confirm">Replace the zones with the front panel buttons of the unit (/jancar/config/touch_key.xml, else the UJC201 one): mute (long: power menu), volume - (long: previous), volume + (long: next), back (long: play / pause), home (long: app drawer), brightness + and -.</string>
+    <string name="invert_hint">Inverted: the input is reported the other way round (on when the wire says off). For a car or a wiring active the other way.</string>
+    <string name="invert_reverse">Invert reverse gear</string>
+    <string name="invert_handbrake">Invert handbrake</string>
+    <string name="invert_headlight">Invert headlights</string>
+    <string name="invert_turn_left">Invert left turn signal</string>
+    <string name="invert_turn_right">Invert right turn signal</string>
 </resources>

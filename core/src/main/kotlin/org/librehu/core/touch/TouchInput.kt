@@ -164,6 +164,20 @@ enum class TouchAction {
     SCREEN_OFF,
     LAUNCH_APP,
     KEYCODE,
+    BRIGHTNESS_UP,
+    BRIGHTNESS_DOWN,
+
+    /** LibreHU Launcher's power menu (org.librehu.action.POWER_MENU). */
+    POWER_MENU,
+
+    /** LibreHU Launcher's app drawer (org.librehu.action.ALL_APPS). */
+    ALL_APPS,
+
+    /** LibreHU Launcher's lock screen (org.librehu.action.LOCK). */
+    LOCK,
+
+    /** LibreHU Launcher's standby clock (org.librehu.action.STANDBY_CLOCK). */
+    STANDBY_CLOCK,
 }
 
 data class ZoneAction(
@@ -185,6 +199,8 @@ data class TouchZone(
     val click: ZoneAction = ZoneAction(),
     val longPress: ZoneAction = ZoneAction(),
     val repeat: Boolean = false,
+    /** Hold time before the long press / repeat (ivi-services' `ActiveTime`). */
+    val longMs: Int = 600,
 ) {
     fun contains(
         px: Int,
@@ -199,7 +215,6 @@ data class TouchZone(
 /** Press detection on the zones: click on release, long press or repeat while held. Feed samples and ticks. */
 class TouchZoneEngine(
     @Volatile var zones: List<TouchZone>,
-    private val longMs: Long = 600,
     private val repeatMs: Long = 150,
     private val onAction: (TouchZone, ZoneAction) -> Unit,
 ) {
@@ -211,7 +226,7 @@ class TouchZoneEngine(
     fun onSample(s: TouchSample) {
         if (s.down) {
             if (active == null) {
-                active = zones.firstOrNull { it.contains(s.x, s.y) } ?: return
+                active = zoneAt(s.x, s.y) ?: return
                 downAt = s.timeMs
                 lastRepeat = s.timeMs
                 consumed = false
@@ -224,11 +239,20 @@ class TouchZoneEngine(
         }
     }
 
+    /** Nearest zone containing the point: overlapping zones (buttons close together) go to the closest centre. */
+    private fun zoneAt(
+        x: Int,
+        y: Int,
+    ): TouchZone? =
+        zones
+            .filter { it.contains(x, y) }
+            .minByOrNull { (it.x - x).toLong() * (it.x - x) + (it.y - y).toLong() * (it.y - y) }
+
     /** Call regularly while a finger is down (no input report arrives while it does not move). */
     fun onTick(nowMs: Long) {
         val z = active ?: return
         val held = nowMs - downAt
-        if (held < longMs) return
+        if (held < z.longMs) return
         if (z.repeat) {
             if (nowMs - lastRepeat >= repeatMs || !consumed) {
                 lastRepeat = nowMs
@@ -261,6 +285,7 @@ class TouchZoneEngine(
                                 put("long", z.longPress.action.name)
                                 put("longArg", z.longPress.arg)
                                 put("repeat", z.repeat)
+                                put("longMs", z.longMs)
                             },
                         )
                     }
@@ -280,6 +305,7 @@ class TouchZoneEngine(
                         click = ZoneAction(action(o.s("click")), o.s("clickArg").orEmpty()),
                         longPress = ZoneAction(action(o.s("long")), o.s("longArg").orEmpty()),
                         repeat = (o["repeat"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                        longMs = o.i("longMs") ?: 600,
                     )
                 }
             } catch (_: Exception) {

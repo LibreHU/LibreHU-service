@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
@@ -30,6 +31,7 @@ import org.librehu.core.mcu.McuProtocol
 import org.librehu.core.mcu.McuTransport
 import org.librehu.core.unit.HeadUnit
 import org.librehu.core.unit.HeadUnitSettings
+import org.librehu.core.unit.VehicleInput
 import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
@@ -43,6 +45,7 @@ import org.librehu.service.hw.TtySerialChannel
 import org.librehu.service.mcu.ProfileStore
 import org.librehu.service.obd.ObdManager
 import org.librehu.service.overlay.VolumeOverlay
+import org.librehu.service.root.RootShell
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
 import org.librehu.service.touch.TouchPanel
@@ -95,8 +98,12 @@ class LibreHuService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForegroundCompat()
+        // MCU link first: the MCU cuts the SoC when PC_READY comes late (10 s after a warm start). The rest
+        // (Bluetooth, OBD, touch keys, root calls) starts after it.
+        display = DisplayController.get(this)
+        startHardware()
+        display.start()
         bluetoothModule = BluetoothModule(this).also { it.start() }
-        display = DisplayController.get(this).also { it.start() }
         obd = ObdManager.get(this).also { it.start() }
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
@@ -125,7 +132,6 @@ class LibreHuService : Service() {
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
-        startHardware()
     }
 
     override fun onStartCommand(
@@ -140,8 +146,7 @@ class LibreHuService : Service() {
             }
 
             ACTION_RESET_SOC -> {
-                log("SoC reset requested through the MCU")
-                unit?.resetSoc()
+                reboot()
             }
         }
         return START_STICKY
@@ -219,6 +224,7 @@ class LibreHuService : Service() {
                         .settings.value.toMcu
                 },
                 turnSignals = { prefs(this).getBoolean(PREF_TURN_GPIO, true) },
+                inverted = { invertedInputs(this) },
                 watchdogFrame = {
                     val w = ServiceConfig.watchdog(this)
                     if (w.disarm) w.frame ?: protocol.watchdogOff() else null
@@ -493,11 +499,7 @@ class LibreHuService : Service() {
 
             override fun getMcuProtocol(): String = protocolName
 
-            override fun resetSoc() {
-                val u = unit ?: return
-                log("SoC reset requested through the MCU")
-                u.resetSoc()
-            }
+            override fun resetSoc() = reboot()
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------
@@ -522,6 +524,34 @@ class LibreHuService : Service() {
         }
     }
 
+    /**
+     * Restart of the head unit, as ivi-services' PowerUtil.reboot() does it: audio muted (chip, amplifier, MCU), then
+     * Android's reboot (the MCU keeps the power on and gets PC_READY again at boot). ivi-services never sends the
+     * MCU's SoC reset (`0E`); it is only the fallback when Android cannot reboot (no permission, no root).
+     */
+    private fun reboot() {
+        log("Reboot requested")
+        val u = unit
+        u?.prepareReboot()
+        Thread({
+            Thread.sleep(REBOOT_DELAY_MS)
+            val viaAndroid =
+                try {
+                    getSystemService(PowerManager::class.java).reboot(null)
+                    true
+                } catch (_: SecurityException) {
+                    false
+                }
+            // `reboot` does not return when it works: a result (or a timeout) means it failed.
+            if (!viaAndroid && RootShell.run("svc power reboot || reboot", timeoutS = 30) == null && RootShell.isAvailable()) {
+                log("Root reboot did not happen")
+            }
+            Thread.sleep(REBOOT_DELAY_MS)
+            log("Android reboot failed: SoC reset through the MCU")
+            u?.resetSoc()
+        }, "reboot").start()
+    }
+
     /** Traffic line: the frame, and what it means on Jancar MCUs. */
     private fun describe(
         f: McuFrame,
@@ -542,6 +572,27 @@ class LibreHuService : Service() {
         const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
         const val PREF_FORCE = "force_with_ivi"
         const val PREF_TURN_GPIO = "turn_gpio"
+        const val PREF_INVERTED = "inverted_inputs"
+        private const val REBOOT_DELAY_MS = 500L
+
+        /** Inputs reported the other way round (settings of the MCU tab). */
+        fun invertedInputs(context: Context): Set<VehicleInput> =
+            prefs(context)
+                .getStringSet(PREF_INVERTED, emptySet())
+                .orEmpty()
+                .mapNotNull { name -> VehicleInput.entries.firstOrNull { it.name == name } }
+                .toSet()
+
+        fun setInverted(
+            context: Context,
+            input: VehicleInput,
+            on: Boolean,
+        ) {
+            val names = invertedInputs(context).map { it.name }.toMutableSet()
+            if (on) names += input.name else names -= input.name
+            prefs(context).edit().putStringSet(PREF_INVERTED, names).apply()
+        }
+
         const val IVI_PACKAGE = "com.jancar.services"
 
         fun start(

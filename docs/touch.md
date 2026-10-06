@@ -40,6 +40,27 @@ d'Android), lecture / pause, suivant, précédent, éteindre l'écran, ouvrir un
 quelconque. Retour / récentes / écran / code de touche passent par `input keyevent` en root (`INJECT_EVENTS` est
 une permission système).
 
+Actions de LibreHU Launcher (par intent, le launcher les déclare) : menu power (`org.librehu.action.POWER_MENU`),
+tiroir d'applis (`ALL_APPS`), écran de verrouillage (`LOCK`), horloge de veille (`STANDBY_CLOCK`). Luminosité ± :
+réglage Android par pas de 1/10 (luminosité auto coupée), via WRITE_SETTINGS ou root.
+
+**Mapping d'usine** (activé par défaut au premier démarrage, et bouton « Mapping d'usine ») : les boutons de
+`/jancar/config/touch_key.xml` (sinon celui de l'UJC201), avec leur rayon et leur durée d'appui long (`ActiveTime`) :
+
+| Bouton (x, y) | Appui | Appui long |
+|---|---|---|
+| (586, -46) | muet | menu power |
+| (511, -53) | accueil | tiroir d'applis |
+| (406, -48) | retour | lecture / pause |
+| (326, -55) | volume + | suivant |
+| (226, -51) | volume - | précédent |
+| (132, -52) | luminosité + | — |
+| (55, -35) | luminosité - | — |
+
+Les deux derniers boutons (luminosité) n'avaient pas d'action LibreHU et leurs zones se chevauchent (rayon 40,
+centres à 79 points) : un appui va maintenant à la zone dont le centre est le plus proche. La lecture des touches est
+activée par défaut quand ivi-services est désactivé.
+
 Pour ajouter une touche : activer la lecture, appuyer sur le bouton de façade, « Ajouter le dernier appui », choisir
 l'action, « Tester ».
 

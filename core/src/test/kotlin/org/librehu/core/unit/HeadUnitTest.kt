@@ -75,6 +75,26 @@ class HeadUnitTest {
     }
 
     @Test
+    fun invertedInputs() {
+        val inv =
+            HeadUnit(
+                gpio,
+                chip,
+                store,
+                executor,
+                object : HeadUnit.Listener {},
+                inverted = { setOf(VehicleInput.HANDBRAKE, VehicleInput.REVERSE) },
+            )
+        inv.start { sent += it }
+        inputs[BoardGpio.REVERSE] = 1 // high = not engaged, inverted: engaged
+        inv.onFrame(McuFrame.of(Mcu.CMD_HANDBRAKE, 0))
+        settle(700)
+        assertTrue(inv.state.handbrake)
+        assertTrue(inv.state.reverse)
+        executor.shutdownNow()
+    }
+
+    @Test
     fun simulatedFrameIsDecodedButNotSent() {
         unit.start { sent += it }
         settle()

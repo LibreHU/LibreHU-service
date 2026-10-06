@@ -34,6 +34,9 @@ object BoardGpio {
     const val RADIO_ANTENNA = 110 // output, 1 = antenna powered (with MCU 0x43)
 }
 
+/** Vehicle inputs whose polarity can be inverted (wiring or car active the other way). */
+enum class VehicleInput { REVERSE, HANDBRAKE, HEADLIGHT, TURN_LEFT, TURN_RIGHT }
+
 data class VehicleState(
     val mcuOnline: Boolean = false,
     val acc: Boolean = false,
@@ -90,6 +93,8 @@ class HeadUnit(
     private val watchdogFrame: () -> McuFrame? = { null },
     /** Read the turn signal inputs (GPIO 7 / 6). Off: never reported (inputs not wired). */
     private val turnSignals: () -> Boolean = { true },
+    /** Inputs reported the other way round (MCU frames and SoC GPIO alike). */
+    private val inverted: () -> Set<VehicleInput> = { emptySet() },
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : McuTransport.Listener {
     interface Listener {
@@ -140,11 +145,12 @@ class HeadUnit(
     fun start(send: (McuFrame) -> Unit) {
         sender = send
         executor.execute {
+            // PC_READY first: after a SoC reset the MCU waits 10 s at most for it. The audio stays muted meanwhile.
             setGpio(board.ampMuteGpio, true)
+            handshake()
             val ok = dsp?.init()
             log("MCU protocol: ${protocol.name}; BD37534 init: ${ok ?: "absent"}")
             applyAudio()
-            handshake()
         }
         executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
         executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
@@ -191,6 +197,14 @@ class HeadUnit(
             sendIf(protocol.resetSoc())
         }
 
+    /** Before an Android reboot: audio muted (chip, amplifier GPIO and MCU), like ivi-services' PowerUtil.reboot(). */
+    fun prepareReboot() =
+        executor.execute {
+            applyMute(true)
+            sendIf(protocol.mute(true))
+            setGpio(board.backlightGpio, false)
+        }
+
     fun sendToMcu(frame: McuFrame) {
         sender(frame)
         listener.onMcuFrame(frame, false)
@@ -230,15 +244,15 @@ class HeadUnit(
             }
 
             is McuEvent.Handbrake -> {
-                update { it.copy(handbrake = event.on) }
+                update { it.copy(handbrake = event.on xor (VehicleInput.HANDBRAKE in inverted())) }
             }
 
             is McuEvent.Headlight -> {
-                update { it.copy(headlight = event.on) }
+                update { it.copy(headlight = event.on xor (VehicleInput.HEADLIGHT in inverted())) }
             }
 
             is McuEvent.Reverse -> {
-                if (board.reverseGpio == null) update { it.copy(reverse = event.on) }
+                if (board.reverseGpio == null) update { it.copy(reverse = event.on xor (VehicleInput.REVERSE in inverted())) }
             }
 
             is McuEvent.Version -> {
@@ -358,11 +372,32 @@ class HeadUnit(
     private var wasStuck = false
 
     private fun pollGpio() {
-        val reverse = board.reverseGpio?.let(::activeLow) ?: state.reverse
+        val inv = inverted()
+        val reverse = board.reverseGpio?.let { activeLow(it)?.xor(VehicleInput.REVERSE in inv) } ?: state.reverse
         val t = now()
         val read = turnSignals()
-        val left = if (read) board.turnLeftGpio?.let { leftFilter.update(activeLow(it), t) } ?: false else false
-        val right = if (read) board.turnRightGpio?.let { rightFilter.update(activeLow(it), t) } ?: false else false
+        val left =
+            if (read) {
+                board.turnLeftGpio?.let {
+                    leftFilter.update(
+                        activeLow(it)?.xor(VehicleInput.TURN_LEFT in inv),
+                        t,
+                    )
+                } ?: false
+            } else {
+                false
+            }
+        val right =
+            if (read) {
+                board.turnRightGpio?.let {
+                    rightFilter.update(
+                        activeLow(it)?.xor(VehicleInput.TURN_RIGHT in inv),
+                        t,
+                    )
+                } ?: false
+            } else {
+                false
+            }
         if (turnInputStuck != wasStuck) {
             wasStuck = turnInputStuck
             log(if (wasStuck) "Turn signal input low without blinking (not wired?): ignored" else "Turn signal inputs blinking again")
