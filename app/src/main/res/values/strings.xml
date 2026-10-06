@@ -423,7 +423,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="ta_lock">Lock screen (launcher)</string>
     <string name="ta_standby">Standby clock (launcher)</string>
     <string name="touch_zone_long_ms">Long press after</string>
-    <string name="touch_factory">Factory mapping</string>
+    <string name="touch_factory_keys">Factory mapping</string>
     <string name="touch_factory_confirm">Replace the zones with the front panel buttons of the unit (/jancar/config/touch_key.xml, else the UJC201 one): mute (long: power menu), volume - (long: previous), volume + (long: next), back (long: play / pause), home (long: app drawer), brightness + and -.</string>
     <string name="invert_hint">Inverted: the input is reported the other way round (on when the wire says off). For a car or a wiring active the other way.</string>
     <string name="invert_reverse">Invert reverse gear</string>

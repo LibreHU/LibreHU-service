@@ -423,7 +423,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="ta_lock">Écran de verrouillage (launcher)</string>
     <string name="ta_standby">Horloge de veille (launcher)</string>
     <string name="touch_zone_long_ms">Appui long après</string>
-    <string name="touch_factory">Mapping d\'usine</string>
+    <string name="touch_factory_keys">Mapping d\'usine</string>
     <string name="touch_factory_confirm">Remplacer les zones par les boutons de façade de l\'appareil (/jancar/config/touch_key.xml, sinon celui de l\'UJC201) : muet (long : menu power), volume - (long : précédent), volume + (long : suivant), retour (long : lecture / pause), accueil (long : tiroir d\'applis), luminosité + et -.</string>
     <string name="invert_hint">Inversée : l\'entrée est lue à l\'envers (active quand le fil dit inactif). Pour une voiture ou un câblage actif dans l\'autre sens.</string>
     <string name="invert_reverse">Inverser la marche arrière</string>

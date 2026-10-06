@@ -128,7 +128,7 @@ fun TouchScreen(actions: AppActions) {
                     val s = last ?: return@Pill
                     editing = TouchZone(keys.nextId(), "", s.x, s.y)
                 }
-                Pill(stringResource(R.string.touch_factory)) { confirmFactory = true }
+                Pill(stringResource(R.string.touch_factory_keys)) { confirmFactory = true }
             }
             Hint(stringResource(R.string.touch_add_hint))
         }
@@ -137,7 +137,7 @@ fun TouchScreen(actions: AppActions) {
     if (confirmFactory) {
         AlertDialog(
             onDismissRequest = { confirmFactory = false },
-            title = { Text(stringResource(R.string.touch_factory)) },
+            title = { Text(stringResource(R.string.touch_factory_keys)) },
             text = { Text(stringResource(R.string.touch_factory_confirm)) },
             confirmButton = {
                 TextButton(onClick = {

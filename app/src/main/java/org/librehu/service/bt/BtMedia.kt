@@ -9,6 +9,7 @@ import android.media.browse.MediaBrowser
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.os.Handler
+import android.os.SystemClock
 import android.util.Log
 
 /**
@@ -30,9 +31,17 @@ internal class BtMedia(
 
     private var a2dpConnected = false
 
+    // Bounce detection (see [onState]).
+    private var playingSince = 0L
+    private var pausedByCar = false
+    private var lastRecovery = 0L
+
     private val controllerCallback =
         object : MediaController.Callback() {
-            override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
+            override fun onPlaybackStateChanged(state: PlaybackState?) {
+                onState(state?.state)
+                publish()
+            }
 
             override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
 
@@ -84,6 +93,36 @@ internal class BtMedia(
         controller?.transportControls?.prepare()
     }
 
+    /**
+     * Play started on the phone while the car does not hold the audio focus: Android 9's sink pauses it at once
+     * (A2dpSinkStreamHandler SRC_PLAY → sendAvrcpPause, unless the unit is a TV / IoT device). Seen here as PLAYING
+     * then PAUSED within [BOUNCE_MS] without a pause from the car: play again through the car (prepare + play =
+     * REQUEST_FOCUS + SNK_PLAY, which take the focus), at most once per [RECOVERY_GAP_MS].
+     */
+    private fun onState(state: Int?) {
+        val now = SystemClock.uptimeMillis()
+        when (state) {
+            PlaybackState.STATE_PLAYING -> {
+                playingSince = now
+                pausedByCar = false
+            }
+
+            PlaybackState.STATE_PAUSED -> {
+                val bounced = playingSince != 0L && now - playingSince < BOUNCE_MS && !pausedByCar
+                playingSince = 0L
+                if (bounced && now - lastRecovery > RECOVERY_GAP_MS) {
+                    lastRecovery = now
+                    Log.i(TAG, "Phone play paused by the A2DP sink (no audio focus): playing through the car")
+                    main.postDelayed({ play() }, 300)
+                }
+            }
+
+            else -> {
+                playingSince = 0L
+            }
+        }
+    }
+
     fun start() = connectBrowser()
 
     fun stop() {
@@ -100,7 +139,10 @@ internal class BtMedia(
         c.play()
     }
 
-    fun pause() = controls()?.pause()
+    fun pause() {
+        pausedByCar = true
+        controls()?.pause()
+    }
 
     fun playPause() {
         if (info.playing) pause() else play()
@@ -110,7 +152,10 @@ internal class BtMedia(
 
     fun previous() = controls()?.skipToPrevious()
 
-    fun stopPlayback() = controls()?.stop()
+    fun stopPlayback() {
+        pausedByCar = true
+        controls()?.stop()
+    }
 
     private fun controls(): MediaController.TransportControls? {
         if (controller == null) connectBrowser()
@@ -160,6 +205,8 @@ internal class BtMedia(
 
     private companion object {
         const val TAG = "LibreHU-BT"
+        const val BOUNCE_MS = 2_000L
+        const val RECOVERY_GAP_MS = 5_000L
         const val BLUETOOTH_PACKAGE = "com.android.bluetooth"
         const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
         val KNOWN =
