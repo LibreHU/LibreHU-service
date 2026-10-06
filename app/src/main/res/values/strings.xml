@@ -443,4 +443,12 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="overlay_size_xs">Extra small</string>
     <string name="overlay_size_xl">Extra large</string>
     <string name="overlay_opacity">Background opacity</string>
+    <string name="can_keys">Steering wheel keys</string>
+    <string name="can_keys_hint">Keys of the steering wheel remote relayed by the CAN box (message 0x11), turned into actions like the touch keys. Press a button to see its code, then pick its action.</string>
+    <string name="can_keys_enable">Use the steering wheel keys</string>
+    <string name="can_keys_last">Last key: %1$d (%2$s)</string>
+    <string name="can_keys_none">No key pressed yet.</string>
+    <string name="can_keys_code">Key %1$d (%2$s)</string>
+    <string name="can_keys_change">Change</string>
+    <string name="can_keys_defaults">Default actions</string>
 </resources>

@@ -3,10 +3,13 @@ package org.librehu.service.ui
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,9 +28,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.librehu.core.can.HiworldWheelKeys
+import org.librehu.core.touch.TouchAction
+import org.librehu.core.touch.ZoneAction
 import org.librehu.service.R
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.can.CanVehicleStore
+import org.librehu.service.can.CanWheelKeys
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -94,6 +101,7 @@ fun CanScreen(actions: AppActions) {
             }
             Actions { Pill(stringResource(R.string.mcu_import), icon = Icons.Default.FileDownload, onClick = actions.importCanVehicle) }
         }
+        CanWheelKeysCard()
         Card(stringResource(R.string.can_values)) {
             if (values.isEmpty()) Hint(stringResource(R.string.can_values_none))
             for ((message, list) in values.values.groupBy { it.message }) {
@@ -177,3 +185,78 @@ fun exportCanVehicle(
     } catch (e: Exception) {
         context.getString(R.string.mcu_import_error, e.message ?: e.javaClass.simpleName)
     }
+
+/** Steering wheel keys of the CAN box → actions (same list as the touch keys). */
+@Composable
+fun CanWheelKeysCard() {
+    val context = LocalContext.current
+    val keys = CanWheelKeys.get(context)
+    val enabled by keys.enabled.collectAsStateWithLifecycle()
+    val mapping by keys.mapping.collectAsStateWithLifecycle()
+    val last by keys.lastKey.collectAsStateWithLifecycle()
+    val seen by keys.seen.collectAsStateWithLifecycle()
+    var editing by remember { mutableStateOf<Int?>(null) }
+    Card(stringResource(R.string.can_keys)) {
+        Hint(stringResource(R.string.can_keys_hint))
+        SwitchRow(stringResource(R.string.can_keys_enable), enabled) { keys.setEnabled(it) }
+        Hint(last?.let { stringResource(R.string.can_keys_last, it, keyName(it)) } ?: stringResource(R.string.can_keys_none))
+        for (code in (mapping.keys + seen).sorted()) {
+            val a = mapping[code] ?: ZoneAction()
+            ListRow(
+                stringResource(R.string.can_keys_code, code, keyName(code)),
+                actionLabel(a),
+                onClick = { editing = code },
+            ) { Pill(stringResource(R.string.can_keys_change), selected = code == last) { editing = code } }
+        }
+        Actions { Pill(stringResource(R.string.can_keys_defaults)) { keys.resetDefaults() } }
+    }
+    editing?.let { code ->
+        WheelKeyDialog(code, mapping[code] ?: ZoneAction(), onDismiss = { editing = null }) {
+            keys.set(code, it)
+            editing = null
+        }
+    }
+}
+
+@Composable
+private fun keyName(code: Int): String = HiworldWheelKeys.NAMES[code] ?: "?"
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun WheelKeyDialog(
+    code: Int,
+    initial: ZoneAction,
+    onDismiss: () -> Unit,
+    onSave: (ZoneAction) -> Unit,
+) {
+    var a by remember(code) { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.can_keys_code, code, keyName(code))) },
+        text = {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    for (t in TouchAction.entries) Pill(actionName(t), selected = a.action == t) { a = a.copy(action = t) }
+                }
+                if (a.action == TouchAction.LAUNCH_APP || a.action == TouchAction.KEYCODE) {
+                    OutlinedTextField(
+                        value = a.arg,
+                        onValueChange = { a = a.copy(arg = it.trim()) },
+                        singleLine = true,
+                        label = {
+                            Text(stringResource(if (a.action == TouchAction.KEYCODE) R.string.touch_keycode else R.string.touch_package))
+                        },
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(a) }) { Text(stringResource(android.R.string.ok)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+    )
+}

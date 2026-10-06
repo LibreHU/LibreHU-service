@@ -67,6 +67,10 @@ object CanMonitor {
 
     private val parser = HiworldParser(::onFrame)
 
+    /** Every message, before the viewer (steering wheel keys, see CanWheelKeys); called on the MCU thread. */
+    @Volatile
+    var frameListener: ((CanboxFrame) -> Unit)? = null
+
     /** All messages since the start, for the export (bounded). */
     private val history = ArrayDeque<CanLine>()
 
@@ -83,6 +87,7 @@ object CanMonitor {
         val line = CanLine(now, f)
         history.addLast(line)
         while (history.size > 20_000) history.removeFirst()
+        frameListener?.invoke(f)
         val decoded = vehicle.decode(f)
         if (decoded.isNotEmpty()) _values.value = _values.value + decoded.associateBy { "%02X.%s".format(f.cmd, it.key) }
         if (paused) return

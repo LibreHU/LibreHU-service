@@ -39,6 +39,7 @@ import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.can.CanVehicleStore
+import org.librehu.service.can.CanWheelKeys
 import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DisplayController
 import org.librehu.service.hw.I2cDevice
@@ -139,6 +140,9 @@ class LibreHuService : Service() {
                 it.volumeHook = { step -> changeVolume(step) }
                 it.start()
             }
+        // Steering wheel keys of the CAN box (Hiworld 0x11) → the same actions as the touch keys.
+        val wheelKeys = CanWheelKeys.get(this)
+        CanMonitor.frameListener = wheelKeys::onFrame
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))

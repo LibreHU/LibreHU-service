@@ -443,4 +443,12 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="overlay_size_xs">Très petit</string>
     <string name="overlay_size_xl">Très grand</string>
     <string name="overlay_opacity">Opacité du fond</string>
+    <string name="can_keys">Commandes au volant</string>
+    <string name="can_keys_hint">Touches de la commande au volant relayées par le boîtier CAN (message 0x11), transformées en actions comme les touches tactiles. Appuyer sur un bouton pour voir son code, puis choisir son action.</string>
+    <string name="can_keys_enable">Utiliser les commandes au volant</string>
+    <string name="can_keys_last">Dernière touche : %1$d (%2$s)</string>
+    <string name="can_keys_none">Aucune touche appuyée pour l\'instant.</string>
+    <string name="can_keys_code">Touche %1$d (%2$s)</string>
+    <string name="can_keys_change">Modifier</string>
+    <string name="can_keys_defaults">Actions par défaut</string>
 </resources>
