@@ -1,30 +1,38 @@
 package org.librehu.service.ui
 
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.librehu.core.touch.TouchAction
+import org.librehu.core.touch.TouchHoldLearner
 import org.librehu.core.touch.TouchSample
 import org.librehu.core.touch.TouchZone
 import org.librehu.core.touch.ZoneAction
@@ -45,6 +53,7 @@ fun TouchScreen(actions: AppActions) {
     val readerError by panel.readerError.collectAsStateWithLifecycle()
     val lastAction by keys.lastAction.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TouchZone?>(null) }
+    var learning by remember { mutableStateOf(false) }
     var confirmFactory by remember { mutableStateOf(false) }
     var matrixText by remember { mutableStateOf("") }
     var root by remember { mutableStateOf<Boolean?>(null) }
@@ -124,10 +133,7 @@ fun TouchScreen(actions: AppActions) {
                 }
             }
             Actions {
-                Pill(stringResource(R.string.touch_add_zone), icon = Icons.Default.Add, enabled = last != null) {
-                    val s = last ?: return@Pill
-                    editing = TouchZone(keys.nextId(), "", s.x, s.y)
-                }
+                Pill(stringResource(R.string.touch_add_zone), icon = Icons.Default.Add) { learning = true }
                 Pill(stringResource(R.string.touch_factory_keys)) { confirmFactory = true }
             }
             Hint(stringResource(R.string.touch_add_hint))
@@ -149,8 +155,15 @@ fun TouchScreen(actions: AppActions) {
         )
     }
 
+    if (learning) {
+        LearnDialog(onLearnt = { x, y ->
+            learning = false
+            editing = TouchZone(keys.nextId(), "", x, y)
+        }, onDismiss = { learning = false })
+    }
+
     editing?.let { z ->
-        ZoneDialog(z, last, onSave = {
+        ZoneDialog(z, onSave = {
             keys.upsert(it)
             editing = null
         }, onDelete = {
@@ -164,13 +177,19 @@ fun TouchScreen(actions: AppActions) {
 @Composable
 private fun ZoneDialog(
     initial: TouchZone,
-    last: TouchSample?,
     onSave: (TouchZone) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var z by remember(initial) { mutableStateOf(initial) }
     var pickingLong by remember { mutableStateOf(false) }
+    var relearn by remember { mutableStateOf(false) }
+    if (relearn) {
+        LearnDialog(onLearnt = { x, y ->
+            relearn = false
+            z = z.copy(x = x, y = y)
+        }, onDismiss = { relearn = false })
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.touch_zone)) },
@@ -184,7 +203,7 @@ private fun ZoneDialog(
                 }, singleLine = true, label = { Text(stringResource(R.string.touch_zone_name)) })
                 Text("(${z.x}, ${z.y})")
                 Actions {
-                    Pill(stringResource(R.string.touch_zone_here), enabled = last != null) { last?.let { z = z.copy(x = it.x, y = it.y) } }
+                    Pill(stringResource(R.string.touch_zone_here)) { relearn = true }
                 }
                 SliderRow(stringResource(R.string.touch_zone_radius), z.radius, 10..150) { z = z.copy(radius = it) }
                 SwitchRow(stringResource(R.string.touch_zone_repeat), z.repeat) { z = z.copy(repeat = it) }
@@ -239,6 +258,69 @@ private fun ZoneDialog(
         },
     )
 }
+
+/**
+ * "Hold the key": listens to the raw touch panel and keeps the position of a press held for 2 s, started after the
+ * prompt opened (so not the tap on the screen button). Zones do not fire meanwhile.
+ */
+@Composable
+private fun LearnDialog(
+    onLearnt: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var progress by remember { mutableFloatStateOf(0f) }
+    var live by remember { mutableStateOf<TouchSample?>(null) }
+    DisposableEffect(Unit) {
+        val panel = TouchPanel.get(context)
+        val keys = TouchKeys.get(context)
+        val main = Handler(Looper.getMainLooper())
+        val learner = TouchHoldLearner(startMs = SystemClock.uptimeMillis() + LEARN_DELAY_MS, holdMs = LEARN_HOLD_MS)
+        var done = false
+        val listener: (TouchSample) -> Unit = { s ->
+            val t = s.copy(timeMs = SystemClock.uptimeMillis())
+            val result =
+                synchronized(learner) {
+                    learner.feed(t)
+                    learner.result
+                }
+            val p = learner.progress
+            main.post {
+                live = t
+                progress = p
+                if (result != null && !done) {
+                    done = true
+                    onLearnt(result.first, result.second)
+                }
+            }
+        }
+        keys.learning = true
+        panel.addListener(listener)
+        onDispose {
+            panel.removeListener(listener)
+            keys.learning = false
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.touch_learn)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.touch_learn_prompt, (LEARN_HOLD_MS / 1000).toInt()))
+                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                Text(
+                    live?.let { stringResource(R.string.touch_learn_live, it.x, it.y) } ?: stringResource(R.string.touch_live_none),
+                    fontFamily = FontFamily.Monospace,
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+    )
+}
+
+private const val LEARN_DELAY_MS = 400L
+private const val LEARN_HOLD_MS = 2000L
 
 @Composable
 fun actionLabel(a: ZoneAction): String = actionName(a.action) + if (a.arg.isNotEmpty()) " ${a.arg}" else ""

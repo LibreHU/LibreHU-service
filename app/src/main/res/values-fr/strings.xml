@@ -240,11 +240,11 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="touch_up">relâché</string>
     <string name="touch_live_none">Brut : touchez la dalle…</string>
     <string name="touch_test">Tester</string>
-    <string name="touch_add_zone">Ajouter le dernier appui</string>
+    <string name="touch_add_zone">Ajouter une touche</string>
     <string name="touch_add_hint">Coordonnées brutes du pilote : une touche hors écran a des valeurs au-delà de la taille de l\'affichage</string>
     <string name="touch_zone">Zone de touche</string>
     <string name="touch_zone_name">Nom</string>
-    <string name="touch_zone_here">Utiliser le dernier appui</string>
+    <string name="touch_zone_here">Réapprendre la position</string>
     <string name="touch_zone_radius">Rayon</string>
     <string name="touch_zone_repeat">Répéter tant qu\'appuyé (volume)</string>
     <string name="touch_zone_click">Appui court</string>
@@ -455,4 +455,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="audio_source_hint">Entrée de la puce audio. AUX : la prise jack va directement aux haut-parleurs et le son Android n\'est plus entendu jusqu\'au retour sur Android. Retour sur Android à chaque démarrage. Aussi org.librehu.service.AUDIO_SOURCE (extra source = aux / android, rien = bascule).</string>
     <string name="audio_source_android">Android</string>
     <string name="audio_source_aux">AUX</string>
+    <string name="touch_learn">Apprendre une touche</string>
+    <string name="touch_learn_prompt">Maintenez le doigt sur la touche à affecter pendant %1$d secondes.</string>
+    <string name="touch_learn_live">Appui : %1$d, %2$d</string>
 </resources>

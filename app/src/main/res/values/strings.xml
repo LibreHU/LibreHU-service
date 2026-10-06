@@ -240,11 +240,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="touch_up">released</string>
     <string name="touch_live_none">Raw: touch the panel…</string>
     <string name="touch_test">Test</string>
-    <string name="touch_add_zone">Add the last touch</string>
+    <string name="touch_add_zone">Add a key</string>
     <string name="touch_add_hint">Raw coordinates are the driver\'s: a key outside the screen has values beyond the display size</string>
     <string name="touch_zone">Key zone</string>
     <string name="touch_zone_name">Name</string>
-    <string name="touch_zone_here">Use the last touch</string>
+    <string name="touch_zone_here">Learn the position again</string>
     <string name="touch_zone_radius">Radius</string>
     <string name="touch_zone_repeat">Repeat while held (volume)</string>
     <string name="touch_zone_click">Click</string>
@@ -455,4 +455,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="audio_source_hint">Input of the sound processor. AUX: the jack goes straight to the speakers and the Android sound is not heard until you come back to Android. Back to Android at each start. Also org.librehu.service.AUDIO_SOURCE (extra source = aux / android, none = toggle).</string>
     <string name="audio_source_android">Android</string>
     <string name="audio_source_aux">AUX</string>
+    <string name="touch_learn">Learn a key</string>
+    <string name="touch_learn_prompt">Keep your finger on the key to set for %1$d seconds.</string>
+    <string name="touch_learn_live">Touch: %1$d, %2$d</string>
 </resources>
