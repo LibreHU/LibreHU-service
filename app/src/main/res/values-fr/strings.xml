@@ -308,4 +308,29 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_by_command">Par commande</string>
     <string name="can_none">Rien reçu pour l\'instant (boîtier branché ? liaison MCU active ?)</string>
     <string name="can_stream">Derniers messages</string>
+    <string name="vehicle_inputs">Entrées véhicule</string>
+    <string name="turn_gpio">Clignotants (GPIO 7 gauche, 6 droit)</string>
+    <string name="turn_gpio_hint">Seulement si les fils de clignotants du faisceau sont branchés (caméra 360°). Filtrés comme ivi-services (clignotement = allumé, éteint après 3 s) ; une entrée basse 15 s sans clignoter est considérée comme non branchée.</string>
+    <string name="vol_overlay">Indicateur de volume</string>
+    <string name="vol_overlay_hint">Affiché par-dessus les applis quand le volume de la puce audio change (launcher, touches tactiles, applis), aux couleurs de LibreHU Launcher. Remplace la barre de volume d\'ivi-services.</string>
+    <string name="vol_overlay_enable">Afficher l\'indicateur de volume</string>
+    <string name="vol_overlay_permission">Nécessite « Affichage par-dessus les autres applis » (ou : adb shell appops set org.librehu.service SYSTEM_ALERT_WINDOW allow)</string>
+    <string name="vol_overlay_allow">Autoriser</string>
+    <string name="vol_overlay_style">Style</string>
+    <string name="vol_style_vertical">Vertical (Android)</string>
+    <string name="vol_style_horizontal">Barre horizontale</string>
+    <string name="vol_overlay_edge">Position</string>
+    <string name="vol_edge_right">À droite</string>
+    <string name="vol_edge_left">À gauche</string>
+    <string name="vol_edge_top">En haut</string>
+    <string name="vol_edge_bottom">En bas</string>
+    <string name="vol_overlay_size">Taille</string>
+    <string name="vol_size_small">Petite</string>
+    <string name="vol_size_normal">Normale</string>
+    <string name="vol_size_large">Grande</string>
+    <string name="vol_overlay_timeout">Disparaît après</string>
+    <string name="vol_overlay_number">Valeur du volume</string>
+    <string name="vol_overlay_touch">Réglage au toucher</string>
+    <string name="vol_overlay_touch_hint">Glisser sur la barre pour régler, toucher le haut-parleur pour couper le son</string>
+    <string name="vol_overlay_preview">Aperçu</string>
 </resources>

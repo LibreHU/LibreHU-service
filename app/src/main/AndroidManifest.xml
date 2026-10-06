@@ -11,6 +11,9 @@
         android:protectionLevel="normal" />
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Volume panel over the apps (overlay/VolumeOverlay), granted by the user or with
+         adb shell appops set org.librehu.service SYSTEM_ALERT_WINDOW allow -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Clock from the MCU RTC: granted only to privileged / system installs. -->

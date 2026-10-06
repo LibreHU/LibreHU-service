@@ -37,6 +37,7 @@ import org.librehu.service.hw.SocGpio
 import org.librehu.service.hw.TtySerialChannel
 import org.librehu.service.mcu.ProfileStore
 import org.librehu.service.obd.ObdManager
+import org.librehu.service.overlay.VolumeOverlay
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
 import org.librehu.service.touch.TouchPanel
@@ -104,6 +105,10 @@ class LibreHuService : Service() {
                     }
                 it.start()
             }
+        VolumeOverlay.get(this).apply {
+            onSetVolume = { v -> unit?.changeSettings { it.copy(volume = v, muted = false) } }
+            onToggleMute = { unit?.changeSettings { it.copy(muted = !it.muted) } }
+        }
         touchKeys =
             TouchKeys.get(this).also {
                 it.volumeHook = { step -> changeVolume(step) }
@@ -203,12 +208,14 @@ class LibreHuService : Service() {
                         .get(this)
                         .settings.value.toMcu
                 },
+                turnSignals = { prefs(this).getBoolean(PREF_TURN_GPIO, true) },
                 watchdogFrame = {
                     val w = ServiceConfig.watchdog(this)
                     if (w.disarm) w.frame ?: protocol.watchdogOff() else null
                 },
             )
         startToastShown = false
+        shownVolume = headUnit.settings.volume to headUnit.settings.muted
         val t = McuTransport(channel, headUnit, protocol)
         executor = exec
         unit = headUnit
@@ -247,7 +254,17 @@ class LibreHuService : Service() {
                 each { it.onVehicleFlags(flags) }
             }
 
-            override fun onSettingsChanged(settings: HeadUnitSettings) = each { it.onAudioChanged() }
+            override fun onSettingsChanged(settings: HeadUnitSettings) {
+                val old = shownVolume
+                shownVolume = settings.volume to settings.muted
+                // Volume panel (replaces ivi-services' volume bar): only for volume / mute changes.
+                if (old != null &&
+                    old != shownVolume
+                ) {
+                    VolumeOverlay.get(this@LibreHuService).show(settings.volume, Bd37534.MAX_VOLUME, settings.muted)
+                }
+                each { it.onAudioChanged() }
+            }
 
             override fun onMcuFrame(
                 frame: McuFrame,
@@ -284,6 +301,10 @@ class LibreHuService : Service() {
         }
 
     private var lastState = VehicleState()
+
+    /** Volume / mute last seen, to show the panel on changes only. */
+    @Volatile
+    private var shownVolume: Pair<Int, Boolean>? = null
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -494,6 +515,7 @@ class LibreHuService : Service() {
         const val ACTION_RESTART = "org.librehu.service.RESTART"
         const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
         const val PREF_FORCE = "force_with_ivi"
+        const val PREF_TURN_GPIO = "turn_gpio"
         const val IVI_PACKAGE = "com.jancar.services"
 
         fun start(

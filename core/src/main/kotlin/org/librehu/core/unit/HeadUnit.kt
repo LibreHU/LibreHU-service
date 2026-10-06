@@ -88,6 +88,9 @@ class HeadUnit(
      * [McuProtocol.watchdogOff].
      */
     private val watchdogFrame: () -> McuFrame? = { null },
+    /** Read the turn signal inputs (GPIO 7 / 6). Off: never reported (inputs not wired). */
+    private val turnSignals: () -> Boolean = { true },
+    private val now: () -> Long = { System.currentTimeMillis() },
 ) : McuTransport.Listener {
     interface Listener {
         fun onStateChanged(state: VehicleState) {}
@@ -343,10 +346,24 @@ class HeadUnit(
 
     // --- GPIO inputs ---------------------------------------------------------------------------------------------
 
+    private val leftFilter = TurnSignalFilter()
+    private val rightFilter = TurnSignalFilter()
+
+    /** A turn input stays low without blinking (not wired), for the diagnostics. */
+    val turnInputStuck: Boolean get() = leftFilter.stuck || rightFilter.stuck
+
+    private var wasStuck = false
+
     private fun pollGpio() {
         val reverse = board.reverseGpio?.let(::activeLow) ?: state.reverse
-        val left = board.turnLeftGpio?.let(::activeLow) ?: state.turnLeft
-        val right = board.turnRightGpio?.let(::activeLow) ?: state.turnRight
+        val t = now()
+        val read = turnSignals()
+        val left = if (read) board.turnLeftGpio?.let { leftFilter.update(activeLow(it), t) } ?: false else false
+        val right = if (read) board.turnRightGpio?.let { rightFilter.update(activeLow(it), t) } ?: false else false
+        if (turnInputStuck != wasStuck) {
+            wasStuck = turnInputStuck
+            log(if (wasStuck) "Turn signal input low without blinking (not wired?): ignored" else "Turn signal inputs blinking again")
+        }
         if (reverse != state.reverse) log("Reverse ${if (reverse) "on" else "off"}")
         update { it.copy(reverse = reverse, turnLeft = left, turnRight = right) }
     }

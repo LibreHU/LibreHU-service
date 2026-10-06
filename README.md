@@ -12,7 +12,7 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Module | Contenu | Où |
 |---|---|---|
 | Transport MCU | trame `JAC_V1` (`EE FA LEN CMD DATA CS`), ACK `C0`, renvoi 500 ms × 5 pour `1F 08 01 F1 80`, trames longues (CAN, LEN ≥ 0x80) | `core/.../mcu` |
-| Véhicule | ACC, frein à main, feux, version MCU (trames MCU) ; marche arrière et clignotants (GPIO 2 / 7 / 6, actifs bas) | `core/.../unit/HeadUnit.kt` |
+| Véhicule | ACC, frein à main, feux, version MCU (trames MCU) ; marche arrière et clignotants (GPIO 2 / 7 / 6, actifs bas ; clignotants filtrés comme ivi-services, entrée bloquée à 0 sans clignoter = non branchée, désactivables) | `core/.../unit/HeadUnit.kt` |
 | Alimentation | `1F 01` au démarrage ; ACC on : démute (MCU `08 00`, GPIO 166, puce), rétroéclairage GPIO 5 après 800 ms, ampli externe `44` ; ACC off : mute, rétroéclairage coupé, `44 00` | idem |
 | Horloge | heure Android réglée depuis la RTC de la MCU une fois par démarrage (si `SET_TIME`), puis heure Android envoyée à la MCU chaque minute ; heure GPS périodique (15 min à 12 h) ; chaque sens activable, synchro manuelle. Voir [docs/gps-time.md](docs/gps-time.md) | `HeadUnit.kt`, `time/TimeController.kt` |
 | Audio | pilote **ROHM BD37534** (I2C 6 @0x40) : séquence d'init de Jancar, entrée Android, volume (courbe 0..40), mute doux, graves/médiums/aigus, balance/fader 4 voies, loudness, caisson on/off + niveau ; réglages mémorisés | `core/.../audio/Bd37534.kt` |
@@ -26,6 +26,7 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | Affichage | mode sombre d'Android et luminosité selon les feux (liaison MCU, ou ivi-services tant qu'il tient la MCU) | `display/DisplayController.kt` |
 | Dalle tactile | calibration 5 points (matrice du pilote Goodix, essai 20 s avec retour automatique, réappliquée au démarrage) ; sans ivi-services, la calibration d'usine Jancar (`pointercal[-LxH].xml`) est réappliquée au démarrage (sinon tactile décalé, comme dans TWRP) ; touches de façade sérigraphiées hors écran = zones de la dalle, actions appui court / long / répétition (root). Voir [docs/touch.md](docs/touch.md) | `core/.../touch`, `app/.../touch` |
 | Watchdog MCU | PC_READY renvoyé jusqu'à la réponse du MCU (toutes les 4 s) et au réveil de veille (le MCU coupe le SoC après 10 s sans) ; trame de désarmement `1F 05` (réglable, fichier `librehu-service.conf`) ; notification au démarrage ; redémarrage via le MCU (`0E`, API 5) | `HeadUnit.kt`, `config/ServiceConfig.kt` |
+| Indicateur de volume | panneau façon Android par-dessus les applis à chaque changement du volume de la puce (vertical / horizontal, bord, taille, durée, réglage au toucher), couleurs du launcher ; remplace la barre de volume d'ivi-services | `overlay/VolumeOverlay.kt`, onglet Audio |
 | CAN | messages du boîtier (Hiworld `5A A5`) reconstitués, par commande avec octets modifiés, décodage Renault LNP002 connu, export texte | `core/.../can`, onglet CAN |
 | Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, GPS et heure, Dalle tactile, MCU, CAN, Diagnostic (trafic MCU, journal, envoi de trames) ; thème du launcher | `MainActivity`, `ui/` |
 

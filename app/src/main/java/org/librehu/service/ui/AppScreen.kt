@@ -267,6 +267,7 @@ fun AudioScreen(client: ServiceClient) {
             SliderRow(stringResource(R.string.volume), a.volume, 0..a.maxVolume) { v -> client.call { it.setVolume(v) } }
             SwitchRow(stringResource(R.string.mute), a.muted) { on -> client.call { it.setMuted(on) } }
         }
+        VolumeOverlayCard(a.volume, a.muted)
         Card(stringResource(R.string.audio_tone)) {
             SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }
             SliderRow(stringResource(R.string.middle), a.middle, 0..20, ::db) { v -> client.call { it.setTone(a.bass, v, a.treble) } }

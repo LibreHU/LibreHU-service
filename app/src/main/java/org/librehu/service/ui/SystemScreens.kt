@@ -112,6 +112,17 @@ fun McuScreen(actions: AppActions) {
             Actions { Pill(stringResource(R.string.restart), onClick = actions.restartLink) }
         }
         WatchdogCard()
+        Card(stringResource(R.string.vehicle_inputs)) {
+            var turn by remember { mutableStateOf(LibreHuService.prefs(context).getBoolean(LibreHuService.PREF_TURN_GPIO, true)) }
+            SwitchRow(stringResource(R.string.turn_gpio), turn, stringResource(R.string.turn_gpio_hint)) { on ->
+                turn = on
+                LibreHuService
+                    .prefs(context)
+                    .edit()
+                    .putBoolean(LibreHuService.PREF_TURN_GPIO, on)
+                    .apply()
+            }
+        }
         Card(stringResource(R.string.mcu_profiles)) {
             Hint(stringResource(R.string.mcu_profiles_hint))
             for (p in profiles) {

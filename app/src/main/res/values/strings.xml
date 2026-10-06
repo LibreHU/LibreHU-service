@@ -308,4 +308,29 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_by_command">By command</string>
     <string name="can_none">Nothing received yet (box connected? MCU link running?)</string>
     <string name="can_stream">Last messages</string>
+    <string name="vehicle_inputs">Vehicle inputs</string>
+    <string name="turn_gpio">Turn signals (GPIO 7 left, 6 right)</string>
+    <string name="turn_gpio_hint">Only when the turn signal wires of the harness are connected (360° camera). Filtered like ivi-services (blinking = on, off after 3 s); an input low for 15 s without blinking is treated as not wired.</string>
+    <string name="vol_overlay">Volume panel</string>
+    <string name="vol_overlay_hint">Shown over the apps when the volume of the audio chip changes (launcher, touch keys, apps), in the colours of LibreHU Launcher. Replaces the volume bar of ivi-services.</string>
+    <string name="vol_overlay_enable">Show the volume panel</string>
+    <string name="vol_overlay_permission">Needs \"Display over other apps\" (or: adb shell appops set org.librehu.service SYSTEM_ALERT_WINDOW allow)</string>
+    <string name="vol_overlay_allow">Allow</string>
+    <string name="vol_overlay_style">Style</string>
+    <string name="vol_style_vertical">Vertical (Android)</string>
+    <string name="vol_style_horizontal">Horizontal bar</string>
+    <string name="vol_overlay_edge">Position</string>
+    <string name="vol_edge_right">Right</string>
+    <string name="vol_edge_left">Left</string>
+    <string name="vol_edge_top">Top</string>
+    <string name="vol_edge_bottom">Bottom</string>
+    <string name="vol_overlay_size">Size</string>
+    <string name="vol_size_small">Small</string>
+    <string name="vol_size_normal">Normal</string>
+    <string name="vol_size_large">Large</string>
+    <string name="vol_overlay_timeout">Hides after</string>
+    <string name="vol_overlay_number">Volume number</string>
+    <string name="vol_overlay_touch">Adjust by touch</string>
+    <string name="vol_overlay_touch_hint">Slide on the bar to set the volume, touch the speaker to mute</string>
+    <string name="vol_overlay_preview">Preview</string>
 </resources>
