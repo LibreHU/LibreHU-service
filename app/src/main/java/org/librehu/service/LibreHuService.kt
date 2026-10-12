@@ -145,6 +145,11 @@ class LibreHuService : Service() {
         CanMonitor.frameListener = wheelKeys::onFrame
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
+        // Host name of the car (not kept by Android across reboots), as root.
+        Thread({
+            org.librehu.service.car.CarName
+                .applySaved(this)
+        }, "car-name").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
@@ -295,11 +300,18 @@ class LibreHuService : Service() {
             headUnit.simulate(f)
         }
         headUnit.start(t::send)
+        // Front panel LEDs: Jancar MCU only (0F 04).
+        org.librehu.service.car.FrontLed
+            .get(this)
+            .sender = if (jancar) headUnit::sendToMcu else null
         ServiceState.dsp = dsp
         setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
     }
 
     private fun stopHardware() {
+        org.librehu.service.car.FrontLed
+            .get(this)
+            .sender = null
         ServiceState.simulator = null
         ServiceState.dsp = null
         transport?.close()
@@ -328,6 +340,11 @@ class LibreHuService : Service() {
                     .get(this@LibreHuService)
                     .onAcc(state.powered)
                 display.onHeadlights(state.headlight)
+                main.post {
+                    org.librehu.service.car.ReverseCamera
+                        .get(this@LibreHuService)
+                        .onReverse(state.reverse)
+                }
                 val flags = LibreHu.flagsOf(state)
                 broadcastState(state, flags)
                 each { it.onVehicleFlags(flags) }
@@ -365,6 +382,9 @@ class LibreHuService : Service() {
 
             override fun onHandshake(watchdogDisarmed: Boolean) {
                 log(if (watchdogDisarmed) "MCU handshake, watchdog disarmed" else "MCU handshake")
+                org.librehu.service.car.FrontLed
+                    .get(this@LibreHuService)
+                    .apply()
                 if (startToastShown || !ServiceConfig.watchdog(this@LibreHuService).toast) return
                 startToastShown = true
                 main.post {

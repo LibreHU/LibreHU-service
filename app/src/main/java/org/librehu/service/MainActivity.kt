@@ -27,9 +27,8 @@ import org.librehu.service.ui.importProfile
 import org.librehu.service.ui.profileFileName
 
 /**
- * LibreHU settings, Android Auto style: one tab per function (audio, Bluetooth, OBD, display, GPS / clock, touch
- * panel, MCU protocol) plus
- * diagnostics. Talks to the service through its public API.
+ * LibreHU settings, Android Auto style: a rail of sections (home, vehicle, audio, Bluetooth, display, system, advanced),
+ * each with its pages. Talks to the service through its public API.
  */
 class MainActivity : ComponentActivity() {
     private lateinit var client: ServiceClient
@@ -119,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     logLauncher.launch("librehu-$stamp.log")
                 },
                 requestAudioPermission = { permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO)) },
+                openNotificationAccess = { openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS") },
             )
         setContent {
             CarTheme {

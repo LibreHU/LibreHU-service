@@ -528,4 +528,78 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="adiag_registers">BD37534 registers (last written)</string>
     <string name="adiag_no_chip">No audio chip driven (link stopped or other board).</string>
     <string name="flag_powered">Powered (screen, sound)</string>
+    <!-- Sections (rail) -->
+    <string name="section_vehicle">Vehicle</string>
+    <string name="section_display">Screen</string>
+    <string name="section_advanced">Advanced</string>
+    <string name="tab_vehicle">Vehicle</string>
+    <string name="tab_lights">Lights</string>
+    <string name="tab_system">System</string>
+
+    <!-- Car name -->
+    <string name="car_name_title">Car name</string>
+    <string name="car_name_hint">Shown to phones over Bluetooth, on the network (host name) and as the Wi-Fi hotspot name.</string>
+    <string name="car_name_label">Name</string>
+    <string name="car_name_host">Host name: %1$s</string>
+    <string name="car_name_hotspot">Rename the Wi-Fi hotspot</string>
+    <string name="car_name_hotspot_hint">Root: taken into account at the next boot.</string>
+    <string name="car_name_apply">Rename</string>
+    <string name="car_name_bt">Bluetooth name</string>
+    <string name="car_name_device">Android device name</string>
+    <string name="car_name_hostname">Host name</string>
+    <string name="car_name_ap_done">Hotspot renamed</string>
+    <string name="car_name_ap_reboot">Hotspot renamed at the next boot</string>
+    <string name="car_name_ap_failed">Hotspot not renamed (root needed)</string>
+    <string name="car_name_root">The device name and the host name need root.</string>
+
+    <!-- Reverse camera -->
+    <string name="reverse_title">Reverse camera</string>
+    <string name="reverse_engaged">Reverse gear engaged</string>
+    <string name="reverse_released">Reverse gear released</string>
+    <string name="reverse_enable">Open the camera in reverse</string>
+    <string name="reverse_enable_hint">The app below comes up when the reverse gear is engaged.</string>
+    <string name="reverse_app">Camera app</string>
+    <string name="reverse_app_auto">Automatic: %1$s</string>
+    <string name="reverse_app_auto_short">Automatic (stock rear view app)</string>
+    <string name="reverse_app_none">None found: choose an app</string>
+    <string name="reverse_exit">When the reverse gear is released</string>
+    <string name="reverse_exit_close">Close the app</string>
+    <string name="reverse_exit_home">Home screen</string>
+    <string name="reverse_exit_nothing">Stay</string>
+    <string name="reverse_delay">Delay before opening</string>
+    <string name="reverse_hint">\"Close\" needs root (otherwise home screen). The stock rear view apps (hd2cam, AVM 360) may need ivi-services; a USB camera app works without it. Check the reverse input in the list below (invert it if needed).</string>
+    <string name="reverse_test">Test</string>
+
+    <!-- Front panel LEDs -->
+    <string name="led_offline">Needs the Jancar MCU link running.</string>
+    <string name="led_title">Button LEDs</string>
+    <string name="led_managed">Set the colour from LibreHU</string>
+    <string name="led_managed_hint">Off: the MCU keeps its own setting.</string>
+    <string name="led_mode_manual">Fixed colour</string>
+    <string name="led_mode_auto">Colour cycle</string>
+    <string name="led_mode_semi">Cycle with headlights</string>
+    <string name="led_mode_manual_hint">Lit with the headlights only (MCU firmware).</string>
+    <string name="led_mode_auto_hint">Always lit, 7 colours one second each.</string>
+    <string name="led_mode_semi_hint">Colour cycle, lit with the headlights only.</string>
+    <string name="led_blink_title">Notifications</string>
+    <string name="led_blink">Blink on notifications</string>
+    <string name="led_blink_hint">The MCU lights the LEDs with the headlights only: no blink in daytime.</string>
+    <string name="led_blink_count">Blinks</string>
+    <string name="led_access_ok">Notification access granted</string>
+    <string name="led_access_missing">Notification access needed</string>
+    <string name="led_access_open">Android settings</string>
+    <string name="led_access_root">Grant as root</string>
+    <string name="led_blink_test">Test</string>
+    <string name="led_listener_label">LibreHU button LEDs</string>
+
+    <!-- Root -->
+    <string name="root_title">Root</string>
+    <string name="root_checking">Checking…</string>
+    <string name="root_granted">Granted (%1$s)</string>
+    <string name="root_denied">%1$s installed, root refused to LibreHU service</string>
+    <string name="root_none">No root found (Magisk, KernelSU, KernelSU Next, APatch, SuperSU)</string>
+    <string name="root_hint_ksu">%1$s does not ask: allow LibreHU service in its Superuser list, then check again.</string>
+    <string name="root_hint_prompt">Accept the %1$s prompt, or allow LibreHU service in its list, then check again.</string>
+    <string name="root_uses">Used for the touch panel, the boot apps, the car name, closing the camera app and the notification access.</string>
+    <string name="root_recheck">Check again</string>
 </resources>

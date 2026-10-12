@@ -54,6 +54,18 @@ object Mcu {
     /** Remote (REM) output of an external amplifier (PB3). */
     fun externalAmp(on: Boolean) = McuFrame.of(CMD_EXT_AMP, if (on) 1 else 0)
 
+    /**
+     * Front panel LEDs (`0F 04`, mcu_firmware.md §9): colour R/G/B 0..99 and mode 1 auto (colour cycle, always on),
+     * 2 manual (fixed colour, on with the headlights / ILL only), 3 semi-auto (cycle with ILL). [type] 1 = colour panel.
+     */
+    fun frontLed(
+        r: Int,
+        g: Int,
+        b: Int,
+        mode: Int,
+        type: Int = 1,
+    ) = McuFrame.of(CMD_CONFIG, 4, type, r.coerceIn(0, 99), g.coerceIn(0, 99), b.coerceIn(0, 99), mode)
+
     /** Radio antenna power (PF6). */
     fun antenna(on: Boolean) = McuFrame.of(CMD_ANTENNA, if (on) 1 else 0)
 

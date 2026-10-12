@@ -6,21 +6,76 @@ import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
 /**
- * Root commands (`su`, Magisk) for what Android does not give apps: raw touch events (`/dev/input`, group input),
- * the touch driver's calibration node and Jancar's config partition. Every call first tries without root.
+ * Root commands (`su` of Magisk, KernelSU, KernelSU Next, APatch, SuperSU) for what Android does not give apps: raw
+ * touch events (`/dev/input`, group input), the touch driver's calibration node and Jancar's config partition. Every
+ * call first tries without root.
  */
 object RootShell {
     private const val TAG = "LibreHU-Root"
 
+    /** A refusal is asked again after this delay: KernelSU grants apps from its manager, without a prompt. */
+    private const val RETRY_MS = 30_000L
+
     @Volatile
     private var available: Boolean? = null
 
-    /** True when `su` grants root (asked once; Magisk shows its prompt the first time). */
+    @Volatile
+    private var checkedAt = 0L
+
+    /**
+     * True when `su` grants root. Magisk / SuperSU show their prompt the first time; KernelSU and KernelSU Next only
+     * give `su` to the apps allowed in their manager (Superuser tab), so a refusal is checked again later.
+     */
     fun isAvailable(): Boolean {
-        available?.let { return it }
+        available?.let { if (it || System.currentTimeMillis() - checkedAt < RETRY_MS) return it }
+        return recheck()
+    }
+
+    /** Asks `su` again now (after allowing the app in the root manager). */
+    fun recheck(): Boolean {
         val ok = run("id").let { it != null && it.contains("uid=0") }
         available = ok
+        checkedAt = System.currentTimeMillis()
         return ok
+    }
+
+    /** Root managers by package name. */
+    private val MANAGERS =
+        listOf(
+            "com.rifsxd.ksunext" to "KernelSU Next",
+            "me.weishu.kernelsu" to "KernelSU",
+            "com.topjohnwu.magisk" to "Magisk",
+            "io.github.vvb2060.magisk" to "Magisk Alpha",
+            "io.github.huskydg.magisk" to "Kitsune Mask",
+            "me.bmax.apatch" to "APatch",
+            "eu.chainfire.supersu" to "SuperSU",
+            "com.koushikdutta.superuser" to "Superuser",
+        )
+
+    /** Files left by root solutions whose manager may be hidden or renamed. */
+    private val MARKERS =
+        listOf(
+            "/data/adb/ksud" to "KernelSU",
+            "/data/adb/ksu" to "KernelSU",
+            "/data/adb/magisk" to "Magisk",
+            "/data/adb/ap" to "APatch",
+            "/sbin/.magisk" to "Magisk",
+            "/system/xbin/daemonsu" to "SuperSU",
+        )
+
+    /** Name of the installed root solution (manager app or marker files), or null when none is found. */
+    fun manager(context: android.content.Context): String? {
+        val pm = context.packageManager
+        for ((pkg, name) in MANAGERS) {
+            try {
+                pm.getPackageInfo(pkg, 0)
+                return name
+            } catch (_: Exception) {
+            }
+        }
+        for ((path, name) in MARKERS) if (File(path).exists()) return name
+        val su = listOf("/system/bin/su", "/system/xbin/su", "/sbin/su", "/su/bin/su", "/vendor/bin/su")
+        return if (su.any { File(it).exists() }) "su" else null
     }
 
     /** Runs [command] as root; returns its output, or null on failure / timeout. */

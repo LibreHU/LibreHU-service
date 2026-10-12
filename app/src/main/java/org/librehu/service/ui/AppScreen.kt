@@ -2,6 +2,7 @@ package org.librehu.service.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,8 +30,13 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,22 +60,46 @@ import org.librehu.service.obd.ObdLabels
 import org.librehu.service.obd.ObdManager
 import org.librehu.service.overlay.OverlayKind
 
+/** A settings page; [Section] groups them in the rail. */
 enum class Tab(
     val icon: ImageVector,
     val label: Int,
 ) {
     HOME(Icons.Default.Home, R.string.tab_home),
-    AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
-    AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
-    BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
-    OBD(Icons.Default.DirectionsCar, R.string.tab_obd),
-    DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
-    GPS(Icons.Default.GpsFixed, R.string.tab_gps),
-    TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
-    MCU(Icons.Default.Memory, R.string.tab_mcu),
+    VEHICLE(Icons.Default.DirectionsCar, R.string.tab_vehicle),
+    OBD(Icons.Default.Speed, R.string.tab_obd),
     CAN(Icons.Default.Cable, R.string.tab_can),
+    AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
+    BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
+    DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
+    TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
+    LIGHTS(Icons.Default.Lightbulb, R.string.tab_lights),
+    SYSTEM(Icons.Default.PowerSettingsNew, R.string.tab_system),
+    GPS(Icons.Default.GpsFixed, R.string.tab_gps),
+    MCU(Icons.Default.Memory, R.string.tab_mcu),
     MCU_TOOLS(Icons.Default.Build, R.string.tab_mcu_tools),
+    AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
+}
+
+/** Entries of the rail, Android Auto style; a section with several pages shows them as pills on top. */
+enum class Section(
+    val icon: ImageVector,
+    val label: Int,
+    val tabs: List<Tab>,
+) {
+    HOME(Icons.Default.Home, R.string.tab_home, listOf(Tab.HOME)),
+    VEHICLE(Icons.Default.DirectionsCar, R.string.section_vehicle, listOf(Tab.VEHICLE, Tab.OBD, Tab.CAN)),
+    AUDIO(Icons.Default.Equalizer, R.string.tab_audio, listOf(Tab.AUDIO)),
+    BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
+    DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
+    SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS)),
+    ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.DIAG)),
+    ;
+
+    companion object {
+        fun of(tab: Tab) = entries.first { tab in it.tabs }
+    }
 }
 
 /** Callbacks into the activity (pickers, Android screens). */
@@ -86,9 +116,10 @@ class AppActions(
     val importCanVehicle: () -> Unit,
     val exportCanVehicle: (String) -> Unit,
     val requestAudioPermission: () -> Unit = {},
+    val openNotificationAccess: () -> Unit = {},
 )
 
-/** Android Auto-like layout: icon rail on the left, the selected settings page on the right. */
+/** Android Auto-like layout: sections on the left, the selected page (and its sibling pages) on the right. */
 @Composable
 fun AppScreen(
     tab: Tab,
@@ -96,6 +127,7 @@ fun AppScreen(
     client: ServiceClient,
     actions: AppActions,
 ) {
+    val section = Section.of(tab)
     Row(Modifier.fillMaxSize().background(CarColors.Background)) {
         Column(
             modifier =
@@ -107,22 +139,35 @@ fun AppScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            for (t in Tab.entries) RailItem(t, t == tab) { onTab(t) }
+            for (s in Section.entries) RailItem(s.icon, s.label, s == section) { if (s != section) onTab(s.tabs.first()) }
         }
-        Box(Modifier.weight(1f).fillMaxHeight().padding(top = 12.dp, end = 12.dp, bottom = 12.dp)) {
-            when (tab) {
-                Tab.HOME -> HomeScreen(client, onTab)
-                Tab.AUDIO -> AudioScreen(client)
-                Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
-                Tab.BLUETOOTH -> BluetoothScreen(client, actions)
-                Tab.OBD -> ObdScreen(client)
-                Tab.DISPLAY -> DisplayScreen(actions)
-                Tab.GPS -> GpsTimeScreen(actions)
-                Tab.TOUCH -> TouchScreen(actions)
-                Tab.MCU -> McuScreen(actions)
-                Tab.CAN -> CanScreen(actions)
-                Tab.MCU_TOOLS -> McuToolsScreen(client)
-                Tab.DIAG -> DiagScreen(client, actions)
+        Column(Modifier.weight(1f).fillMaxHeight().padding(top = 12.dp, end = 12.dp, bottom = 12.dp)) {
+            if (section.tabs.size > 1) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    for (t in section.tabs) Pill(stringResource(t.label), selected = t == tab, icon = t.icon) { onTab(t) }
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (tab) {
+                    Tab.HOME -> HomeScreen(client, onTab)
+                    Tab.VEHICLE -> VehicleScreen()
+                    Tab.OBD -> ObdScreen(client)
+                    Tab.CAN -> CanScreen(actions)
+                    Tab.AUDIO -> AudioScreen(client)
+                    Tab.BLUETOOTH -> BluetoothScreen(client, actions)
+                    Tab.DISPLAY -> DisplayScreen(actions)
+                    Tab.TOUCH -> TouchScreen(actions)
+                    Tab.LIGHTS -> LightsScreen(actions)
+                    Tab.SYSTEM -> SystemScreen()
+                    Tab.GPS -> GpsTimeScreen(actions)
+                    Tab.MCU -> McuScreen(actions)
+                    Tab.MCU_TOOLS -> McuToolsScreen(client)
+                    Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
+                    Tab.DIAG -> DiagScreen(client, actions)
+                }
             }
         }
     }
@@ -130,7 +175,8 @@ fun AppScreen(
 
 @Composable
 private fun RailItem(
-    tab: Tab,
+    icon: ImageVector,
+    label: Int,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -150,10 +196,10 @@ private fun RailItem(
                 .background(if (selected) CarColors.Accent else CarColors.Background)
                 .padding(horizontal = 14.dp, vertical = 6.dp),
         ) {
-            Icon(tab.icon, null, tint = if (selected) CarColors.OnAccent else CarColors.Text, modifier = Modifier.size(28.dp))
+            Icon(icon, null, tint = if (selected) CarColors.OnAccent else CarColors.Text, modifier = Modifier.size(28.dp))
         }
         Text(
-            stringResource(tab.label),
+            stringResource(label),
             color = if (selected) CarColors.Text else CarColors.TextDim,
             fontSize = 13.sp,
             textAlign = TextAlign.Center,

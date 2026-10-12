@@ -528,4 +528,78 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="adiag_registers">Registres du BD37534 (dernières valeurs écrites)</string>
     <string name="adiag_no_chip">Aucune puce audio pilotée (liaison arrêtée ou autre carte).</string>
     <string name="flag_powered">Alimenté (écran, son)</string>
+    <!-- Rubriques (barre latérale) -->
+    <string name="section_vehicle">Véhicule</string>
+    <string name="section_display">Écran</string>
+    <string name="section_advanced">Avancé</string>
+    <string name="tab_vehicle">Véhicule</string>
+    <string name="tab_lights">Lumières</string>
+    <string name="tab_system">Système</string>
+
+    <!-- Nom de la voiture -->
+    <string name="car_name_title">Nom de la voiture</string>
+    <string name="car_name_hint">Visible des téléphones en Bluetooth, sur le réseau (nom d\'hôte) et comme nom du point d\'accès Wi-Fi.</string>
+    <string name="car_name_label">Nom</string>
+    <string name="car_name_host">Nom d\'hôte : %1$s</string>
+    <string name="car_name_hotspot">Renommer le point d\'accès Wi-Fi</string>
+    <string name="car_name_hotspot_hint">Root : pris en compte au prochain démarrage.</string>
+    <string name="car_name_apply">Renommer</string>
+    <string name="car_name_bt">Nom Bluetooth</string>
+    <string name="car_name_device">Nom de l\'appareil Android</string>
+    <string name="car_name_hostname">Nom d\'hôte</string>
+    <string name="car_name_ap_done">Point d\'accès renommé</string>
+    <string name="car_name_ap_reboot">Point d\'accès renommé au prochain démarrage</string>
+    <string name="car_name_ap_failed">Point d\'accès non renommé (root nécessaire)</string>
+    <string name="car_name_root">Le nom de l\'appareil et le nom d\'hôte nécessitent le root.</string>
+
+    <!-- Caméra de recul -->
+    <string name="reverse_title">Caméra de recul</string>
+    <string name="reverse_engaged">Marche arrière engagée</string>
+    <string name="reverse_released">Marche arrière désengagée</string>
+    <string name="reverse_enable">Ouvrir la caméra en marche arrière</string>
+    <string name="reverse_enable_hint">L\'appli choisie s\'affiche quand la marche arrière est engagée.</string>
+    <string name="reverse_app">Appli caméra</string>
+    <string name="reverse_app_auto">Automatique : %1$s</string>
+    <string name="reverse_app_auto_short">Automatique (appli de recul d\'origine)</string>
+    <string name="reverse_app_none">Aucune trouvée : choisir une appli</string>
+    <string name="reverse_exit">Au retrait de la marche arrière</string>
+    <string name="reverse_exit_close">Fermer l\'appli</string>
+    <string name="reverse_exit_home">Écran d\'accueil</string>
+    <string name="reverse_exit_nothing">Rester</string>
+    <string name="reverse_delay">Délai avant ouverture</string>
+    <string name="reverse_hint">« Fermer » nécessite le root (sinon écran d\'accueil). Les applis de recul d\'origine (hd2cam, AVM 360) peuvent dépendre d\'ivi-services ; une appli de caméra USB fonctionne sans. Vérifier l\'entrée marche arrière dans la liste ci-dessous (l\'inverser si besoin).</string>
+    <string name="reverse_test">Tester</string>
+
+    <!-- LED de façade -->
+    <string name="led_offline">Nécessite la liaison MCU Jancar active.</string>
+    <string name="led_title">LED des boutons</string>
+    <string name="led_managed">Régler la couleur depuis LibreHU</string>
+    <string name="led_managed_hint">Désactivé : la MCU garde son propre réglage.</string>
+    <string name="led_mode_manual">Couleur fixe</string>
+    <string name="led_mode_auto">Cycle de couleurs</string>
+    <string name="led_mode_semi">Cycle avec les feux</string>
+    <string name="led_mode_manual_hint">Allumées avec les feux seulement (firmware MCU).</string>
+    <string name="led_mode_auto_hint">Toujours allumées, 7 couleurs d\'une seconde chacune.</string>
+    <string name="led_mode_semi_hint">Cycle de couleurs, allumées avec les feux seulement.</string>
+    <string name="led_blink_title">Notifications</string>
+    <string name="led_blink">Clignoter à chaque notification</string>
+    <string name="led_blink_hint">La MCU n\'allume les LED qu\'avec les feux : pas de clignotement visible de jour.</string>
+    <string name="led_blink_count">Clignotements</string>
+    <string name="led_access_ok">Accès aux notifications accordé</string>
+    <string name="led_access_missing">Accès aux notifications nécessaire</string>
+    <string name="led_access_open">Paramètres Android</string>
+    <string name="led_access_root">Accorder en root</string>
+    <string name="led_blink_test">Tester</string>
+    <string name="led_listener_label">LED des boutons LibreHU</string>
+
+    <!-- Root -->
+    <string name="root_title">Root</string>
+    <string name="root_checking">Vérification…</string>
+    <string name="root_granted">Accordé (%1$s)</string>
+    <string name="root_denied">%1$s installé, root refusé à LibreHU service</string>
+    <string name="root_none">Aucun root trouvé (Magisk, KernelSU, KernelSU Next, APatch, SuperSU)</string>
+    <string name="root_hint_ksu">%1$s ne demande rien : autoriser LibreHU service dans sa liste Superutilisateur, puis vérifier à nouveau.</string>
+    <string name="root_hint_prompt">Accepter la demande de %1$s, ou autoriser LibreHU service dans sa liste, puis vérifier à nouveau.</string>
+    <string name="root_uses">Utilisé pour la dalle tactile, les applis au démarrage, le nom de la voiture, la fermeture de l\'appli caméra et l\'accès aux notifications.</string>
+    <string name="root_recheck">Vérifier à nouveau</string>
 </resources>

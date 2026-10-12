@@ -26,7 +26,6 @@ import org.librehu.core.mcu.Mcu
 import org.librehu.core.mcu.McuFrame
 import org.librehu.core.mcu.McuProfiles
 import org.librehu.core.mcu.ProfileException
-import org.librehu.core.unit.VehicleInput
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
@@ -121,37 +120,6 @@ fun McuScreen(actions: AppActions) {
                 actions.restartLink()
             }
             Actions { Pill(stringResource(R.string.restart), onClick = actions.restartLink) }
-        }
-        StandbyCard()
-        WatchdogCard()
-        BootAppsCard()
-        Card(stringResource(R.string.vehicle_inputs)) {
-            var inverted by remember { mutableStateOf(LibreHuService.invertedInputs(context)) }
-            Hint(stringResource(R.string.invert_hint))
-            for (
-            (input, label) in
-            listOf(
-                VehicleInput.REVERSE to R.string.invert_reverse,
-                VehicleInput.HANDBRAKE to R.string.invert_handbrake,
-                VehicleInput.HEADLIGHT to R.string.invert_headlight,
-                VehicleInput.TURN_LEFT to R.string.invert_turn_left,
-                VehicleInput.TURN_RIGHT to R.string.invert_turn_right,
-            )
-            ) {
-                SwitchRow(stringResource(label), input in inverted) { on ->
-                    LibreHuService.setInverted(context, input, on)
-                    inverted = LibreHuService.invertedInputs(context)
-                }
-            }
-            var turn by remember { mutableStateOf(LibreHuService.prefs(context).getBoolean(LibreHuService.PREF_TURN_GPIO, true)) }
-            SwitchRow(stringResource(R.string.turn_gpio), turn, stringResource(R.string.turn_gpio_hint)) { on ->
-                turn = on
-                LibreHuService
-                    .prefs(context)
-                    .edit()
-                    .putBoolean(LibreHuService.PREF_TURN_GPIO, on)
-                    .apply()
-            }
         }
         Card(stringResource(R.string.mcu_profiles)) {
             Hint(stringResource(R.string.mcu_profiles_hint))
@@ -343,7 +311,7 @@ fun DiagScreen(
 
 /** MCU watchdog: disarm frame after each PC_READY, toast at start; the config file can impose both. */
 @Composable
-private fun WatchdogCard() {
+internal fun WatchdogCard() {
     val context = LocalContext.current
     var w by remember { mutableStateOf(ServiceConfig.watchdog(context)) }
     var confirmReset by remember { mutableStateOf(false) }
@@ -407,7 +375,7 @@ private fun WatchdogCard() {
 
 /** Apps using the service's API: LibreHU ones allowed automatically, others allowed or denied here. */
 @Composable
-private fun AccessCard() {
+internal fun AccessCard() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val access =
         org.librehu.service.ServiceAccess
@@ -451,7 +419,7 @@ private fun AccessCard() {
 
 /** Engine-start delay and what happens once the ignition is off (standby, power off). */
 @Composable
-private fun StandbyCard() {
+internal fun StandbyCard() {
     val standby =
         org.librehu.service.power.Standby
             .get(LocalContext.current)
@@ -504,7 +472,7 @@ private fun StandbyCard() {
 
 /** LibreHU apps started at boot (their boot receivers), each can be turned off (root). */
 @Composable
-private fun BootAppsCard() {
+internal fun BootAppsCard() {
     val context = LocalContext.current
     var apps by remember {
         mutableStateOf(

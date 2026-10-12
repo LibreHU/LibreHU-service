@@ -59,10 +59,30 @@
         android:name="android.hardware.usb.host"
         android:required="false" />
 
+    <!-- Hotspot name of the car (car/CarName): read the hotspot settings; the change itself goes through root. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
     <queries>
         <package android:name="com.jancar.services" />
         <package android:name="com.jancar.btservice" />
         <package android:name="com.android.bluetooth" />
+        <!-- Root managers (root/RootShell). -->
+        <package android:name="com.rifsxd.ksunext" />
+        <package android:name="me.weishu.kernelsu" />
+        <package android:name="com.topjohnwu.magisk" />
+        <package android:name="io.github.vvb2060.magisk" />
+        <package android:name="io.github.huskydg.magisk" />
+        <package android:name="me.bmax.apatch" />
+        <package android:name="eu.chainfire.supersu" />
+        <package android:name="com.koushikdutta.superuser" />
+        <!-- Rear camera apps (car/ReverseCamera) and the list of apps to choose from. -->
+        <package android:name="com.jancar.hd2cam" />
+        <package android:name="com.baony.avm360" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application
@@ -122,6 +142,17 @@
         <receiver
             android:name=".AccessReceiver"
             android:exported="false" />
+
+        <!-- Front panel LEDs blinking on notifications (car/FrontLed). -->
+        <service
+            android:name=".car.NotificationBlinkService"
+            android:exported="true"
+            android:label="@string/led_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <!-- OBD-II values (ELM327) for LibreHU Launcher's widget slots or any home screen. -->
         <receiver
