@@ -30,13 +30,17 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 | CAN | messages du boîtier (Hiworld `5A A5`) reconstitués, par commande avec octets modifiés, export texte ; **profils de voiture** sélectionnables / importables (JSON, syntaxe des signaux de CliOS) : Renault Clio 3 LNP002 intégré, valeurs décodées. Voir [docs/can-vehicles.md](docs/can-vehicles.md) | `core/.../can`, `can/CanVehicleStore.kt`, onglet CAN |
 | Outils MCU | repris de [MCU-tools-app](https://github.com/LibreHU/MCU-tools-app) : état du MCU (version, ACC, frein, feux, mute, antenne, date / heure, dernière touche, compteurs), commandes (mute, antenne, REM, PWM, LED de façade, seuils batterie, heure, apprentissage des touches, vitesse du boîtier CAN), simulation de trames MCU dans le vrai décodeur (rien n'est écrit sur le port) ; trafic décodé, `80` bloquée, `01` / `0E` / `F1` confirmées, export du journal, board id et puce audio | `core/.../mcu/JacDebug.kt`, `ui/McuToolsScreen.kt` |
 | Touches du volant (CAN) | touches relayées par le boîtier Hiworld (`0x11`) transformées en actions (volume, piste, sourdine, appli…) comme les touches de façade ; actives par défaut quand ivi-services est désactivé ; code de la dernière touche affiché pour trouver les boutons inconnus. Voir [docs/can-vehicles.md](docs/can-vehicles.md#touches-du-volant) | `core/.../can/HiworldWheelKeys.kt`, `can/CanWheelKeys.kt`, onglet CAN |
-| Contrôle d'accès | façon SuperSU : applis `org.librehu.*` et système autorisées d'office, les autres sur notification Autoriser / Refuser ; liste dans Diagnostic → Accès au service | `ServiceAccess.kt` |
+| Contrôle d'accès | façon SuperSU : applis `org.librehu.*` et système autorisées d'office, les autres sur notification Autoriser / Refuser ; liste dans Avancé → Diagnostic → Accès au service | `ServiceAccess.kt` |
 | Arrêt sécurisé | sourdine, pause des lecteurs, écriture des données (`sync`), écran noir « vous pouvez couper le contact » ; le SoC reste allumé, « Reprendre » relance tout (bouton dans la carte Watchdog, intent `org.librehu.service.SAFE_SHUTDOWN`) | `power/SafeShutdownActivity.kt`, `LibreHuService.kt` |
 | Diagnostic audio | onglet Diag audio : vu-mètres (sortie Android crête / RMS par le `Visualizer`, haut-parleurs et caisson estimés : la puce ne se relit pas), test son par haut-parleur (1 kHz, 50 Hz caisson), volumes des flux Android, lecteurs actifs, registres écrits dans le BD37534 | `ui/AudioDiagScreen.kt` |
 | GPS | réinitialisation (démarrage à froid : `delete_aiding_data`, injection heure / XTRA) et redémarrage du démon GNSS MediaTek (root) ; alerte « satellites à 0 dB = aucun signal » | `time/TimeController.kt`, onglet GPS et heure |
-| Contact coupé, veille | délai avant coupure réglable (0..10 s : le + après-contact chute au démarrage du moteur, écran / son / ampli gardés) ; puis au choix écran éteint seulement, **veille** (médias en pause, accueil, mode avion et GPS coupés, `sync`, minuterie MCU `F1` par tranches de 7 h jusqu'à 14 jours, Android en veille ; réveil : PC_READY, écran, radios, reprise de la lecture) ou **extinction** (`F1 0`). Voir [docs/power.md](docs/power.md) | `core/.../unit/HeadUnit.kt`, `power/Standby.kt`, onglet MCU |
-| Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; onglet MCU, carte Démarrage | `power/BootApps.kt` |
-| Interface | réglages façon Android Auto : rail d'onglets Accueil, Audio, Bluetooth, OBD, Affichage, GPS et heure, Dalle tactile, MCU, CAN, Outils MCU, Diagnostic (trafic MCU décodé, journal, envoi de trames, export) ; thème du launcher | `MainActivity`, `ui/` |
+| Nom de la voiture | un nom pour le Bluetooth (ce que voit le téléphone), le nom d'appareil Android et le nom d'hôte réseau (root), et le point d'accès Wi-Fi (root, `softap.conf`, pris en compte au prochain démarrage) ; Véhicule → Nom de la voiture | `car/CarName.kt` |
+| Caméra de recul | à la marche arrière (MCU / GPIO 2, après l'option « inverser »), ouverture de l'appli choisie (automatique : `com.jancar.hd2cam`, `com.baony.avm360`) avec délai réglable ; au retrait : fermeture (root, sinon accueil), accueil ou rien ; bouton de test | `car/ReverseCamera.kt`, Véhicule |
+| LED de façade | couleur et mode des LED des boutons par la MCU (`0F 04` : fixe, cycle, cycle avec les feux) et **clignotement à chaque nouvelle notification** (accès aux notifications, accordable en root) ; la MCU n'allume les LED qu'avec les feux | `car/FrontLed.kt`, `car/NotificationBlinkService.kt`, Écran → Lumières |
+| Root | état du root et gestionnaire détecté (Magisk, KernelSU, **KernelSU Next**, APatch, SuperSU) ; un refus est revérifié après 30 s (KernelSU autorise depuis son gestionnaire, sans fenêtre) ; Système → Root | `root/RootShell.kt` |
+| Contact coupé, veille | délai avant coupure réglable (0..10 s : le + après-contact chute au démarrage du moteur, écran / son / ampli gardés) ; puis au choix écran éteint seulement, **veille** (médias en pause, accueil, mode avion et GPS coupés, `sync`, minuterie MCU `F1` par tranches de 7 h jusqu'à 14 jours, Android en veille ; réveil : PC_READY, écran, radios, reprise de la lecture) ou **extinction** (`F1 0`). Voir [docs/power.md](docs/power.md) | `core/.../unit/HeadUnit.kt`, `power/Standby.kt`, Système |
+| Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; Système, carte Démarrage | `power/BootApps.kt` |
+| Interface | réglages façon Android Auto, rangés en 7 rubriques (barre de gauche) avec leurs pages en pastilles : **Accueil** ; **Véhicule** (véhicule, OBD, CAN) ; **Audio** ; **Bluetooth** ; **Écran** (affichage, dalle tactile, lumières) ; **Système** (root, veille, démarrage des applis, watchdog ; GPS et heure) ; **Avancé** (MCU, outils MCU, diag audio, diagnostic : trafic décodé, journal, envoi de trames, accès au service) ; thème et couleur d'accent du launcher sur tous les éléments | `MainActivity`, `ui/` |
 
 Ce qui manque encore (sources radio / AV, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
 de compatibilité `com.jancar.services.*`.
@@ -51,15 +55,15 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | Domaine | Fonction | ivi-services | LibreHU | Où (LibreHU) |
 |---|---|---|---|---|
 | **MCU** | Liaison série, trames, accusés de réception, renvois | ✅ | ✅ | service (`core/mcu`) |
-| | Protocoles d'autres autoradios (profils importables / exportables) | ❌ | ✅ | service, onglet MCU |
+| | Protocoles d'autres autoradios (profils importables / exportables) | ❌ | ✅ | service, Avancé → MCU |
 | | Mise à jour du firmware de la MCU | ✅ | ❌ | — |
 | **Véhicule** | Contact (ACC), frein à main, feux, version MCU | ✅ | ✅ | service |
 | | Marche arrière, clignotants (GPIO) | ✅ | ✅ | service |
 | | Diffusion aux apps | ✅ (sans contrôle d'accès) | ✅ (contrôle d'accès façon SuperSU) | API AIDL + broadcasts |
 | **Alimentation** | Contact mis / coupé : sourdine, rétroéclairage, ampli externe | ✅ | ✅ | service |
-| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ✅ (sans fermeture des applis ; non testé) | service, onglet MCU |
-| | Coupure brève du contact au démarrage du moteur ignorée | 🟡 (minuterie « ACC long off », écran coupé quand même) | ✅ (délai réglable) | service, onglet MCU |
-| | Choix des applis lancées au démarrage | ❌ | ✅ (root) | service, onglet MCU |
+| | Mise en veille après coupure du contact (fermeture des apps, mode avion, veille MCU `F1`) | ✅ | ✅ (sans fermeture des applis ; non testé) | service, Système |
+| | Coupure brève du contact au démarrage du moteur ignorée | 🟡 (minuterie « ACC long off », écran coupé quand même) | ✅ (délai réglable) | service, Système |
+| | Choix des applis lancées au démarrage | ❌ | ✅ (root) | service, Système |
 | | Reset du hub USB, sourdine au démarrage | ✅ | 🟡 (sourdine seulement) | service |
 | | Horloge MCU ↔ Android | ✅ | ✅ | service |
 | **Audio (BD37534)** | Volume, sourdine, tonalité, balance/fader, loudness, caisson, source Android / AUX | ✅ | ✅ | service, onglet Audio |
@@ -80,21 +84,23 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Mode sombre Android selon les feux | ❌ | ✅ | service ou launcher |
 | | Calibration tactile | ✅ (`pointercal.xml`) | ✅ (root ; peut aussi écrire `pointercal.xml`) | onglet Dalle tactile |
 | | Rotation, économiseur d'écran | ✅ | ❌ | — |
-| **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | ❌ (recul rapide Autochips toujours actif) | — |
+| **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | 🟡 (ouverture / fermeture d'une appli au choix ; recul rapide Autochips toujours actif) | service, Véhicule |
 | | Entrées AV, blocage vidéo frein desserré | ✅ | ❌ | — |
 | **CAN (Hiworld)** | Relais des trames du boîtier | ✅ | ✅ | service (`onCanData`, `sendCanData`) |
 | | Décodage (portes, clim, volant…) | ➖ (fait par `ivi-canbus`) | 🟡 (profils de voiture : valeurs affichées, touches volant) | service, onglet CAN |
 | **Véhicule (extra)** | OBD-II par ELM327 (valeurs moteur, codes défaut) | ❌ | ✅ | service, onglet OBD + widget |
 | | Pression des pneus (TPMS USB) | ❌ (app à part) | ✅ | [LibreHU Launcher](https://github.com/LibreHU/LibreHU-Launcher-App) (+ widget) |
-| **Matériel divers** | LED de façade, ventilateur, G-sensor | ✅ | ❌ | — |
+| **Matériel divers** | LED de façade (couleur, mode, clignotement aux notifications) | ✅ | ✅ | service, Écran → Lumières |
+| | Ventilateur, G-sensor | ✅ | ❌ | — |
+| | Nom de la voiture (Bluetooth, réseau, point d'accès) | ❌ | ✅ (root pour le réseau et le point d'accès) | service, Véhicule |
 | | Accès I2C brut pour les apps | ✅ (ouvert à toutes) | ❌ (volontairement) | — |
-| **Système** | Réinitialisation usine, reboot, journal logcat | ✅ | 🟡 (journal + trafic MCU) | onglet Diagnostic |
+| **Système** | Réinitialisation usine, reboot, journal logcat | ✅ | 🟡 (journal + trafic MCU) | Avancé → Diagnostic |
 | | Heure GPS (+ test du GPS) | ✅ | ✅ (+ synchro MCU ↔ Android réglable) | service, onglet GPS et heure |
 | | Fermeture / ouverture d'apps | ✅ | 🟡 (arrêt forcé depuis le launcher) | launcher |
 | **Média / projection** | Scanner de fichiers et lecteurs Jancar | ✅ | ➖ (MediaStore / MediaSession d'Android) | — |
 | | Coordination CarPlay / Android Auto / HiCar… | ✅ | ❌ | — |
 | **Spécifique clients** | Voix aispeech, combiné, TBox, caméra 360°, TV | ✅ | ➖ | — |
-| **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (9 onglets) | service |
+| **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (7 rubriques) | service |
 
 Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 1. valider la veille sur l'appareil (sortie de suspension, consommation) ;
@@ -105,7 +111,9 @@ Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 
 ## Installer et tester
 
-1. Récupérer l'APK de l'Action **Build** (artefact `LibreHU-service-debug-…`) et l'installer : `adb install`.
+1. Installer l'APK avec [LibreHU Apps (OTA)](https://github.com/LibreHU/LibreHU-OTA-app), ou le récupérer dans la
+   release `latest-main` du dépôt (APK *release* signé avec la clé commune des applis LibreHU, `keystore/`) et
+   `adb install`. Les anciens APK de debug avaient chacun une clé aléatoire : désinstaller une fois avant.
 2. **Désactiver ivi-services** : deux programmes sur `/dev/ttyS1` se volent les octets, le service refuse donc de
    démarrer tant qu'il est actif :
    ```
@@ -129,7 +137,7 @@ gauche, l'effet réel de `0x2C = 0x00` (coupure caisson), et la logique des GPIO
 ```
 Accès contrôlé par le service, à la manière de SuperSU : les applis LibreHU (`org.librehu.*`) sont autorisées
 automatiquement, quel que soit l'ordre d'installation ; toute autre appli reçoit une `SecurityException` jusqu'à
-ce que l'utilisateur l'autorise (notification « … veut utiliser LibreHU-service », ou Diagnostic → Accès au service).
+ce que l'utilisateur l'autorise (notification « … veut utiliser LibreHU-service », ou Avancé → Diagnostic → Accès au service).
 La permission `org.librehu.permission.HEADUNIT` reste déclarée pour les anciennes versions des applis.
 ```kotlin
 bindService(Intent("org.librehu.service.BIND").setPackage("org.librehu.service"), connection, BIND_AUTO_CREATE)
