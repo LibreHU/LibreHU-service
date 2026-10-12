@@ -1,5 +1,6 @@
 package org.librehu.service.ui
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -8,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 data class CarPalette(
     val dark: Boolean,
@@ -93,5 +95,48 @@ fun CarTheme(content: @Composable () -> Unit) {
                 onSurfaceVariant = p.textDim,
             )
         }
-    MaterialTheme(colorScheme = scheme, content = content)
+    MaterialTheme(
+        colorScheme = scheme.withCarRoles(p.accent, p.onAccent, p.surface, p.surfaceHigh, p.text, p.textDim),
+        content = content,
+    )
+}
+
+/**
+ * Material 3 roles the car palette does not name, derived from it. Without them dialogs, cards, switches,
+ * sliders, chips and progress tracks keep Material's default purple instead of the accent.
+ */
+internal fun ColorScheme.withCarRoles(
+    accent: Color,
+    onAccent: Color,
+    surface: Color,
+    surfaceHigh: Color,
+    text: Color,
+    textDim: Color,
+): ColorScheme {
+    val solid = surface.copy(alpha = 1f)
+    val high = surfaceHigh.copy(alpha = 1f)
+    val container = lerp(solid, accent, 0.30f)
+    return copy(
+        primaryContainer = container,
+        onPrimaryContainer = text,
+        inversePrimary = accent,
+        secondary = accent,
+        onSecondary = onAccent,
+        secondaryContainer = container,
+        onSecondaryContainer = text,
+        tertiary = accent,
+        onTertiary = onAccent,
+        tertiaryContainer = container,
+        onTertiaryContainer = text,
+        surfaceTint = Color.Transparent,
+        surfaceBright = high,
+        surfaceDim = solid,
+        surfaceContainerLowest = solid,
+        surfaceContainerLow = solid,
+        surfaceContainer = solid,
+        surfaceContainerHigh = high,
+        surfaceContainerHighest = high,
+        outline = textDim,
+        outlineVariant = lerp(high, textDim, 0.35f),
+    )
 }
