@@ -7,6 +7,18 @@ aux apps LibreHU (MCU Toolkit, fork ViPER4Android, radio, caméra…).
 État : **premières bases (v0, non testée sur l'appareil)**. Le protocole MCU et le pilote audio sont couverts par
 des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 
+## Captures d'écran
+
+| | |
+|---|---|
+| ![Accueil](docs/screenshots/home.png)<br>Accueil | ![Véhicule : nom, caméra de recul](docs/screenshots/vehicle.png)<br>Véhicule : nom, caméra de recul |
+| ![Trames CAN](docs/screenshots/can.png)<br>Trames CAN | ![Audio](docs/screenshots/audio.png)<br>Audio |
+| ![Bluetooth](docs/screenshots/bluetooth.png)<br>Bluetooth | ![Écran](docs/screenshots/display.png)<br>Écran |
+| ![Lumières (LED)](docs/screenshots/lights.png)<br>Lumières (LED) | ![Système](docs/screenshots/system.png)<br>Système |
+| ![Avancé : MCU](docs/screenshots/advanced.png)<br>Avancé : MCU | ![Outils MCU](docs/screenshots/mcu-tools.png)<br>Outils MCU |
+
+Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), sans autoradio branché : les valeurs du véhicule et de la MCU sont vides. Refaites-les avec l'action **Screenshots** de [LibreHU-OTA-app](https://github.com/LibreHU/LibreHU-OTA-app/tree/main/screenshots).
+
 ## Ce qui est implémenté
 
 | Module | Contenu | Où |
