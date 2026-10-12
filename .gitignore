@@ -10,3 +10,5 @@
 .cxx
 *.jks
 *.keystore
+# Shared LibreHU signing key (keystore/README.md)
+!keystore/librehu.jks
