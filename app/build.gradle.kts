@@ -27,7 +27,7 @@ android {
         minSdk = 28
         targetSdk = 35
         versionCode = git("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
-        versionName = git("describe", "--tags", "--always", "--dirty", "--exclude", "latest-*") ?: "dev"
+        versionName = git("describe", "--tags", "--always", "--dirty", "--exclude", "latest-*", "--exclude", "build-*") ?: "dev"
 
         ndk {
             // The AC8257 is arm64; ivi-services ships arm64-v8a only too.
