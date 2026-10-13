@@ -129,14 +129,12 @@ object VehicleInfo {
                 bt =
                     RootShell
                         .run("settings get secure bluetooth_address")
-                        ?.output
                         ?.trim()
                         .orEmpty()
             }
             wifi =
                 RootShell
                     .run("cat /sys/class/net/wlan0/address")
-                    ?.output
                     ?.trim()
                     .orEmpty()
         }
