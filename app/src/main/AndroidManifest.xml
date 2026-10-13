@@ -157,6 +157,29 @@
             </intent-filter>
         </service>
 
+        <!-- Buttons another app (LibreHU BtnRemap) handles: the service leaves them to it. -->
+        <receiver
+            android:name=".can.KeyClaimReceiver"
+            android:exported="true"
+            android:permission="org.librehu.permission.HEADUNIT">
+            <intent-filter>
+                <action android:name="org.librehu.service.CLAIM_KEYS" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Button opening / closing LibreHU's rear view. -->
+        <receiver
+            android:name=".car.ReverseWidget"
+            android:exported="true"
+            android:label="@string/reverse_widget_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/reverse_widget_info" />
+        </receiver>
+
         <!-- OBD-II values (ELM327) for LibreHU Launcher's widget slots or any home screen. -->
         <receiver
             android:name=".obd.ObdWidget"

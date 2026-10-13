@@ -103,6 +103,9 @@ object AtcTools {
     val ATC_SETTINGS = ComponentName("com.android.settings", "com.autochips.atcsettings.mainui.MainActivity")
     val ATC_LOGGER = ComponentName("com.autochips.atclogger", "com.autochips.atclogger.MainActivity")
 
+    /** MediaTek GPS test tool (`system/app/YGPS`): satellites, signal, cold / warm / hot start, NMEA log. */
+    val YGPS = ComponentName("com.mediatek.ygps", "com.mediatek.ygps.YgpsActivity")
+
     fun installed(
         context: Context,
         c: ComponentName,
@@ -179,25 +182,42 @@ object AtcTools {
     }
 
     /**
-     * USB port 0 as host (USB keys, phones for Android Auto / CarPlay) or device (adb from a PC): metazone value read at
-     * start-up (like ATC Settings), then the port role now through `dumpsys usb set-port-roles` (Android 9). adb is
-     * turned on in device mode, as ATC Settings does. A restart may be needed when the port has no role switch.
+     * Data role files of the USB OTG port: the kernel's `dual_role_usb` class, as Jancar's settings write it
+     * (`GlobalPresenter.setADBEnable`: "host" / "device"), then the musb path of the AC8227L boards.
+     */
+    private const val ROLE_FILES =
+        "/sys/class/dual_role_usb/dual-role-usb20/data_role /sys/class/dual_role_usb/*/data_role " +
+            "/sys/devices/platform/mt_usb/musb-hdrc.0.auto/dual_role_usb/otg/data_role"
+
+    /** Current data role of the port ("host" / "device"), null when unknown. */
+    fun usbRole(): String? {
+        if (!RootShell.isAvailable()) return null
+        return RootShell
+            .run("for f in $ROLE_FILES; do [ -f \"\$f\" ] && cat \"\$f\" && break; done")
+            ?.trim()
+            ?.lineSequence()
+            ?.firstOrNull()
+            ?.let { r -> listOf("host", "device").firstOrNull { r.contains(it) } }
+    }
+
+    /**
+     * USB port 0 as host (USB keys, phones for Android Auto / CarPlay) or device (adb from a PC), at once: its data
+     * role file (what Jancar writes; Android 9's `set-port-roles` does nothing here, no USB HAL port), plus the
+     * metazone value read at start-up (as ATC Settings) so that it stays after a restart. adb is turned on in device
+     * mode. Null = done, else the error.
      */
     fun setUsbMode(
         context: Context,
         host: Boolean,
     ): String? {
-        write(context, mapOf(Mtz.USB_MODE to if (host) 2 else 1))?.let { return it }
-        val ports = RootShell.run("dumpsys usb ports").orEmpty()
-        val ids =
-            Regex("""id=([^,\s}]+)""")
-                .findAll(ports)
-                .map { it.groupValues[1] }
-                .distinct()
-                .toList()
-        for (id in ids) RootShell.run("dumpsys usb set-port-roles '$id' source ${if (host) "host" else "device"}")
+        if (!RootShell.isAvailable()) return "root"
+        val role = if (host) "host" else "device"
+        RootShell.run(
+            "for f in $ROLE_FILES; do [ -f \"\$f\" ] && echo $role > \"\$f\" && break; done",
+        )
+        write(context, mapOf(Mtz.USB_MODE to if (host) 2 else 1))
         if (!host) RootShell.run("settings put global adb_enabled 1")
-        return null
+        return if (usbRole() == role) null else "data_role"
     }
 
     fun reboot() {

@@ -140,8 +140,16 @@ class ReverseView private constructor(
         main.post { detach() }
     }
 
+    /** Opens the view full screen without the reverse gear (widget), without sound nor music change; or closes it. */
+    fun toggle() {
+        main.post { if (root != null) detach() else attach(preview = false, manual = true) }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
-    private fun attach(preview: Boolean) {
+    private fun attach(
+        preview: Boolean,
+        manual: Boolean = false,
+    ) {
         val s = _settings.value
         guide?.let {
             // The gear engaged during a preview: the real view.
@@ -203,10 +211,11 @@ class ReverseView private constructor(
         texture = tv
         guide = g
         _showing.value = true
+        ReverseWidget.refresh(app)
         frames = 0
         main.postDelayed(fpsTick, 1000)
-        sounds.engage(s)
-        if (!preview) sounds.duckMedia(s.media)
+        if (!manual) sounds.engage(s)
+        if (!preview && !manual) sounds.duckMedia(s.media)
         val sc = MainScope()
         scope = sc
         sc.launch { CanMonitor.values.collect { onCan(it) } }
@@ -252,6 +261,7 @@ class ReverseView private constructor(
         radarLevel = 0
         approachLevel = 0
         _showing.value = false
+        ReverseWidget.refresh(app)
     }
 
     // --- Camera ------------------------------------------------------------------------------------------------

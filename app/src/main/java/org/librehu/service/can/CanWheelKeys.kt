@@ -50,10 +50,43 @@ class CanWheelKeys private constructor(
         detector.onFrame(f)
     }
 
+    private val _claims = MutableStateFlow(loadClaims())
+
+    /** Buttons handled by another app (package → ids "can:<code>"), see [KeyClaimReceiver]. */
+    val claims: StateFlow<Map<String, Set<String>>> = _claims.asStateFlow()
+
+    /** Codes some installed app handles: the service leaves them to it. */
+    fun claimed(code: Int): Boolean = _claims.value.any { (pkg, keys) -> "can:$code" in keys && installed(pkg) }
+
+    fun setClaims(
+        pkg: String,
+        keys: Set<String>,
+    ) {
+        val m = if (keys.isEmpty()) _claims.value - pkg else _claims.value + (pkg to keys)
+        _claims.value = m
+        val o = JSONObject()
+        m.forEach { (p, k) -> o.put(p, org.json.JSONArray(k.toList())) }
+        prefs.edit().putString(KEY_CLAIMS, o.toString()).apply()
+    }
+
+    private fun loadClaims(): Map<String, Set<String>> =
+        runCatching {
+            val o = JSONObject(prefs.getString(KEY_CLAIMS, null) ?: return emptyMap())
+            o
+                .keys()
+                .asSequence()
+                .associateWith { p ->
+                    val a = o.getJSONArray(p)
+                    (0 until a.length()).map { a.getString(it) }.toSet()
+                }
+        }.getOrDefault(emptyMap())
+
+    private fun installed(pkg: String): Boolean = runCatching { app.packageManager.getPackageInfo(pkg, 0) }.isSuccess
+
     private fun onPress(code: Int) {
         _lastKey.value = code
         _seen.value = _seen.value + code
-        if (!_enabled.value) return
+        if (!_enabled.value || claimed(code)) return
         val action = _mapping.value[code] ?: return
         if (action.action != TouchAction.NONE) TouchKeys.get(app).run(null, action)
     }
@@ -104,6 +137,7 @@ class CanWheelKeys private constructor(
     companion object {
         private const val KEY_ENABLED = "enabled"
         private const val KEY_MAP = "map"
+        private const val KEY_CLAIMS = "claims"
 
         /**
          * Hiworld's meaning of the codes (HdRenaultProtocolLNP002). Codes 4 and 0x11 also come from a Clio 3 remote

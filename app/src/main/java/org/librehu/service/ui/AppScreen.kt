@@ -344,6 +344,20 @@ fun AudioScreen(client: ServiceClient) {
                 client.call { it.setAudioSource(v) }
                 client.refreshAudio()
             }
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val mix by org.librehu.service.AuxMix
+                .get(context)
+                .collectAsStateWithLifecycle()
+            SwitchRow(stringResource(R.string.aux_mix), mix.enabled, stringResource(R.string.aux_mix_hint)) { on ->
+                org.librehu.service.AuxMix
+                    .update(context) { it.copy(enabled = on) }
+            }
+            if (mix.enabled) {
+                SliderRow(stringResource(R.string.aux_mix_level), mix.offsetDb, -30..7, { "${if (it > 0) "+" else ""}$it dB" }) { v ->
+                    org.librehu.service.AuxMix
+                        .update(context) { it.copy(offsetDb = v) }
+                }
+            }
         }
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         Card(stringResource(R.string.audio_tone)) {

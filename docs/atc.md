@@ -48,9 +48,18 @@ sans Jancar, le dernier format réglé reste actif. Aucun mode 60 i/s dans les r
 vue LibreHU affiche les images par seconde réellement reçues (réglage « Angle du volant et caméra sur l'image »).
 
 ## USB
-Comme ATC Settings : écriture de 65616 puis rôle du port avec `dumpsys usb set-port-roles <id> source host|device`
-(commande d'AOSP Android 9, ids lus dans `dumpsys usb ports`). En périphérique, `adb_enabled` passe à 1. Si le port
-n'a pas de bascule de rôle déclarée au framework, la valeur de la metazone s'applique au prochain démarrage.
+Le rôle du port OTG est changé tout de suite par le fichier `data_role` de la classe noyau `dual_role_usb`
+(`/sys/class/dual_role_usb/dual-role-usb20/data_role`, « host » / « device »), ce qu'écrivent les réglages Jancar
+(`GlobalPresenter.setADBEnable` d'ivi-settings ; `/sys/devices/platform/mt_usb/musb-hdrc.0.auto/dual_role_usb/otg/data_role`
+sur AC8227L). `dumpsys usb set-port-roles` ne fait rien ici : aucun port n'est déclaré au framework par une HAL USB.
+La metazone 65616 est aussi écrite (2 hôte, 1 périphérique) pour le démarrage suivant, comme ATC Settings. En
+périphérique, `adb_enabled` passe à 1. L'état affiché est celui du fichier `data_role`.
+
+## Outils
+Engineer Mode (`com.mediatek.engineermode/.EngineerMode`), ATC Settings
+(`com.android.settings/com.autochips.atcsettings.mainui.MainActivity`), ATCLogger (`com.autochips.atclogger/.MainActivity`)
+et **YGPS** (`com.mediatek.ygps/.YgpsActivity`, test GPS MediaTek : satellites, signal, démarrages à froid / à chaud,
+journal NMEA). Ouverts en root (`am start`) s'ils ne sont pas exportés.
 
 ## Logo de démarrage
 L'image est ajustée à la taille réelle de l'écran (fond noir), convertie en BGRA, ligne du haut en premier, alpha

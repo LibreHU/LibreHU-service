@@ -195,16 +195,20 @@ fun CanWheelKeysCard() {
     val mapping by keys.mapping.collectAsStateWithLifecycle()
     val last by keys.lastKey.collectAsStateWithLifecycle()
     val seen by keys.seen.collectAsStateWithLifecycle()
+    val claims by keys.claims.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<Int?>(null) }
     Card(stringResource(R.string.can_keys)) {
         Hint(stringResource(R.string.can_keys_hint))
         SwitchRow(stringResource(R.string.can_keys_enable), enabled) { keys.setEnabled(it) }
+        val claimed = claims.values.flatten().count { it.startsWith("can:") }
+        if (claimed > 0) Hint(stringResource(R.string.can_keys_claimed, claimed))
         Hint(last?.let { stringResource(R.string.can_keys_last, it, keyName(it)) } ?: stringResource(R.string.can_keys_none))
         for (code in (mapping.keys + seen).sorted()) {
             val a = mapping[code] ?: ZoneAction()
+            val byOther = claims.values.any { "can:$code" in it }
             ListRow(
                 stringResource(R.string.can_keys_code, code, keyName(code)),
-                actionLabel(a),
+                if (byOther) stringResource(R.string.can_keys_by_btnremap) else actionLabel(a),
                 onClick = { editing = code },
             ) { Pill(stringResource(R.string.can_keys_change), selected = code == last) { editing = code } }
         }

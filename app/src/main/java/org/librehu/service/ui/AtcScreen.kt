@@ -48,6 +48,7 @@ private fun AtcToolsCard() {
             AtcTools.ENGINEER_MODE to R.string.atc_engineer,
             AtcTools.ATC_SETTINGS to R.string.atc_settings,
             AtcTools.ATC_LOGGER to R.string.atc_logger,
+            AtcTools.YGPS to R.string.atc_ygps,
         )
     var present by remember { mutableStateOf<Set<ComponentName>>(emptySet()) }
     LaunchedEffect(Unit) { present = tools.map { it.first }.filter { AtcTools.installed(context, it) }.toSet() }
@@ -73,13 +74,20 @@ private fun UsbModeCard() {
     var busy by remember { mutableStateOf(false) }
     val noRoot = stringResource(R.string.atc_no_root)
     LaunchedEffect(Unit) {
-        when (val r = withContext(Dispatchers.IO) { AtcTools.read(context, listOf(Mtz.USB_MODE)) }) {
-            is AtcTools.Result.Values -> mode = r.values[Mtz.USB_MODE]?.and(15)
-            is AtcTools.Result.Error -> status = r.message
-            AtcTools.Result.NoRoot -> status = noRoot
+        // The port's actual role first, else the value saved for the start-up.
+        when (withContext(Dispatchers.IO) { AtcTools.usbRole() }) {
+            "host" -> mode = 2
+            "device" -> mode = 1
+            else ->
+                when (val r = withContext(Dispatchers.IO) { AtcTools.read(context, listOf(Mtz.USB_MODE)) }) {
+                    is AtcTools.Result.Values -> mode = r.values[Mtz.USB_MODE]?.and(15)
+                    is AtcTools.Result.Error -> status = r.message
+                    AtcTools.Result.NoRoot -> status = noRoot
+                }
         }
     }
     val done = stringResource(R.string.atc_usb_done)
+    val notSwitched = stringResource(R.string.atc_usb_not_switched)
     Card(stringResource(R.string.atc_usb_title)) {
         StatusLine(
             when (mode) {
@@ -104,6 +112,8 @@ private fun UsbModeCard() {
                         done
                     } else if (err == "root") {
                         noRoot
+                    } else if (err == "data_role") {
+                        notSwitched
                     } else {
                         err
                     }

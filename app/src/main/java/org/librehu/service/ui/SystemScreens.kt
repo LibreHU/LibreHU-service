@@ -86,6 +86,7 @@ fun DisplayScreen(actions: AppActions) {
                 Actions { Pill(stringResource(R.string.display_grant), onClick = actions.openWriteSettings) }
             }
         }
+        StatusOsdCard()
         LevelOverlayCard(OverlayKind.BRIGHTNESS) { o ->
             o.show(Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128), 255, force = true)
         }

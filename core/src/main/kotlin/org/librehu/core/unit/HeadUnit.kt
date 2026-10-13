@@ -354,7 +354,8 @@ class HeadUnit(
 
     /**
      * Selects the input of the sound processor, as ivi-services' `platformSwitchAudioTo`: short anti-pop mute, input
-     * (AUX = 0 at +5 dB, Android = 11 at 0 dB), then the previous mute state. While on AUX, Android's audio is not heard.
+     * (AUX = 0 at +5 dB, Android = 11 at 0 dB), then the previous mute state. While on AUX, Android's audio is mixed
+     * in through the chip's mixing input when [setAuxMix] allows it (as ivi-services does).
      */
     fun setSource(value: Int) =
         executor.execute {
@@ -364,9 +365,27 @@ class HeadUnit(
             val wasMuted = dsp.isMuted
             if (!wasMuted) dsp.setMute(true)
             if (aux) dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB) else dsp.setInput(Bd37534.INPUT_ANDROID, 0)
+            applyMixing()
             if (!wasMuted) dsp.setMute(false)
             log("Audio source: ${if (aux) "AUX" else "Android"}")
         }
+
+    private var auxMix = true
+    private var auxMixOffsetDb = 0
+
+    /** Android's audio heard over AUX (mixing input of the chip), its level relative to the volume (dB). */
+    fun setAuxMix(
+        on: Boolean,
+        offsetDb: Int,
+    ) = executor.execute {
+        auxMix = on
+        auxMixOffsetDb = offsetDb.coerceIn(-30, Bd37534.MIXING_MAX_DB)
+        applyMixing()
+    }
+
+    private fun applyMixing() {
+        dsp?.setMixing(if (source == SOURCE_AUX && auxMix) settings.volume else null, auxMixOffsetDb)
+    }
 
     fun setRadioAntenna(on: Boolean) {
         executor.execute {
@@ -510,7 +529,10 @@ class HeadUnit(
         val s = settings
         val dsp = dsp
         if (dsp != null) {
-            if (old == null || old.volume != s.volume) dsp.setVolume(s.volume)
+            if (old == null || old.volume != s.volume) {
+                dsp.setVolume(s.volume)
+                applyMixing()
+            }
             if (old == null || old.bass != s.bass || old.middle != s.middle || old.treble != s.treble) {
                 dsp.setTone(s.bass, s.middle, s.treble)
             }

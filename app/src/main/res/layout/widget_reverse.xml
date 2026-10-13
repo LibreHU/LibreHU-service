@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rear view widget: camera button and its state; a touch opens or closes LibreHU's rear view. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/reverse_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <ImageView
+        android:id="@+id/reverse_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/reverse_widget_title"
+        android:src="@drawable/ic_widget_camera" />
+
+    <TextView
+        android:id="@+id/reverse_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:maxLines="1"
+        android:text="@string/reverse_widget_title"
+        android:textColor="#FFE8EAED"
+        android:textSize="14sp" />
+</LinearLayout>

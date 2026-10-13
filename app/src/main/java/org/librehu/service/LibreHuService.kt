@@ -291,6 +291,8 @@ class LibreHuService : Service() {
         val t = McuTransport(channel, headUnit, protocol)
         executor = exec
         unit = headUnit
+        AuxMix.get(this).value.let { headUnit.setAuxMix(it.enabled, it.offsetDb) }
+        AuxMix.onChange = { headUnit.setAuxMix(it.enabled, it.offsetDb) }
         transport = t
         t.start()
         ServiceState.resetMcu()
@@ -319,6 +321,7 @@ class LibreHuService : Service() {
         transport = null
         executor = null
         unit = null
+        AuxMix.onChange = null
         setLink(Link.STOPPED, "")
     }
 
@@ -340,6 +343,9 @@ class LibreHuService : Service() {
                     .get(this@LibreHuService)
                     .onAcc(state.powered)
                 display.onHeadlights(state.headlight)
+                org.librehu.service.overlay.StatusOsd
+                    .get(this@LibreHuService)
+                    .onState(state)
                 main.post {
                     org.librehu.service.car.ReverseCamera
                         .get(this@LibreHuService)

@@ -41,7 +41,7 @@ class Bd37534(
         ok = w(BASS_SETUP, 0x11) && ok
         ok = w(MIDDLE_SETUP, 0x21) && ok
         ok = w(TREBLE_SETUP, 0x20) && ok
-        ok = w(MIXING, 0xFF) && ok
+        ok = w(MIXING, MIXING_OFF) && ok
         ok = w(FADER_SUB, 0x00) && ok
         sleep(300)
         ok = w(SETUP_2, setup2(subFc = 0)) && ok
@@ -78,6 +78,21 @@ class Bd37534(
         step: Int,
         offsetDb: Int = 0,
     ): Boolean = w(VOLUME, attenuator(VOLUME_CURVE[step.coerceIn(0, MAX_VOLUME)] + offsetDb))
+
+    /**
+     * Mixing input (0x30), a mono input added to the selected one: on this board, the SoC's (Android) audio, which
+     * ivi-services mixes in while AUX, AV or an external radio is selected (`platformSwitchAudioTo` → `setMixer`).
+     * Its level follows the master volume [step] plus [offsetDb], at most +7 dB, as libJanCarIVI's
+     * `AudioBD37534::setMonoVolume`; null = off (0xFF).
+     */
+    fun setMixing(
+        step: Int?,
+        offsetDb: Int = 0,
+    ): Boolean =
+        w(
+            MIXING,
+            if (step == null) MIXING_OFF else attenuator(minOf(MIXING_MAX_DB, VOLUME_CURVE[step.coerceIn(0, MAX_VOLUME)] + offsetDb)),
+        )
 
     /** Bass / middle / treble, 0..20 each (10 = flat, 2 dB per step). */
     fun setTone(
@@ -151,6 +166,8 @@ class Bd37534(
         const val FADER_REAR_2 = 0x2B
         const val FADER_SUB = 0x2C
         const val MIXING = 0x30
+        const val MIXING_OFF = 0xFF
+        const val MIXING_MAX_DB = 7
         const val BASS_SETUP = 0x41
         const val MIDDLE_SETUP = 0x44
         const val TREBLE_SETUP = 0x47
