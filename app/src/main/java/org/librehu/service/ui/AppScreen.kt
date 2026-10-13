@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Cable
+import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
@@ -82,6 +83,7 @@ enum class Tab(
     MCU_TOOLS(Icons.Default.Build, R.string.tab_mcu_tools),
     AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
+    ATC(Icons.Default.DeveloperBoard, R.string.tab_atc),
 }
 
 /** Entries of the rail, Android Auto style; a section with several pages shows them as pills on top. */
@@ -96,7 +98,7 @@ enum class Section(
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
     SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS)),
-    ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.DIAG)),
+    ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.ATC, Tab.DIAG)),
     ;
 
     companion object {
@@ -121,6 +123,7 @@ class AppActions(
     val openNotificationAccess: () -> Unit = {},
     val requestCameraPermission: () -> Unit = {},
     val pickReverseSound: () -> Unit = {},
+    val pickLogo: () -> Unit = {},
 )
 
 /** Android Auto-like layout: sections on the left, the selected page (and its sibling pages) on the right. */
@@ -172,6 +175,7 @@ fun AppScreen(
                     Tab.MCU_TOOLS -> McuToolsScreen(client)
                     Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
                     Tab.DIAG -> DiagScreen(client, actions)
+                    Tab.ATC -> AtcScreen(actions)
                 }
             }
         }

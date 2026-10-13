@@ -83,6 +83,26 @@ class MainActivity : ComponentActivity() {
                 .update { it.copy(soundUri = uri.toString(), sound = org.librehu.service.car.EngageSound.CUSTOM) }
         }
 
+    private val logoLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            val state = org.librehu.service.ui.AtcLogoState.status
+            state.value = getString(R.string.atc_working) to null
+            Thread({
+                val r =
+                    org.librehu.service.atc.AtcTools
+                        .writeLogo(applicationContext, uri)
+                val text =
+                    when {
+                        r.ok -> getString(R.string.atc_logo_done, r.detail.orEmpty(), r.backup.orEmpty())
+                        r.detail == "backup" -> getString(R.string.atc_logo_backup_failed)
+                        r.detail == "root" -> getString(R.string.atc_no_root)
+                        else -> getString(R.string.atc_logo_failed, r.detail.orEmpty(), r.backup ?: "-")
+                    }
+                runOnUiThread { state.value = text to r.ok }
+            }, "logo").start()
+        }
+
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { client.refreshDevices() }
 
@@ -131,6 +151,7 @@ class MainActivity : ComponentActivity() {
                 openNotificationAccess = { openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS") },
                 requestCameraPermission = { permissions.launch(arrayOf(Manifest.permission.CAMERA)) },
                 pickReverseSound = { reverseSoundLauncher.launch(arrayOf("audio/*")) },
+                pickLogo = { logoLauncher.launch(arrayOf("image/*")) },
             )
         setContent {
             CarTheme {
