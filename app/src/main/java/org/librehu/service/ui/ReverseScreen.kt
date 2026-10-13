@@ -32,6 +32,7 @@ import org.librehu.service.car.ReverseExit
 import org.librehu.service.car.ReverseMode
 import org.librehu.service.car.ReverseView
 import org.librehu.service.car.ReverseViewSettings
+import org.librehu.service.car.WidgetLive
 
 /** Rear view: LibreHU's own (camera, guide lines, sensors, sounds) or a camera app, opened with the reverse gear. */
 @Composable
@@ -45,6 +46,7 @@ fun ReverseScreen(actions: AppActions) {
             val view = ReverseView.get(context)
             val v by view.settings.collectAsStateWithLifecycle()
             ReverseImageCard(view, v)
+            ReverseWidgetCard(view, v)
             GuideLinesCard(view, v)
             ReverseSoundCard(view, v, actions)
             ReverseAlertsCard(view, v)
@@ -208,6 +210,30 @@ private fun ReverseImageCard(
             confirmButton = {},
             dismissButton = { TextButton(onClick = { picking = false }) { Text(stringResource(android.R.string.cancel)) } },
         )
+    }
+}
+
+/** Home screen widget: live picture of the camera, when and how often. */
+@Composable
+private fun ReverseWidgetCard(
+    view: ReverseView,
+    v: ReverseViewSettings,
+) {
+    Card(stringResource(R.string.rv_widget_title)) {
+        BodyText(stringResource(R.string.rv_widget_live))
+        Choices(
+            listOf(
+                WidgetLive.OFF to stringResource(R.string.rv_widget_off),
+                WidgetLive.LAUNCHER to stringResource(R.string.rv_widget_launcher),
+                WidgetLive.ALWAYS to stringResource(R.string.rv_widget_always),
+            ),
+            v.widgetLive,
+        ) { m -> view.update { it.copy(widgetLive = m) } }
+        if (v.widgetLive != WidgetLive.OFF) {
+            BodyText(stringResource(R.string.rv_widget_fps))
+            Choices(listOf(5, 10, 15, 20).map { it to "$it" }, v.widgetFps) { f -> view.update { it.copy(widgetFps = f) } }
+        }
+        Hint(stringResource(R.string.rv_widget_hint))
     }
 }
 

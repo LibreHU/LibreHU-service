@@ -47,7 +47,23 @@ du mauvais côté.
 - **Sons** : à l'engagement (aucun, bip, double bip, carillon, fichier audio choisi), volume ; musique inchangée,
   baissée (focus audio « duck ») ou en pause pendant le recul.
 
+## Widget d'écran d'accueil (image en direct)
+- Un widget Android n'affiche que des `RemoteViews` : pas de surface vidéo possible. `car/ReverseWidgetLive.kt` lit
+  donc de petites images de la caméra (`ImageReader` YUV, la plus petite taille ≥ 400 px de large, réduite à ~400 px),
+  les convertit en bitmap (BT.601, miroir / retournement / rotation des réglages) et les envoie au widget
+  (`partiallyUpdateAppWidget`), 10 par seconde par défaut (5 à 20).
+- Quand : **avec LibreHU Launcher** (par défaut), seulement quand son tableau de bord est affiché (il envoie
+  `org.librehu.action.HOME_VISIBLE` au service, extra `visible`), écran allumé ; la caméra est libre le reste du
+  temps. **Écran allumé** : pour un autre launcher (qui ne prévient pas), la caméra reste ouverte tant que l'écran
+  est allumé. **Désactivée** : simple bouton.
+- La vue arrière plein écran reprend la caméra : l'image du widget s'arrête et la caméra est fermée avant que la vue
+  ne l'ouvre ; elle reprend à la fermeture. Si une autre appli prend la caméra (DVR Jancar…), nouvel essai toutes
+  les 15 s. Le widget garde la dernière image.
+- Un toucher ouvre ou ferme toujours la vue arrière plein écran.
+
 ## Limites connues
+- Widget : l'image passe par le launcher (Binder) : quelques images par seconde, pas un vrai flux à 30 i/s. Si la
+  caméra AHD ne fournit pas de sortie YUV, le widget reste un bouton (à vérifier sur l'unité).
 - Non testé sur l'unité au moment de l'écriture : l'id de caméra, le double flux et le sens des radars sont à vérifier.
 - Android 9 refuse la caméra aux applis inactives ; le service LibreHU est un service au premier plan, ce qui suffit en
   principe (à confirmer sur l'unité).

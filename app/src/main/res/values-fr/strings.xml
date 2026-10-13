@@ -611,6 +611,13 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="rv_close_delay">Reste après la marche arrière</string>
     <string name="rv_show_info">Angle du volant et caméra sur l\'image</string>
     <string name="rv_image_hint">Les réglages d\'image s\'appliquent en direct à l\'aperçu. La caméra AHD arrière de Jancar est l\'id 10 (ivi-config.ini) ; le recul rapide de l\'ARM2 au démarrage a ses propres réglages (Avancé → Autochips).</string>
+    <string name="rv_widget_title">Widget de l\'écran d\'accueil</string>
+    <string name="rv_widget_live">Image en direct dans le widget</string>
+    <string name="rv_widget_off">Désactivée (bouton)</string>
+    <string name="rv_widget_launcher">Avec LibreHU Launcher</string>
+    <string name="rv_widget_always">Écran allumé</string>
+    <string name="rv_widget_fps">Images par seconde</string>
+    <string name="rv_widget_hint">Un widget ne peut pas afficher de flux vidéo : de petites images de la caméra lui sont envoyées. « Avec LibreHU Launcher » : seulement quand son écran d\'accueil est affiché (la caméra est libre le reste du temps). « Écran allumé » : pour les autres launchers, la caméra reste utilisée tant que l\'écran est allumé. L\'image s\'arrête pendant la vue arrière plein écran, et quand une autre appli (DVR Jancar…) prend la caméra ; elle reprend toute seule.</string>
     <string name="rv_lines_title">Lignes de guidage</string>
     <string name="rv_lines_show">Afficher les lignes</string>
     <string name="rv_lines_hint">Les lignes forment un rectangle au sol derrière la voiture, de la largeur de la voiture : placer son côté proche sur le pare-chocs et son côté éloigné à la longueur choisie (se garer face à un mur ou poser deux repères au sol), aperçu ouvert.</string>

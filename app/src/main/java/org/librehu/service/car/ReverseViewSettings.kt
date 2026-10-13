@@ -17,6 +17,17 @@ enum class EngageSound { NONE, BEEP, DOUBLE, CHIME, CUSTOM }
 /** Music while reversing (audio focus asked by LibreHU). */
 enum class MediaDuring { KEEP, DUCK, PAUSE }
 
+/** Live picture in the home screen widget. */
+enum class WidgetLive {
+    OFF,
+
+    /** While LibreHU Launcher's home screen shows (it says so). */
+    LAUNCHER,
+
+    /** While the screen is on (other launchers): the camera stays in use. */
+    ALWAYS,
+}
+
 /**
  * Guide lines: a rectangle on the ground behind the car (its width, [lengthCm] long) drawn as a trapezoid on the
  * image, positions in % of the view. Its 4 corners give the perspective, also used by the trajectory.
@@ -91,6 +102,9 @@ data class ReverseViewSettings(
     val closeDelayMs: Int = 0,
     /** Steering angle and sensor levels shown over the image. */
     val showInfo: Boolean = true,
+    val widgetLive: WidgetLive = WidgetLive.LAUNCHER,
+    /** Pictures per second sent to the widget. */
+    val widgetFps: Int = 10,
 ) {
     fun toJson(): JSONObject =
         JSONObject()
@@ -118,6 +132,8 @@ data class ReverseViewSettings(
             .put("stopDvr", stopDvr)
             .put("closeDelay", closeDelayMs)
             .put("showInfo", showInfo)
+            .put("widgetLive", widgetLive.name)
+            .put("widgetFps", widgetFps)
 
     companion object {
         fun fromJson(o: JSONObject): ReverseViewSettings {
@@ -147,6 +163,8 @@ data class ReverseViewSettings(
                 stopDvr = o.optBoolean("stopDvr", d.stopDvr),
                 closeDelayMs = o.optInt("closeDelay", d.closeDelayMs),
                 showInfo = o.optBoolean("showInfo", d.showInfo),
+                widgetLive = WidgetLive.entries.firstOrNull { it.name == o.optString("widgetLive") } ?: d.widgetLive,
+                widgetFps = o.optInt("widgetFps", d.widgetFps),
             )
         }
     }

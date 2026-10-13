@@ -611,6 +611,13 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="rv_close_delay">Stays after the reverse gear</string>
     <string name="rv_show_info">Steering angle and camera on the picture</string>
     <string name="rv_image_hint">Image settings apply live to the preview. Jancar\'s rear AHD camera is id 10 (ivi-config.ini); the ARM2 fast reverse at start-up has its own settings (Advanced → Autochips).</string>
+    <string name="rv_widget_title">Home screen widget</string>
+    <string name="rv_widget_live">Live picture in the widget</string>
+    <string name="rv_widget_off">Off (button)</string>
+    <string name="rv_widget_launcher">With LibreHU Launcher</string>
+    <string name="rv_widget_always">Screen on</string>
+    <string name="rv_widget_fps">Pictures per second</string>
+    <string name="rv_widget_hint">A widget cannot show a video stream: small pictures of the camera are sent to it. \"With LibreHU Launcher\": only while its home screen shows (the camera is free the rest of the time). \"Screen on\": for other launchers, the camera stays in use while the screen is on. The picture stops while the full rear view is open, and when another app (Jancar\'s DVR…) takes the camera; it starts again by itself.</string>
     <string name="rv_lines_title">Guide lines</string>
     <string name="rv_lines_show">Show the guide lines</string>
     <string name="rv_lines_hint">The lines are a rectangle on the ground behind the car, as wide as the car: place its near side on the bumper and its far side at the chosen length (park in front of a wall or put two marks on the ground), with the preview open.</string>

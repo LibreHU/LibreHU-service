@@ -125,6 +125,7 @@ class ReverseView private constructor(
             applyTransform()
             if (s.cameraId != old.cameraId || (s.motion || s.approach) != (old.motion || old.approach)) reopen()
         }
+        if (s.widgetLive != old.widgetLive) ReverseWidgetLive.get(app).evaluate()
     }
 
     fun canShow() = Settings.canDrawOverlays(app)
@@ -211,6 +212,7 @@ class ReverseView private constructor(
         texture = tv
         guide = g
         _showing.value = true
+        ReverseWidgetLive.get(app).evaluate()
         ReverseWidget.refresh(app)
         frames = 0
         main.postDelayed(fpsTick, 1000)
@@ -262,6 +264,7 @@ class ReverseView private constructor(
         approachLevel = 0
         _showing.value = false
         ReverseWidget.refresh(app)
+        ReverseWidgetLive.get(app).evaluate()
     }
 
     // --- Camera ------------------------------------------------------------------------------------------------
@@ -289,12 +292,14 @@ class ReverseView private constructor(
         handler.post {
             // Jancar's DVR records with the rear camera: stopped first when asked (root), the camera being exclusive.
             if (s.stopDvr && RootShell.isAvailable()) RootShell.run("am force-stop ${ReverseCamera.HD2CAM}")
-            tryOpen(candidates(s), 0, st, gen, null)
+            // The widget's live picture gives the camera back first.
+            ReverseWidgetLive.get(app).release()
+            tryOpen(cameraCandidates(s), 0, st, gen, null)
         }
     }
 
     /** The chosen camera, else the rear one of Jancar's config ("10"), the other usual ids, then the back cameras. */
-    private fun candidates(s: ReverseViewSettings): List<String> {
+    internal fun cameraCandidates(s: ReverseViewSettings): List<String> {
         if (s.cameraId.isNotEmpty()) return listOf(s.cameraId)
         val listed = runCatching { cameras.cameraIdList.toList() }.getOrDefault(emptyList())
         val back =

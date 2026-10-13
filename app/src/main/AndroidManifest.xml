@@ -167,13 +167,17 @@
             </intent-filter>
         </receiver>
 
-        <!-- Button opening / closing LibreHU's rear view. -->
+        <!-- Rear view widget: live picture, opens / closes LibreHU's rear view. -->
         <receiver
             android:name=".car.ReverseWidget"
             android:exported="true"
             android:label="@string/reverse_widget_title">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- LibreHU Launcher's home screen shown or left: live picture in the widget. -->
+            <intent-filter>
+                <action android:name="org.librehu.action.HOME_VISIBLE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

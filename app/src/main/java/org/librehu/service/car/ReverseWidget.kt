@@ -10,7 +10,10 @@ import android.widget.RemoteViews
 import org.librehu.service.R
 import org.librehu.service.ui.ThemeFollower
 
-/** Home screen button: opens LibreHU's rear view full screen (without the reverse gear), or closes it. */
+/**
+ * Home screen widget: live picture of the rear camera ([ReverseWidgetLive]) or a camera button; a touch opens
+ * LibreHU's rear view full screen (without the reverse gear), or closes it.
+ */
 class ReverseWidget : AppWidgetProvider() {
     override fun onUpdate(
         context: Context,
@@ -18,15 +21,31 @@ class ReverseWidget : AppWidgetProvider() {
         appWidgetIds: IntArray,
     ) {
         manager.updateAppWidget(appWidgetIds, views(context))
+        ReverseWidgetLive.get(context).evaluate()
+    }
+
+    override fun onDeleted(
+        context: Context,
+        appWidgetIds: IntArray,
+    ) {
+        ReverseWidgetLive.get(context).evaluate()
     }
 
     override fun onReceive(
         context: Context,
         intent: Intent,
     ) {
-        if (intent.action == ACTION_TOGGLE) {
-            ReverseView.get(context).toggle()
-            return
+        when (intent.action) {
+            ACTION_TOGGLE -> {
+                ReverseView.get(context).toggle()
+                return
+            }
+
+            // LibreHU Launcher's home screen, where the widget is, shown or left.
+            ReverseWidgetLive.ACTION_HOME_VISIBLE -> {
+                ReverseWidgetLive.get(context).setHomeVisible(intent.getBooleanExtra(ReverseWidgetLive.EXTRA_VISIBLE, false))
+                return
+            }
         }
         super.onReceive(context, intent)
     }
@@ -45,6 +64,14 @@ class ReverseWidget : AppWidgetProvider() {
             val (dark, accent) = ThemeFollower.current(context)
             val showing = ReverseView.get(context).showing.value
             val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
+            val live = ReverseWidgetLive.get(context)
+            val frame =
+                live.lastFrame?.takeIf {
+                    ReverseView
+                        .get(context)
+                        .settings.value.widgetLive != WidgetLive.OFF
+                }
+            live.onFullUpdate()
             return RemoteViews(context.packageName, R.layout.widget_reverse).apply {
                 setInt(
                     R.id.reverse_root,
@@ -57,6 +84,10 @@ class ReverseWidget : AppWidgetProvider() {
                     context.getString(if (showing) R.string.reverse_widget_close else R.string.reverse_widget_title),
                 )
                 setTextColor(R.id.reverse_label, text)
+                if (frame != null) {
+                    setImageViewBitmap(R.id.reverse_live, frame)
+                    live.liveLook(this)
+                }
                 setOnClickPendingIntent(
                     R.id.reverse_root,
                     PendingIntent.getBroadcast(

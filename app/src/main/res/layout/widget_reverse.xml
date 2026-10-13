@@ -1,28 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rear view widget: camera button and its state; a touch opens or closes LibreHU's rear view. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Rear view widget: live picture of the camera (ReverseWidgetLive) or the camera button, and the state; a touch
+     opens or closes LibreHU's rear view. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/reverse_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="6dp">
 
     <ImageView
-        android:id="@+id/reverse_icon"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:id="@+id/reverse_live"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:contentDescription="@string/reverse_widget_title"
-        android:src="@drawable/ic_widget_camera" />
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/reverse_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:maxLines="1"
-        android:text="@string/reverse_widget_title"
-        android:textColor="#FFE8EAED"
-        android:textSize="14sp" />
-</LinearLayout>
+    <LinearLayout
+        android:id="@+id/reverse_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/reverse_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/reverse_widget_title"
+            android:src="@drawable/ic_widget_camera" />
+
+        <TextView
+            android:id="@+id/reverse_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:maxLines="1"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:text="@string/reverse_widget_title"
+            android:textColor="#FFE8EAED"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>
