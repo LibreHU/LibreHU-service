@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
@@ -85,6 +86,7 @@ enum class Tab(
     LIGHTS(Icons.Default.Lightbulb, R.string.tab_lights),
     SYSTEM(Icons.Default.PowerSettingsNew, R.string.tab_system),
     GPS(Icons.Default.GpsFixed, R.string.tab_gps),
+    NETWORK(Icons.Default.Lan, R.string.tab_network),
     MCU(Icons.Default.Memory, R.string.tab_mcu),
     MCU_TOOLS(Icons.Default.Build, R.string.tab_mcu_tools),
     AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
@@ -104,7 +106,7 @@ enum class Section(
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
     ANDROID_AUTO(Icons.Default.Smartphone, R.string.tab_android_auto, listOf(Tab.ANDROID_AUTO)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
-    SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS)),
+    SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS, Tab.NETWORK)),
     ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.ATC, Tab.DIAG)),
     ;
 
@@ -179,6 +181,7 @@ fun AppScreen(
                     Tab.LIGHTS -> LightsScreen(actions)
                     Tab.SYSTEM -> SystemScreen()
                     Tab.GPS -> GpsTimeScreen(actions)
+                    Tab.NETWORK -> NetworkScreen()
                     Tab.MCU -> McuScreen(actions)
                     Tab.MCU_TOOLS -> McuToolsScreen(client)
                     Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)

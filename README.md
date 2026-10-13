@@ -30,6 +30,7 @@ Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), san
 | Audio | pilote **ROHM BD37534** (I2C 6 @0x40) : séquence d'init de Jancar, source Android ou **AUX** (entrée 0, +5 dB ; onglet Audio, API 6, intent `org.librehu.service.AUDIO_SOURCE`) ; pendant l'AUX, le son d'Android ajouté par l'entrée de mixage de la puce comme le fait ivi-services (mono, niveau suivant le volume, réglable), volume (courbe 0..40), mute doux, graves/médiums/aigus, balance/fader 4 voies, loudness, caisson on/off + niveau ; réglages mémorisés | `core/.../audio/Bd37534.kt` |
 | Android Auto | pilotage d'[Open Headunit](https://github.com/andreknieriem/headunit-revived) ou de son fork LibreHU (`org.librehu.headunit`) par son interface d'automatisation : état de la session (aussi sur le launcher), ouvrir / chercher le téléphone en USB / déconnecter / relancer le son, **jour / nuit selon les phares**, **ses réglages modifiables depuis LibreHU-service** (fork : sans interrupteur, par signature). Voir [docs/android-auto.md](docs/android-auto.md) | `projection/AndroidAuto.kt`, onglet Android Auto |
 | Microphone | réglages usine de Jancar sans ivi-settings : **gain matériel** 1 / 2 / 3 (`MIC1_HW_GAIN` / `MIC2_HW_GAIN` = 3 / 4 / 5 du HAL audio, réappliqué à chaque démarrage, gardé dans `persist.jancar.mic.hw.gain` avec root) et **ECNR** (annulation d'écho / réduction de bruit, `persist.audiohal.third_ecnr_lib.enable` / `vendor.…`, root) ; « ROM » laisse la valeur en place. Voir `docs/projection_stock.md` du dépôt device | `Microphone.kt`, onglet Audio |
+| Réseau filaire (USB) | onglet Système → Réseau : adaptateurs Ethernet USB et téléphones branchés (puce reconnue, pilote lié ou manquant), interfaces `eth*` / `usb*` (MAC, débit, IPv4), réseau Ethernet d'Android et accès Internet ; pilotes du zip flashable **usb-net** (Realtek RTL8152 / RTL8153, partage de connexion USB Android et iPhone, LAN78xx, SMSC, DM9601, SR9700 / SR9800, MCS7830, CH9200, RTL8150, Pegasus, CDC EEM) : état, chargement immédiat, désactivation au démarrage (protection : un redémarrage pendant le chargement les désactive) ; iPhone passé dans sa configuration de partage (ipheth) sur demande ou au branchement (option, désactivée par défaut à cause de CarPlay filaire). Les ASIX AX88179 / AX88772 et les adaptateurs CDC ECM / NCM marchent avec le noyau stock seul. Voir `docs/ethernet.md` du dépôt de l'appareil | `net/UsbNet.kt`, `ui/NetworkScreen.kt` |
 | Touches, CAN | trames `20`/`30` et `10` relayées brutes aux clients ; envoi CAN (`10`) | API |
 | Antenne radio | demandée par l'app radio (API 2 `setRadioAntenna`) : GPIO 110 + MCU `43`, seulement contact mis | `HeadUnit.kt` |
 | API | AIDL `ILibreHuService` + `ILibreHuCallback`, broadcasts `org.librehu.action.VEHICLE_STATE` / `ACC` / `REVERSE` | `app/src/main/aidl` |
@@ -58,7 +59,7 @@ Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), san
 | Root | état du root et gestionnaire détecté (Magisk, KernelSU, **KernelSU Next**, APatch, SuperSU) ; un refus est revérifié après 30 s (KernelSU autorise depuis son gestionnaire, sans fenêtre) ; Système → Root | `root/RootShell.kt` |
 | Contact coupé, veille | délai avant coupure réglable (0..10 s : le + après-contact chute au démarrage du moteur, écran / son / ampli gardés) ; puis au choix écran éteint seulement, **veille** (médias en pause, accueil, mode avion et GPS coupés, `sync`, minuterie MCU `F1` par tranches de 7 h jusqu'à 14 jours, Android en veille ; réveil : PC_READY, écran, radios, reprise de la lecture) ou **extinction** (`F1 0`). Voir [docs/power.md](docs/power.md) | `core/.../unit/HeadUnit.kt`, `power/Standby.kt`, Système |
 | Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; Système, carte Démarrage | `power/BootApps.kt` |
-| Interface | réglages façon Android Auto, rangés en 7 rubriques (barre de gauche) avec leurs pages en pastilles : **Accueil** ; **Véhicule** (véhicule, OBD, CAN) ; **Audio** ; **Bluetooth** ; **Écran** (affichage, dalle tactile, lumières) ; **Système** (root, veille, démarrage des applis, watchdog ; GPS et heure) ; **Avancé** (MCU, outils MCU, diag audio, diagnostic : trafic décodé, journal, envoi de trames, accès au service) ; thème et couleur d'accent du launcher sur tous les éléments | `MainActivity`, `ui/` |
+| Interface | réglages façon Android Auto, rangés en 8 rubriques (barre de gauche) avec leurs pages en pastilles : **Accueil** ; **Véhicule** (véhicule et sa fiche, recul, OBD, CAN) ; **Audio** ; **Bluetooth** ; **Android Auto** ; **Écran** (affichage, dalle tactile, lumières) ; **Système** (root, veille, démarrage des applis, watchdog ; GPS et heure ; réseau filaire) ; **Avancé** (MCU, outils MCU, diag audio, diagnostic : trafic décodé, journal, envoi de trames, accès au service) ; thème et couleur d'accent du launcher sur tous les éléments | `MainActivity`, `ui/` |
 
 Ce qui manque encore (sources radio / AV de la puce audio, entrées vidéo…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
 de compatibilité `com.jancar.services.*`.
@@ -110,15 +111,20 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Pression des pneus (TPMS USB) | ❌ (app à part) | ✅ | [LibreHU Launcher](https://github.com/LibreHU/LibreHU-Launcher-App) (+ widget) |
 | **Matériel divers** | LED de façade (couleur, mode, clignotement aux notifications) | ✅ | ✅ | service, Écran → Lumières |
 | | Ventilateur, G-sensor | ✅ | ❌ | — |
-| | Nom de la voiture (Bluetooth, réseau, point d'accès) | ❌ | ✅ (root pour le réseau et le point d'accès) | service, Véhicule |
+| | Nom de la voiture (Bluetooth, réseau, point d'accès, Wi-Fi Direct) | ❌ | ✅ (root pour le réseau et le point d'accès) | service, Véhicule |
+| | Fiche du véhicule (marque, modèle, année, couleur, plaque, énergie, côté conducteur) et adresses MAC Bluetooth / Wi-Fi, partagées avec les applis LibreHU (SOS, Android Auto, CarPlay) | ❌ | ✅ (fournisseur `org.librehu.service.vehicle`, permission signature) | service, Véhicule ; premier démarrage du launcher |
 | | Accès I2C brut pour les apps | ✅ (ouvert à toutes) | ❌ (volontairement) | — |
 | **Système** | Réinitialisation usine, reboot, journal logcat | ✅ | 🟡 (journal + trafic MCU) | Avancé → Diagnostic |
+| | Gain du micro et annulation d'écho (réglages usine) | ✅ (ivi-settings, réappliqué au démarrage) | ✅ (réappliqué au démarrage, sans ivi-settings) | service, onglet Audio |
+| | Réseau filaire USB (adaptateurs Ethernet, partage de connexion USB Android / iPhone) | ❌ (ASIX et CDC seulement, par le noyau) | ✅ (zip usb-net : Realtek, RNDIS, iPhone, LAN78xx, SMSC… ; état et pilotes dans l'onglet Réseau) | service, Système → Réseau |
 | | Heure GPS (+ test du GPS) | ✅ | ✅ (+ synchro MCU ↔ Android réglable) | service, onglet GPS et heure |
 | | Fermeture / ouverture d'apps | ✅ | 🟡 (arrêt forcé depuis le launcher) | launcher |
 | **Média / projection** | Scanner de fichiers et lecteurs Jancar | ✅ | ➖ (MediaStore / MediaSession d'Android) | — |
-| | Coordination CarPlay / Android Auto / HiCar… | ✅ | ❌ | — |
+| | Android Auto | ✅ (récepteur Google, coordonné avec ivi-services) | 🟡 (Open Headunit LibreHU piloté : état, commandes, jour / nuit selon les feux, réglages, véhicule ; non testé sur l'appareil) | service, onglet Android Auto ; launcher |
+| | CarPlay | ✅ (CPLink, coordonné : Bluetooth coupé, mode nuit) | 🟡 (CarPlay LibreHU, fork de xcertplay : puce MFi détectée seule, véhicule et adresses du service ; pas de coordination) | fork [LibreHU-xcertplay-app](https://github.com/LibreHU/LibreHU-xcertplay-app) |
+| | HiCar, CarLife… | ✅ | ➖ | — |
 | **Spécifique clients** | Voix aispeech, combiné, TBox, caméra 360°, TV | ✅ | ➖ | — |
-| **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (7 rubriques) | service |
+| **Interface** | Réglages | apps Jancar séparées | ✅ app unique façon Android Auto (8 rubriques) | service |
 
 Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 1. valider la veille sur l'appareil (sortie de suspension, consommation) ;
@@ -126,7 +132,8 @@ Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 3. valider sur l'appareil la vue de recul intégrée (id de caméra, sens des radars) et la radio FM sans l'appli Jancar ;
 4. entrées AV et blocage vidéo frein desserré ;
 5. touche power, rotation, économiseur d'écran ;
-6. mise à jour de la MCU, infrarouge, ventilateur.
+6. mise à jour de la MCU, infrarouge, ventilateur ;
+7. coordination de la projection (Bluetooth de l'autoradio coupé pendant CarPlay, mode nuit de CarPlay) et tests sur l'appareil d'Open Headunit LibreHU, de CarPlay LibreHU et des pilotes réseau USB.
 
 ## Installer et tester
 

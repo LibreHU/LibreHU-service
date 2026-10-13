@@ -154,6 +154,7 @@ class LibreHuService : Service() {
                 .applySaved(this)
         }, "car-name").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        registerReceiver(usbReceiver, IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED))
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
             handshake = { unit?.wake() }
@@ -209,6 +210,7 @@ class LibreHuService : Service() {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(wakeReceiver) }
+        runCatching { unregisterReceiver(usbReceiver) }
         runCatching { contentResolver.unregisterContentObserver(brightnessObserver) }
         stopHardware()
         bluetoothModule.stop()
@@ -426,6 +428,26 @@ class LibreHuService : Service() {
     private var startToastShown = false
 
     /** Back from standby: the MCU waits for PC_READY again and cuts the SoC without it. */
+    /** An iPhone plugged in: its USB tethering configuration (ipheth, from the usb-net zip), see [UsbNet]. */
+    private val usbReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                @Suppress("DEPRECATION")
+                val device = intent.getParcelableExtra<android.hardware.usb.UsbDevice>(android.hardware.usb.UsbManager.EXTRA_DEVICE) ?: return
+                if (device.vendorId != org.librehu.service.net.UsbNet.APPLE_VID || !org.librehu.service.net.UsbNet.iphoneAuto(context)) return
+                Thread({
+                    Thread.sleep(1500) // its interfaces and the ipheth binding settle first
+                    val net = org.librehu.service.net.UsbNet
+                    for (d in net.iphonesToSwitch(net.scan(context))) {
+                        net.iphoneTethering(d).onSuccess { log("iPhone ${d.path}: USB tethering configuration $it") }
+                    }
+                }, "iphone-tethering").start()
+            }
+        }
+
     private val wakeReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(
