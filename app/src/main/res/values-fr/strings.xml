@@ -806,7 +806,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="aa_integration">Intégration</string>
     <string name="aa_night_headlights">Jour / nuit selon les phares</string>
     <string name="aa_night_headlights_hint">Android Auto passe en sombre avec les phares, comme le launcher ; désactivé = réglage d\'Open Headunit.</string>
-    <string name="aa_integration_hint">Les touches au volant et tactiles envoient des touches média, qui arrivent à Android Auto quand il joue ; la vue arrière passe par-dessus ; le gain du micro (Audio) s\'applique à ses appels et à l\'assistant vocal.</string>
+    <string name="aa_integration_hint">Les touches au volant et tactiles vont à Android Auto pendant une session (voir plus haut) ; la vue arrière intégrée passe par-dessus ; le gain du micro (Audio) s\'applique à ses appels et à l\'assistant vocal.</string>
     <string name="aa_settings_title">Réglages d\'Open Headunit</string>
     <string name="aa_settings_hint_fork">Tous les réglages enregistrés par Open Headunit LibreHU, modifiés ici directement. Certains ne s\'appliquent qu\'à la connexion suivante.</string>
     <string name="aa_settings_hint_upstream">Open Headunit ne donne ses réglages aux autres applis qu\'avec « Autoriser la configuration externe » activé dans ses réglages (ou avec Open Headunit LibreHU).</string>
@@ -878,4 +878,14 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="net_modules_hint">Chargés par le script de démarrage du zip une fois Android démarré. Si l\'autoradio redémarre pendant le chargement, le démarrage suivant les laisse de côté : les réactiver ici.</string>
     <string name="net_iphone_auto">Passer l\'iPhone en partage USB au branchement</string>
     <string name="net_iphone_auto_hint">Désactivé par défaut : CarPlay filaire utilise une autre configuration USB de l\'iPhone. Jamais fait quand une appli tient l\'iPhone.</string>
+    <string name="ta_voice_assistant">Assistant vocal</string>
+    <string name="aa_export_log">Exporter le journal</string>
+    <string name="aa_export_log_done">Journal en cours d\'écriture par Android Auto : %1$s (son autorisation de stockage est nécessaire)</string>
+    <string name="aa_export_log_failed">Android Auto a refusé l\'export</string>
+    <string name="aa_car_data">Infos de la voiture vers Android Auto</string>
+    <string name="aa_car_data_hint">Frein à main, marche arrière, phares et clignotants (MCU), vitesse, régime, carburant et température extérieure (OBD). Chacune peut être coupée dans Android Auto : Réglages > Voiture et touches (LibreHU).</string>
+    <string name="aa_keys">Touches vers Android Auto</string>
+    <string name="aa_keys_hint">Pendant une session, les touches média, appel et Assistant vocal (volant, boîtier CAN, touches tactiles) vont à Android Auto, même s\'il n\'est pas à l\'écran ; sinon elles gardent leur action habituelle.</string>
+    <string name="aa_raise_after_reverse">Retour à Android Auto après la marche arrière</string>
+    <string name="aa_raise_after_reverse_hint">Quand une appli de caméra de recul a pris l\'écran pendant une projection (la vue arrière intégrée passe par-dessus, rien à faire).</string>
 </resources>

@@ -80,6 +80,11 @@ class ReverseCamera private constructor(
     fun onReverse(on: Boolean) {
         if (on == reverse) return
         reverse = on
+        // Whether Android Auto was on, to bring it back after the reverse camera app.
+        if (on) {
+            org.librehu.service.projection.AndroidAuto
+                .onReverse()
+        }
         val s = _settings.value
         if (!s.enabled) return
         main.removeCallbacksAndMessages(null)
@@ -148,6 +153,8 @@ class ReverseCamera private constructor(
         val pkg = opened ?: return
         opened = null
         if (pkg == AVM) avmReverse(0)
+        org.librehu.service.projection.AndroidAuto
+            .afterReverseApp(context)
         when (s.exit) {
             ReverseExit.CLOSE -> {
                 Thread({

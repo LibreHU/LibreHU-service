@@ -22,9 +22,30 @@ Code : `projection/AndroidAuto.kt`, onglet **Android Auto**.
   `org.librehu.headunit.permission.CONFIGURE`, demandee par LibreHU-service). Les identifiants Wi-Fi ne sont jamais
   exportes par Open Headunit.
 
+## Pont voiture (fork seulement)
+Diffusions vers `org.librehu.headunit`, acceptees seulement d'une appli qui a la permission signature
+`org.librehu.headunit.permission.CONFIGURE` (LibreHU-service) ; cote fork : `librehu/LibreHuCar.kt`.
+- **Infos de la voiture** (`org.librehu.headunit.action.CAR`, interrupteur « Infos de la voiture vers Android Auto ») :
+  frein a main, marche arriere, phares, clignotants (MCU, seulement MCU en ligne) ; vitesse, regime, carburant,
+  temperature exterieure (adaptateur OBD connecte). Envoyees a chaque changement (l'OBD environ une fois par seconde)
+  et a chaque nouvelle session. Le fork les annonce au telephone comme capteurs Android Auto (`PARKING_BRAKE`,
+  `CAR_SPEED`, `RPM`, `FUEL_LEVEL`, `ENVIRONMENT`, `LIGHT`, `GEAR`), chacun coupable dans Android Auto → Reglages →
+  **Voiture et touches (LibreHU)** ; le **frein a main** peut ne plus etre transmis du tout (le telephone se fie
+  alors a sa propre estimation). Le rapport n'est connu que pour la marche arriere (R / D) : coupe par defaut.
+- **Touches** (`org.librehu.headunit.action.KEY`, diffusion ordonnee, interrupteur « Touches vers Android Auto ») :
+  pendant une session, lecture / pause, piste suivante / precedente, et les touches « Code touche » media, appel,
+  raccrocher, recherche, Assistant vocal (nouvelle action **Assistant vocal** des touches tactiles et du volant) vont
+  a Android Auto, meme s'il n'est pas a l'ecran. Le fork repond s'il a pris la touche ; sinon (pas de session, option
+  coupee d'un cote ou de l'autre) la touche garde son action habituelle.
+- **Retour apres la marche arriere** : si une appli de camera de recul (hd2cam, AVM) a pris l'ecran pendant une
+  projection, `ACTION_RAISE_PROJECTION` a sa fermeture. La vue arriere integree est une surcouche : rien a faire.
+- **Exporter le journal** : `ACTION_EXPORT_LOG` avec un chemin dans `Download/LibreHU/` (l'appli Android Auto a
+  besoin de son autorisation de stockage).
+
 ## Deja couvert ailleurs
 - Port USB en mode hote : Avance → Autochips.
-- Touches au volant et tactiles : touches media, recues par la session media d'Open Headunit pendant la lecture.
+- Touches au volant et tactiles avec Open Headunit d'origine : touches media, recues par sa session media pendant la
+  lecture.
 - Vue arriere : fenetre par-dessus tout, donc par-dessus Android Auto.
 - Gain du micro : onglet Audio (HAL audio, donc aussi pour Android Auto).
 

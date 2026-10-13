@@ -20,13 +20,21 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
+import org.librehu.core.obd.ObdPid
+import org.librehu.core.unit.VehicleState
 import org.librehu.service.LibreHuService
+import org.librehu.service.ServiceState
 import org.librehu.service.display.DisplayController
+import org.librehu.service.obd.ObdConnection
+import org.librehu.service.obd.ObdManager
+import org.librehu.service.obd.ObdState
 import kotlin.coroutines.resume
 
 /** Android Auto receiver installed: the LibreHU fork of Open Headunit, or Open Headunit itself. */
@@ -55,6 +63,24 @@ data class AaSession(
 data class AndroidAutoSettings(
     /** Day / night of Android Auto from the headlights (else Open Headunit's own setting). */
     val nightFromHeadlights: Boolean = true,
+    /** Parking brake, reverse, lights (MCU) and speed, engine speed, fuel, outside temperature (OBD) to the fork. */
+    val carData: Boolean = true,
+    /** Media, call and voice assistant keys to Android Auto while a session runs (the fork only). */
+    val keys: Boolean = true,
+    /** Projection brought back after the reverse camera app (the built-in rear view is an overlay, nothing to do). */
+    val raiseAfterReverse: Boolean = true,
+)
+
+/** What the fork gets as Android Auto sensors (LibreHuCar on its side); null = unknown. */
+data class AaCarData(
+    val handbrake: Boolean? = null,
+    val reverse: Boolean? = null,
+    val headlight: Boolean? = null,
+    val turn: String? = null,
+    val speedKmh: Double? = null,
+    val rpm: Double? = null,
+    val fuelPct: Double? = null,
+    val ambientC: Double? = null,
 )
 
 /**
@@ -68,6 +94,29 @@ object AndroidAuto {
     private const val PREFIX = "com.andrerinas.openheadunit."
     const val ACTION_SESSION_STATE = "com.andrerinas.headunitrevived.SESSION_STATE"
     private const val PREF_NIGHT = "aa_night_headlights"
+    private const val PREF_CAR = "aa_car_data"
+    private const val PREF_KEYS = "aa_keys"
+    private const val PREF_RAISE = "aa_raise_after_reverse"
+
+    /** Broadcasts of the fork, guarded by its signature permission org.librehu.headunit.permission.CONFIGURE. */
+    const val ACTION_CAR = "org.librehu.headunit.action.CAR"
+    const val ACTION_KEY = "org.librehu.headunit.action.KEY"
+    const val EXPORT_LOG = PREFIX + "ACTION_EXPORT_LOG"
+
+    /** Keys Android Auto takes (media, call, voice assistant); others keep their usual action. */
+    val AA_KEYS =
+        setOf(
+            android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+            android.view.KeyEvent.KEYCODE_MEDIA_PLAY,
+            android.view.KeyEvent.KEYCODE_MEDIA_PAUSE,
+            android.view.KeyEvent.KEYCODE_MEDIA_NEXT,
+            android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+            android.view.KeyEvent.KEYCODE_HEADSETHOOK,
+            android.view.KeyEvent.KEYCODE_CALL,
+            android.view.KeyEvent.KEYCODE_ENDCALL,
+            android.view.KeyEvent.KEYCODE_VOICE_ASSIST,
+            android.view.KeyEvent.KEYCODE_SEARCH,
+        )
 
     const val CONNECT = PREFIX + "ACTION_CONNECT"
     const val DISCONNECT = PREFIX + "ACTION_DISCONNECT"
@@ -79,6 +128,10 @@ object AndroidAuto {
     const val SET_SETTINGS = PREFIX + "ACTION_SET_SETTINGS"
     const val QUERY_STATE = PREFIX + "ACTION_QUERY_STATE"
 
+    /** Result code of the fork's key receiver when it sent the key to the phone. */
+    private const val KEY_TAKEN = 1
+    private const val RAISE_DELAY_MS = 800L
+
     private val _session = MutableStateFlow(AaSession())
     val session: StateFlow<AaSession> = _session.asStateFlow()
 
@@ -88,6 +141,10 @@ object AndroidAuto {
     private var scope: CoroutineScope? = null
     private var receiver: BroadcastReceiver? = null
     private var lastNight: Boolean? = null
+    private var lastCar: AaCarData? = null
+
+    /** The projection was on when reverse came: brought back after the reverse camera app. */
+    private var projectingAtReverse = false
 
     fun installed(context: Context): HeadunitApp? =
         HeadunitApp.entries.firstOrNull {
@@ -117,10 +174,11 @@ object AndroidAuto {
                             intent.getStringExtra("reason").orEmpty(),
                             SystemClock.elapsedRealtime(),
                         )
-                    // A new session takes the current day / night.
+                    // A new session takes the current day / night, and the car's state.
                     if (intent.getStringExtra("state") == "connected") {
                         lastNight = null
                         applyNight(app, DisplayController.get(app).headlights.value)
+                        lastCar?.let { sendCar(app, it) }
                     }
                 }
             }
@@ -138,6 +196,123 @@ object AndroidAuto {
             .filterNotNull()
             .onEach { applyNight(app, it) }
             .launchIn(sc)
+        combine(ServiceState.vehicle, ObdManager.get(app).state) { v, o -> carData(v, o) }
+            .distinctUntilChanged()
+            .onEach {
+                lastCar = it
+                sendCar(app, it)
+            }.launchIn(sc)
+    }
+
+    private fun carData(
+        v: VehicleState,
+        o: ObdState,
+    ): AaCarData {
+        val mcu = v.mcuOnline
+        val obd = if (o.connection == ObdConnection.CONNECTED) o.values else emptyMap()
+        return AaCarData(
+            handbrake = v.handbrake.takeIf { mcu },
+            reverse = v.reverse.takeIf { mcu },
+            headlight = v.headlight.takeIf { mcu },
+            turn =
+                if (!mcu) {
+                    null
+                } else {
+                    when {
+                        v.turnLeft && !v.turnRight -> "left"
+                        v.turnRight && !v.turnLeft -> "right"
+                        else -> "none"
+                    }
+                },
+            speedKmh = obd[ObdPid.SPEED.name],
+            rpm = obd[ObdPid.RPM.name],
+            fuelPct = obd[ObdPid.FUEL_LEVEL.name],
+            ambientC = obd[ObdPid.AMBIENT_TEMP.name],
+        )
+    }
+
+    /** The car's state to the fork (it keeps the last values and sends them to the phone, sensor by sensor). */
+    private fun sendCar(
+        context: Context,
+        d: AaCarData,
+    ) {
+        if (!_settings.value.carData || installed(context) != HeadunitApp.LIBREHU) return
+        val i = Intent(ACTION_CAR).setPackage(HeadunitApp.LIBREHU.packageName)
+        d.handbrake?.let { i.putExtra("handbrake", it) }
+        d.reverse?.let { i.putExtra("reverse", it) }
+        d.headlight?.let { i.putExtra("headlight", it) }
+        d.turn?.let { i.putExtra("turn", it) }
+        d.speedKmh?.let { i.putExtra("speed_kmh", it) }
+        d.rpm?.let { i.putExtra("rpm", it) }
+        d.fuelPct?.let { i.putExtra("fuel_pct", it) }
+        d.ambientC?.let { i.putExtra("ambient_c", it) }
+        if (i.extras?.isEmpty != false) return
+        try {
+            context.sendBroadcast(i)
+        } catch (e: Exception) {
+            Log.w(TAG, "car: ${e.message}")
+        }
+    }
+
+    /**
+     * [code] to Android Auto while a session runs (the fork answers whether it took it, its own switch included);
+     * otherwise, or when it did not take it, [fallback] (the key's usual action).
+     */
+    fun key(
+        context: Context,
+        code: Int,
+        fallback: () -> Unit,
+    ) {
+        val s = _session.value.state
+        if (!_settings.value.keys || code !in AA_KEYS || (s != "connected" && s != "projecting") ||
+            installed(context) != HeadunitApp.LIBREHU
+        ) {
+            fallback()
+            return
+        }
+        try {
+            context.sendOrderedBroadcast(
+                Intent(ACTION_KEY).setPackage(HeadunitApp.LIBREHU.packageName).putExtra("keycode", code).putExtra("event", "click"),
+                null,
+                object : BroadcastReceiver() {
+                    override fun onReceive(
+                        c: Context,
+                        i: Intent,
+                    ) {
+                        if (resultCode != KEY_TAKEN) fallback()
+                    }
+                },
+                Handler(Looper.getMainLooper()),
+                0,
+                null,
+                null,
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "key $code: ${e.message}")
+            fallback()
+        }
+    }
+
+    /** Reverse gear engaged: remembers whether the projection was on. */
+    fun onReverse() {
+        projectingAtReverse = _session.value.state == "projecting"
+    }
+
+    /** The reverse camera app was closed: the projection comes back if it was on when reverse came. */
+    fun afterReverseApp(context: Context) {
+        if (!projectingAtReverse || !_settings.value.raiseAfterReverse) return
+        projectingAtReverse = false
+        // After the camera app's exit (home or force-stop).
+        Handler(Looper.getMainLooper()).postDelayed({ if (_session.value.active) send(context, RAISE) }, RAISE_DELAY_MS)
+    }
+
+    /** Asks Open Headunit for its log, copied to Download/LibreHU; returns the file name or null when refused. */
+    suspend fun exportLog(context: Context): String? {
+        val name = "android-auto-" + java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date()) + ".log"
+        @Suppress("DEPRECATION")
+        val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "LibreHU")
+        val reply = ask(context, EXPORT_LOG, Bundle().apply { putString("path", java.io.File(dir, name).absolutePath) }) ?: return null
+        return if (reply.optBoolean("ok")) "Download/LibreHU/$name" else null
     }
 
     fun stop(context: Context) {
@@ -158,7 +333,11 @@ object AndroidAuto {
             .prefs(context)
             .edit()
             .putBoolean(PREF_NIGHT, s.nightFromHeadlights)
+            .putBoolean(PREF_CAR, s.carData)
+            .putBoolean(PREF_KEYS, s.keys)
+            .putBoolean(PREF_RAISE, s.raiseAfterReverse)
             .apply()
+        lastCar?.let { sendCar(context, it) }
         lastNight = null
         if (s.nightFromHeadlights) {
             applyNight(context, DisplayController.get(context).headlights.value)
@@ -274,6 +453,12 @@ object AndroidAuto {
     @Synchronized
     private fun load(context: Context) {
         val p = LibreHuService.prefs(context)
-        _settings.value = AndroidAutoSettings(p.getBoolean(PREF_NIGHT, true))
+        _settings.value =
+            AndroidAutoSettings(
+                nightFromHeadlights = p.getBoolean(PREF_NIGHT, true),
+                carData = p.getBoolean(PREF_CAR, true),
+                keys = p.getBoolean(PREF_KEYS, true),
+                raiseAfterReverse = p.getBoolean(PREF_RAISE, true),
+            )
     }
 }

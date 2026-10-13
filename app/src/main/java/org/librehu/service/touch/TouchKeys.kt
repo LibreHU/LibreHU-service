@@ -172,15 +172,21 @@ class TouchKeys private constructor(
             }
 
             TouchAction.PLAY_PAUSE -> {
-                if (playPauseHook?.invoke() != true) media(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                toAndroidAuto(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+                    if (playPauseHook?.invoke() != true) media(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                }
             }
 
             TouchAction.NEXT -> {
-                media(KeyEvent.KEYCODE_MEDIA_NEXT)
+                toAndroidAuto(KeyEvent.KEYCODE_MEDIA_NEXT) { media(KeyEvent.KEYCODE_MEDIA_NEXT) }
             }
 
             TouchAction.PREVIOUS -> {
-                media(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                toAndroidAuto(KeyEvent.KEYCODE_MEDIA_PREVIOUS) { media(KeyEvent.KEYCODE_MEDIA_PREVIOUS) }
+            }
+
+            TouchAction.VOICE_ASSISTANT -> {
+                toAndroidAuto(KeyEvent.KEYCODE_VOICE_ASSIST) { voiceAssistant() }
             }
 
             TouchAction.LAUNCH_APP -> {
@@ -191,7 +197,7 @@ class TouchKeys private constructor(
             }
 
             TouchAction.KEYCODE -> {
-                action.arg.toIntOrNull()?.let(::inject)
+                action.arg.toIntOrNull()?.let { code -> toAndroidAuto(code) { inject(code) } }
             }
 
             TouchAction.BRIGHTNESS_UP -> {
@@ -253,6 +259,25 @@ class TouchKeys private constructor(
                 else -> AudioManager.ADJUST_TOGGLE_MUTE
             }
         audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, dir, AudioManager.FLAG_SHOW_UI)
+    }
+
+    /**
+     * Media, call and voice assistant keys go to Android Auto while a session runs (AndroidAuto.key); [usual] runs
+     * otherwise, or when Android Auto did not take the key.
+     */
+    private fun toAndroidAuto(
+        code: Int,
+        usual: () -> Unit,
+    ) = org.librehu.service.projection.AndroidAuto
+        .key(app, code, usual)
+
+    /** Android's voice assistant (the phone's one while Android Auto runs, see toAndroidAuto). */
+    private fun voiceAssistant() {
+        try {
+            app.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: ActivityNotFoundException) {
+            inject(KeyEvent.KEYCODE_VOICE_ASSIST)
+        }
     }
 
     /** Media keys reach the active player without any permission. */

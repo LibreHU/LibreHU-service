@@ -178,6 +178,9 @@ enum class TouchAction {
 
     /** LibreHU Launcher's standby clock (org.librehu.action.STANDBY_CLOCK). */
     STANDBY_CLOCK,
+
+    /** Voice assistant: the phone's during an Android Auto session, else Android's (ACTION_VOICE_COMMAND). */
+    VOICE_ASSISTANT,
 }
 
 data class ZoneAction(

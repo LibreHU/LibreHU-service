@@ -806,7 +806,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="aa_integration">Integration</string>
     <string name="aa_night_headlights">Day / night from the headlights</string>
     <string name="aa_night_headlights_hint">Android Auto turns dark with the headlights, as the launcher; off = Open Headunit\'s own setting.</string>
-    <string name="aa_integration_hint">Steering wheel and touch keys send media keys, which reach Android Auto while it plays; the rear view goes over it; the microphone gain (Audio) applies to its calls and voice assistant.</string>
+    <string name="aa_integration_hint">Steering wheel and touch keys go to Android Auto during a session (see above); the built-in rear view goes over it; the microphone gain (Audio) applies to its calls and voice assistant.</string>
     <string name="aa_settings_title">Open Headunit settings</string>
     <string name="aa_settings_hint_fork">Every setting Open Headunit LibreHU stored, changed here directly. Some only apply at the next connection.</string>
     <string name="aa_settings_hint_upstream">Open Headunit only gives its settings to other apps with \"Allow external configuration\" turned on in its settings (or with Open Headunit LibreHU).</string>
@@ -878,4 +878,14 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="net_modules_hint">Loaded by the zip\'s init script once Android has started. If the unit restarts while they load, the next start leaves them out: re-enable here.</string>
     <string name="net_iphone_auto">Switch an iPhone to USB tethering when plugged in</string>
     <string name="net_iphone_auto_hint">Off by default: wired CarPlay uses another USB configuration of the iPhone. Never done while an app holds the iPhone.</string>
+    <string name="ta_voice_assistant">Voice assistant</string>
+    <string name="aa_export_log">Export the log</string>
+    <string name="aa_export_log_done">Log being written by Android Auto: %1$s (its storage permission is needed)</string>
+    <string name="aa_export_log_failed">Android Auto refused the export</string>
+    <string name="aa_car_data">Car information to Android Auto</string>
+    <string name="aa_car_data_hint">Parking brake, reverse, headlights and turn signals (MCU), speed, engine speed, fuel and outside temperature (OBD). Each one can be switched off in Android Auto: Settings > Car and keys (LibreHU).</string>
+    <string name="aa_keys">Keys to Android Auto</string>
+    <string name="aa_keys_hint">During a session, the media, call and voice assistant keys (steering wheel, CAN box, touch keys) go to Android Auto, even when it is not on screen; otherwise they keep their usual action.</string>
+    <string name="aa_raise_after_reverse">Back to Android Auto after reversing</string>
+    <string name="aa_raise_after_reverse_hint">When a reverse camera app took the screen during a projection (the built-in rear view stays over it, nothing to do).</string>
 </resources>

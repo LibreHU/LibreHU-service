@@ -31,6 +31,7 @@ fun AndroidAutoScreen() {
     val session by AndroidAuto.session.collectAsStateWithLifecycle()
     val settings by AndroidAuto.settings.collectAsStateWithLifecycle()
     var app by remember { mutableStateOf(AndroidAuto.installed(context)) }
+    var exported by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         while (true) {
             app = AndroidAuto.installed(context)
@@ -70,7 +71,14 @@ fun AndroidAutoScreen() {
                     Pill(stringResource(R.string.aa_restart_audio), enabled = session.active) {
                         AndroidAuto.send(context, AndroidAuto.RESTART_AUDIO)
                     }
+                    Pill(stringResource(R.string.aa_export_log)) {
+                        scope.launch {
+                            val file = AndroidAuto.exportLog(context)
+                            exported = if (file != null) context.getString(R.string.aa_export_log_done, file) else context.getString(R.string.aa_export_log_failed)
+                        }
+                    }
                 }
+                exported?.let { Hint(it) }
             }
             Hint(stringResource(R.string.aa_hint))
         }
@@ -81,6 +89,23 @@ fun AndroidAutoScreen() {
                     settings.nightFromHeadlights,
                     stringResource(R.string.aa_night_headlights_hint),
                 ) { on -> AndroidAuto.update(context) { it.copy(nightFromHeadlights = on) } }
+                if (app == HeadunitApp.LIBREHU) {
+                    SwitchRow(
+                        stringResource(R.string.aa_car_data),
+                        settings.carData,
+                        stringResource(R.string.aa_car_data_hint),
+                    ) { on -> AndroidAuto.update(context) { it.copy(carData = on) } }
+                    SwitchRow(
+                        stringResource(R.string.aa_keys),
+                        settings.keys,
+                        stringResource(R.string.aa_keys_hint),
+                    ) { on -> AndroidAuto.update(context) { it.copy(keys = on) } }
+                }
+                SwitchRow(
+                    stringResource(R.string.aa_raise_after_reverse),
+                    settings.raiseAfterReverse,
+                    stringResource(R.string.aa_raise_after_reverse_hint),
+                ) { on -> AndroidAuto.update(context) { it.copy(raiseAfterReverse = on) } }
                 Hint(stringResource(R.string.aa_integration_hint))
             }
             HeadunitSettingsCard(app == HeadunitApp.LIBREHU, scope)

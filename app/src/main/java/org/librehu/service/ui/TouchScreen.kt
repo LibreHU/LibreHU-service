@@ -348,5 +348,6 @@ fun actionName(a: TouchAction): String =
             TouchAction.ALL_APPS -> R.string.ta_all_apps
             TouchAction.LOCK -> R.string.ta_lock
             TouchAction.STANDBY_CLOCK -> R.string.ta_standby
+            TouchAction.VOICE_ASSISTANT -> R.string.ta_voice_assistant
         },
     )
