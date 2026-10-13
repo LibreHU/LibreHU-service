@@ -23,11 +23,29 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | 65588 / 65600 | miroir du recul rapide CVBS / AHD (1 gauche-droite + 2 haut-bas) |
 | 65594..65597 / 65601..65604 | recadrage x, y, largeur, hauteur (CVBS / AHD) |
 | 65598 / 65599 | netteté / tramage (0 / 1) |
-| 65605 | caméra AHD : 4 = 720p, 6 = 1080p |
+| 65605 | mode caméra : 0 auto, 1 NTSC, 2 PAL, 3 720p25, 4 720p30, 5 1080p25, 6 1080p30 (ATC Settings ne propose que 4 et 6) |
 | 65606 | caméra 360 : 0 auto, 1 NTSC, 2 PAL, 3 720p25, 4 720p30, 5 1080p25, 6 1080p30 |
-| 65607 | source du recul : 0 débogage, 1 CVBS, 2 MIPI (AHD), 3 360 |
+| 65607 | source du recul : 0 débogage, 1 CVBS, 2 MIPI, 3 360 / AVM (**l'AHD de l'UJC201 passe par 3**, comme l'écrit Jancar) |
+| 66018 | valeur capteur de Jancar : 0 AHD 720p25, 1 1080p25, 2 720p30, 3 1080p30 |
 | 65608 / 65611 | 360 rapide / 360 sur CVBS |
 | 65616 | port USB 0 : 2 hôte, 1 périphérique |
+
+## Format de la caméra
+Préréglages repris de Jancar (`ImportSingleConfigUtil.importBackCarVideoSource` d'ivi-settings, index =
+`BackCarVideoSource` de `ivi-customer.ini`, `1` = AHD 720p 25 i/s sur l'UJC201 d'origine) :
+
+| Format | 65607 | 66018 | 65605 et 65606 | recadrage AHD 65601..65604 |
+|---|---|---|---|---|
+| CVBS | 1 | — | — | — |
+| AHD 720p 25 i/s | 3 | 0 | 3 | 12, 0, 1268, 720 |
+| AHD 720p 30 i/s | 3 | 2 | 4 | 12, 0, 1268, 720 |
+| AHD 1080p 25 i/s | 3 | 1 | 5 | 0, 0, 0, 0 |
+| AHD 1080p 30 i/s | 3 | 3 | 6 | 0, 0, 0, 0 |
+
+Puis `flush` et **redémarrage** (Jancar redémarre aussi) : le format est lu au démarrage (chargeur, ARM2, pilote
+caméra), il vaut pour le recul rapide comme pour la vue Camera2 de LibreHU. Les valeurs restent dans la metazone :
+sans Jancar, le dernier format réglé reste actif. Aucun mode 60 i/s dans les réglages de Jancar ni d'Autochips. La
+vue LibreHU affiche les images par seconde réellement reçues (réglage « Angle du volant et caméra sur l'image »).
 
 ## USB
 Comme ATC Settings : écriture de 65616 puis rôle du port avec `dumpsys usb set-port-roles <id> source host|device`

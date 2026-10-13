@@ -53,9 +53,42 @@ object Mtz {
     /** USB port 0: 2 host, 1 device. */
     const val USB_MODE = 65616
 
+    /** Jancar's sensor value (`ADDR_AHD_SENSOR_VALUE`): 0 AHD 720p25, 1 1080p25, 2 720p30, 3 1080p30. */
+    const val SENSOR = 66018
+
     val FAST_REVERSE =
-        listOf(SOURCE, AHD_MODE, AVM_MODE, CVBS_MIRROR, MIPI_MIRROR, SHARPNESS, DITHER, FAST_AVM, CVBS_AVM, REAR_DISPLAY) +
+        listOf(SOURCE, AHD_MODE, AVM_MODE, SENSOR, CVBS_MIRROR, MIPI_MIRROR, SHARPNESS, DITHER, FAST_AVM, CVBS_AVM, REAR_DISPLAY) +
             (0..3).map { CVBS_CROP + it } + (0..3).map { MIPI_CROP + it }
+}
+
+/**
+ * Rear camera format, as Jancar's settings set it on the AC8257 (`ImportSingleConfigUtil.importBackCarVideoSource`,
+ * index = `BackCarVideoSource` of `ivi-customer.ini`): 0 CVBS, 1 AHD 720p 25 fps, 2 AHD 720p 30, 3 AHD 1080p 25,
+ * 4 AHD 1080p 30. The AHD camera goes through source 3 (the 360 / AVM path of Autochips' list), mode = index + 2 in
+ * both camera mode addresses, and a crop of the 720p picture. Read at start-up (LK, ARM2, camera driver): restart.
+ */
+object CameraFormat {
+    const val COUNT = 5
+
+    fun values(index: Int): Map<Int, Int> {
+        if (index <= 0) return mapOf(Mtz.SOURCE to 1)
+        val i = index.coerceAtMost(COUNT - 1)
+        val crop = if (i <= 2) intArrayOf(12, 0, 1268, 720) else IntArray(4)
+        return mapOf(
+            Mtz.SOURCE to 3,
+            Mtz.SENSOR to intArrayOf(0, 0, 2, 1, 3)[i],
+            Mtz.AHD_MODE to i + 2,
+            Mtz.AVM_MODE to i + 2,
+        ) + (0..3).associate { Mtz.MIPI_CROP + it to crop[it] }
+    }
+
+    /** Index of the metazone values, null when they match none (set by hand or by ATC Settings). */
+    fun current(values: Map<Int, Int>): Int? =
+        when (values[Mtz.SOURCE]) {
+            1 -> 0
+            3 -> values[Mtz.AHD_MODE]?.minus(2)?.takeIf { it in 1 until COUNT }
+            else -> null
+        }
 }
 
 /**
@@ -165,6 +198,10 @@ object AtcTools {
         for (id in ids) RootShell.run("dumpsys usb set-port-roles '$id' source ${if (host) "host" else "device"}")
         if (!host) RootShell.run("settings put global adb_enabled 1")
         return null
+    }
+
+    fun reboot() {
+        if (RootShell.run("svc power reboot") == null) RootShell.run("reboot")
     }
 
     /** Copy of the logo partition (boot logo and the panel's start-up description) on the internal storage. */

@@ -714,8 +714,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="atc_fr_source">Camera source</string>
     <string name="atc_fr_source_mipi">AHD (MIPI)</string>
     <string name="atc_fr_source_debug">Debug</string>
-    <string name="atc_fr_ahd">AHD camera</string>
-    <string name="atc_fr_avm">360 camera</string>
+    <string name="atc_fr_ahd">Camera mode (65605)</string>
+    <string name="atc_fr_avm">Camera mode 360 (65606)</string>
     <string name="atc_fr_crop">Crop of the picture (pixels: x, y, width, height)</string>
     <string name="atc_fr_sharpness">Sharpness</string>
     <string name="atc_fr_dither">Dithering</string>
@@ -736,4 +736,12 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="atc_logo_confirm">The logo partition is copied, then the picture becomes the boot logo. Continue?</string>
     <string name="atc_logo_done">Logo written (%1$s). Copy: %2$s</string>
     <string name="atc_logo_failed">Logo not written: %1$s. Copy: %2$s</string>
+    <string name="atc_fr_format">Camera format (as Jancar sets it)</string>
+    <string name="atc_fr_format_other">Current values match no format (set by hand or by ATC Settings).</string>
+    <string name="atc_fr_format_hint">Read at start-up by the boot loader, the ARM2 and the camera driver: it applies to the fast reverse and to the LibreHU view, after a restart. AHD 720p / 1080p at 25 or 30 frames per second, as the camera sends it: a wrong format gives no picture or a rolling one. No 60 fps mode in Jancar\'s nor Autochips\' settings.</string>
+    <string name="atc_fr_raw">Raw values (advanced)</string>
+    <string name="atc_fr_source_avm">AHD / 360</string>
+    <string name="atc_reboot">Restart now</string>
+    <string name="atc_reboot_needed">Camera format saved: restart the head unit to apply it.</string>
+    <string name="rv_info_fps">%1$d fps</string>
 </resources>

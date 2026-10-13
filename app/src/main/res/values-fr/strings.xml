@@ -714,8 +714,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="atc_fr_source">Source de la caméra</string>
     <string name="atc_fr_source_mipi">AHD (MIPI)</string>
     <string name="atc_fr_source_debug">Débogage</string>
-    <string name="atc_fr_ahd">Caméra AHD</string>
-    <string name="atc_fr_avm">Caméra 360</string>
+    <string name="atc_fr_ahd">Mode caméra (65605)</string>
+    <string name="atc_fr_avm">Mode caméra 360 (65606)</string>
     <string name="atc_fr_crop">Recadrage de l\'image (pixels : x, y, largeur, hauteur)</string>
     <string name="atc_fr_sharpness">Netteté</string>
     <string name="atc_fr_dither">Tramage</string>
@@ -736,4 +736,12 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="atc_logo_confirm">La partition logo est copiée, puis l\'image devient le logo de démarrage. Continuer ?</string>
     <string name="atc_logo_done">Logo écrit (%1$s). Copie : %2$s</string>
     <string name="atc_logo_failed">Logo non écrit : %1$s. Copie : %2$s</string>
+    <string name="atc_fr_format">Format de la caméra (comme le règle Jancar)</string>
+    <string name="atc_fr_format_other">Les valeurs actuelles ne correspondent à aucun format (réglées à la main ou par ATC Settings).</string>
+    <string name="atc_fr_format_hint">Lu au démarrage par le chargeur, l\'ARM2 et le pilote caméra : il vaut pour le recul rapide et pour la vue LibreHU, après un redémarrage. AHD 720p / 1080p à 25 ou 30 images par seconde, comme l\'envoie la caméra : un mauvais format donne une image absente ou qui défile. Pas de mode 60 i/s dans les réglages de Jancar ni d\'Autochips.</string>
+    <string name="atc_fr_raw">Valeurs brutes (avancé)</string>
+    <string name="atc_fr_source_avm">AHD / 360</string>
+    <string name="atc_reboot">Redémarrer maintenant</string>
+    <string name="atc_reboot_needed">Format de la caméra enregistré : redémarrer l\'autoradio pour l\'appliquer.</string>
+    <string name="rv_info_fps">%1$d i/s</string>
 </resources>

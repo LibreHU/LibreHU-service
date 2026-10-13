@@ -18,6 +18,8 @@ Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par
   DVR** (root : `am force-stop com.jancar.hd2cam` avant l'ouverture).
 - Image : miroir, retournement, rotation 0 / 90 / 180 / 270, remplir l'écran (recadrage) ou image entière, zoom
   50-300 %, décalages. Taille de flux la plus proche de 1280×720.
+- Format de la caméra (CVBS, AHD 720p / 1080p, 25 / 30 i/s) : réglé sous Android, dans la metazone, lu au démarrage
+  (Avancé → Autochips, [atc.md](atc.md#format-de-la-caméra)). La ligne d'info montre les images par seconde reçues.
 
 ## Lignes de guidage
 Un rectangle au sol derrière la voiture (largeur de la voiture × longueur choisie) dessiné en perspective : on place ses

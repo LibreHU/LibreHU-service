@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
 import org.librehu.service.atc.AtcTools
+import org.librehu.service.atc.CameraFormat
 import org.librehu.service.atc.Mtz
 
 /** Autochips features of the stock ROM: hidden tools, USB mode, ARM2 fast reverse, boot logo. */
@@ -123,6 +124,9 @@ private fun FastReverseCard() {
     var edited by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
     var status by remember { mutableStateOf<String?>(null) }
     var confirmArm2 by remember { mutableStateOf(false) }
+    var raw by remember { mutableStateOf(false) }
+    var formatChanged by remember { mutableStateOf(false) }
+    var savedFormat by remember { mutableStateOf(false) }
     val noRoot = stringResource(R.string.atc_no_root)
     val saved = stringResource(R.string.atc_saved)
     val applied = stringResource(R.string.atc_arm2_done)
@@ -160,28 +164,43 @@ private fun FastReverseCard() {
         Hint(stringResource(R.string.atc_fr_hint))
         status?.let { StatusLine(it, null) }
         if (values != null) {
-            BodyText(stringResource(R.string.atc_fr_source))
+            BodyText(stringResource(R.string.atc_fr_format))
+            val format = CameraFormat.current(values!! + edited)
             Choices(
                 listOf(
-                    1 to "CVBS",
-                    2 to stringResource(R.string.atc_fr_source_mipi),
-                    3 to "360",
-                    0 to stringResource(R.string.atc_fr_source_debug),
+                    0 to "CVBS",
+                    1 to "AHD 720p 25 i/s",
+                    2 to "AHD 720p 30 i/s",
+                    3 to "AHD 1080p 25 i/s",
+                    4 to "AHD 1080p 30 i/s",
                 ),
-                v(Mtz.SOURCE),
-            ) { set(Mtz.SOURCE, it) }
-            val mipi = v(Mtz.SOURCE) == 2
-            if (mipi) {
-                BodyText(stringResource(R.string.atc_fr_ahd))
-                Choices(listOf(4 to "720p", 6 to "1080p"), v(Mtz.AHD_MODE)) { set(Mtz.AHD_MODE, it) }
+                format ?: -1,
+            ) { i ->
+                edited = edited + CameraFormat.values(i)
+                formatChanged = true
             }
-            if (v(Mtz.SOURCE) == 3) {
-                BodyText(stringResource(R.string.atc_fr_avm))
+            if (format == null) Hint(stringResource(R.string.atc_fr_format_other))
+            Hint(stringResource(R.string.atc_fr_format_hint))
+            SwitchRow(stringResource(R.string.atc_fr_raw), raw) { raw = it }
+            if (raw) {
+                BodyText(stringResource(R.string.atc_fr_source))
                 Choices(
-                    listOf("Auto", "NTSC", "PAL", "720p25", "720p30", "1080p25", "1080p30").mapIndexed { i, l -> i to l },
-                    v(Mtz.AVM_MODE),
-                ) { set(Mtz.AVM_MODE, it) }
+                    listOf(
+                        1 to "CVBS",
+                        2 to stringResource(R.string.atc_fr_source_mipi),
+                        3 to stringResource(R.string.atc_fr_source_avm),
+                        0 to stringResource(R.string.atc_fr_source_debug),
+                    ),
+                    v(Mtz.SOURCE),
+                ) { set(Mtz.SOURCE, it) }
+                val modes = listOf("Auto", "NTSC", "PAL", "720p25", "720p30", "1080p25", "1080p30").mapIndexed { i, l -> i to l }
+                BodyText(stringResource(R.string.atc_fr_ahd))
+                Choices(modes, v(Mtz.AHD_MODE)) { set(Mtz.AHD_MODE, it) }
+                BodyText(stringResource(R.string.atc_fr_avm))
+                Choices(modes, v(Mtz.AVM_MODE)) { set(Mtz.AVM_MODE, it) }
             }
+            // AHD (sources 2 and 3) uses the MIPI mirror and crop, as Jancar writes them.
+            val mipi = v(Mtz.SOURCE) == 2 || v(Mtz.SOURCE) == 3
             val mirrorAddr = if (mipi) Mtz.MIPI_MIRROR else Mtz.CVBS_MIRROR
             val mirror = v(mirrorAddr)
             SwitchRow(stringResource(R.string.rv_mirror), mirror and 1 != 0) { on ->
@@ -214,6 +233,8 @@ private fun FastReverseCard() {
                     if (err == null) {
                         values = values.orEmpty() + changes
                         edited = emptyMap()
+                        if (formatChanged) savedFormat = true
+                        formatChanged = false
                     }
                     status =
                         if (err == null) {
@@ -226,7 +247,11 @@ private fun FastReverseCard() {
                 }
             }
             Pill(stringResource(R.string.atc_arm2), enabled = values != null && edited.isEmpty()) { confirmArm2 = true }
+            if (savedFormat) {
+                Pill(stringResource(R.string.atc_reboot)) { scope.launch(Dispatchers.IO) { AtcTools.reboot() } }
+            }
         }
+        if (savedFormat) Hint(stringResource(R.string.atc_reboot_needed))
     }
     if (confirmArm2) {
         AlertDialog(

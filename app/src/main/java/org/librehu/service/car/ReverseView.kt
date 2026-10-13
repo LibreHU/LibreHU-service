@@ -99,6 +99,18 @@ class ReverseView private constructor(
     private val lows = ArrayDeque<Pair<Long, Float>>()
     private var lastMotion = 0L
     private var radarLevel = 0
+    private var steeringAngle: Double? = null
+    private var frames = 0
+    private var fps = 0
+    private val fpsTick =
+        object : Runnable {
+            override fun run() {
+                fps = frames
+                frames = 0
+                updateInfo()
+                main.postDelayed(this, 1000)
+            }
+        }
     private var approachLevel = 0
 
     fun update(transform: (ReverseViewSettings) -> ReverseViewSettings) {
@@ -174,7 +186,9 @@ class ReverseView private constructor(
                     return true
                 }
 
-                override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+                override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+                    frames++
+                }
             }
         tv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyTransform() }
         val lp = layout(preview)
@@ -189,6 +203,8 @@ class ReverseView private constructor(
         texture = tv
         guide = g
         _showing.value = true
+        frames = 0
+        main.postDelayed(fpsTick, 1000)
         sounds.engage(s)
         if (!preview) sounds.duckMedia(s.media)
         val sc = MainScope()
@@ -231,6 +247,8 @@ class ReverseView private constructor(
         texture = null
         guide = null
         lows.clear()
+        main.removeCallbacks(fpsTick)
+        fps = 0
         radarLevel = 0
         approachLevel = 0
         _showing.value = false
@@ -568,13 +586,21 @@ class ReverseView private constructor(
             }
         g.radar = levels
         radarLevel = if (s.radar && s.radarBeep && levels != null) levels.max() else 0
+        steeringAngle = angle
+        updateInfo()
+        beeps()
+    }
+
+    /** Steering angle, camera, picture size and frames per second actually received. */
+    private fun updateInfo() {
+        val g = guide ?: return
         g.info =
             listOfNotNull(
-                angle?.let { app.getString(R.string.rv_info_steering, String.format(Locale.ROOT, "%.0f", it)) },
+                steeringAngle?.let { app.getString(R.string.rv_info_steering, String.format(Locale.ROOT, "%.0f", it)) },
                 openedId?.let { app.getString(R.string.rv_info_camera, it, bufferW, bufferH) },
+                if (openedId != null) app.getString(R.string.rv_info_fps, fps) else null,
             ).joinToString("  ·  ")
         g.invalidate()
-        beeps()
     }
 
     private fun beeps() = sounds.setLevel(max(radarLevel, approachLevel))
