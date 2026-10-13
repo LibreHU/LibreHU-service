@@ -592,7 +592,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="rv_info_camera">Camera %1$s · %2$d×%3$d</string>
     <string name="rv_image_title">Camera and picture</string>
     <string name="rv_camera">Camera</string>
-    <string name="rv_camera_auto">Automatic (rear camera of Jancar\'s config, \"10\", then the others)</string>
+    <string name="rv_camera_auto">Automatic (as Jancar: camera 3 for CVBS, 2 / 10 / 8 for AHD, by the format above)</string>
     <string name="rv_camera_id">Camera %1$s</string>
     <string name="rv_facing_front">front</string>
     <string name="rv_facing_back">back</string>
@@ -888,4 +888,19 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="aa_keys_hint">During a session, the media, call and voice assistant keys (steering wheel, CAN box, touch keys) go to Android Auto, even when it is not on screen; otherwise they keep their usual action.</string>
     <string name="aa_raise_after_reverse">Back to Android Auto after reversing</string>
     <string name="aa_raise_after_reverse_hint">When a reverse camera app took the screen during a projection (the built-in rear view stays over it, nothing to do).</string>
+    <string name="rv_format_title">Camera format</string>
+    <string name="rv_format_cvbs">CVBS (analogue, PAL / NTSC)</string>
+    <string name="rv_format_ahd">AHD %1$s %2$d fps</string>
+    <string name="rv_format_now">Set now: %1$s</string>
+    <string name="rv_format_unknown">Format not read (root needed) or set by hand</string>
+    <string name="rv_format_hint">What the camera sends, written on its label or box: CVBS (or AV, analogue, PAL / NTSC detected by itself), AHD 720p (1280×720) or AHD 1080p (1920×1080), at 25 or 30 frames per second. A wrong format gives no picture, or one that rolls or flickers: try the other frame rate first. Used by the fast reverse, Jancar\'s apps and the LibreHU view; applied after a restart.</string>
+    <string name="rv_role_ahd">AHD rear camera</string>
+    <string name="rv_role_ahd_dvr">AHD rear camera (Jancar dual-recording DVR mode)</string>
+    <string name="rv_role_ahd_9963">AHD rear camera (9963 chip)</string>
+    <string name="rv_role_cvbs">CVBS / AV rear camera (analogue)</string>
+    <string name="rv_role_front_9963">Front camera (9963 chip)</string>
+    <string name="rv_role_front">Front camera / 360 front</string>
+    <string name="rv_role_left">360 left / TV</string>
+    <string name="rv_role_right">360 right</string>
+    <string name="rv_role_web">Front panel camera</string>
 </resources>

@@ -592,7 +592,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="rv_info_camera">Caméra %1$s · %2$d×%3$d</string>
     <string name="rv_image_title">Caméra et image</string>
     <string name="rv_camera">Caméra</string>
-    <string name="rv_camera_auto">Automatique (caméra arrière de la config Jancar, « 10 », puis les autres)</string>
+    <string name="rv_camera_auto">Automatique (comme Jancar : caméra 3 en CVBS, 2 / 10 / 8 en AHD, selon le format ci-dessus)</string>
     <string name="rv_camera_id">Caméra %1$s</string>
     <string name="rv_facing_front">avant</string>
     <string name="rv_facing_back">arrière</string>
@@ -888,4 +888,19 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="aa_keys_hint">Pendant une session, les touches média, appel et Assistant vocal (volant, boîtier CAN, touches tactiles) vont à Android Auto, même s\'il n\'est pas à l\'écran ; sinon elles gardent leur action habituelle.</string>
     <string name="aa_raise_after_reverse">Retour à Android Auto après la marche arrière</string>
     <string name="aa_raise_after_reverse_hint">Quand une appli de caméra de recul a pris l\'écran pendant une projection (la vue arrière intégrée passe par-dessus, rien à faire).</string>
+    <string name="rv_format_title">Format de la caméra</string>
+    <string name="rv_format_cvbs">CVBS (analogique, PAL / NTSC)</string>
+    <string name="rv_format_ahd">AHD %1$s %2$d i/s</string>
+    <string name="rv_format_now">Réglé : %1$s</string>
+    <string name="rv_format_unknown">Format non lu (root nécessaire) ou réglé à la main</string>
+    <string name="rv_format_hint">Ce qu\'envoie la caméra, écrit sur son étiquette ou sa boîte : CVBS (ou AV, analogique, PAL / NTSC détecté tout seul), AHD 720p (1280×720) ou AHD 1080p (1920×1080), à 25 ou 30 images par seconde. Un mauvais format donne une image absente, qui défile ou qui scintille : essayer d\'abord l\'autre cadence. Utilisé par le recul rapide, les applis Jancar et la vue LibreHU ; appliqué après un redémarrage.</string>
+    <string name="rv_role_ahd">Caméra arrière AHD</string>
+    <string name="rv_role_ahd_dvr">Caméra arrière AHD (mode DVR double enregistrement de Jancar)</string>
+    <string name="rv_role_ahd_9963">Caméra arrière AHD (puce 9963)</string>
+    <string name="rv_role_cvbs">Caméra arrière CVBS / AV (analogique)</string>
+    <string name="rv_role_front_9963">Caméra avant (puce 9963)</string>
+    <string name="rv_role_front">Caméra avant / 360 avant</string>
+    <string name="rv_role_left">360 gauche / TV</string>
+    <string name="rv_role_right">360 droite</string>
+    <string name="rv_role_web">Caméra de façade</string>
 </resources>

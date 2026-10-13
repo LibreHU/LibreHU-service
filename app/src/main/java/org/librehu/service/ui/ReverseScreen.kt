@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
 import org.librehu.service.ServiceState
@@ -42,6 +43,8 @@ fun ReverseScreen(actions: AppActions) {
     val s by camera.settings.collectAsStateWithLifecycle()
     Page(stringResource(R.string.tab_reverse)) {
         ReverseCameraCard(actions)
+        // The camera's own format (AHD 720p / 1080p, 25 / 30 fps, or analogue CVBS): for any rear view mode.
+        CameraFormatCard()
         if (s.mode == ReverseMode.BUILT_IN) {
             val view = ReverseView.get(context)
             val v by view.settings.collectAsStateWithLifecycle()
@@ -50,6 +53,71 @@ fun ReverseScreen(actions: AppActions) {
             GuideLinesCard(view, v)
             ReverseSoundCard(view, v, actions)
             ReverseAlertsCard(view, v)
+        }
+    }
+}
+
+/**
+ * What the camera sends, as Jancar's settings set it (`BackCarVideoSource`): CVBS (analogue PAL / NTSC) or AHD
+ * 720p / 1080p at 25 or 30 frames per second. Written in the metazone (read at start-up by the loader, the ARM2 fast
+ * reverse and the camera driver), so a restart applies it. Root.
+ */
+@Composable
+private fun CameraFormatCard() {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var current by remember { mutableStateOf<Int?>(null) }
+    var read by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var saved by remember { mutableStateOf(false) }
+    val noRoot = stringResource(R.string.atc_no_root)
+    LaunchedEffect(Unit) {
+        when (val r = withContext(Dispatchers.IO) { org.librehu.service.atc.AtcTools.read(context, org.librehu.service.atc.Mtz.FAST_REVERSE) }) {
+            is org.librehu.service.atc.AtcTools.Result.Values -> {
+                current = org.librehu.service.atc.CameraFormat.current(r.values)
+                current?.let { ReverseView.get(context).cameraFormat = it }
+            }
+            is org.librehu.service.atc.AtcTools.Result.Error -> status = r.message
+            org.librehu.service.atc.AtcTools.Result.NoRoot -> status = noRoot
+        }
+        read = true
+    }
+    Card(stringResource(R.string.rv_format_title)) {
+        val options =
+            listOf(
+                0 to stringResource(R.string.rv_format_cvbs),
+                1 to stringResource(R.string.rv_format_ahd, "720p", 25),
+                2 to stringResource(R.string.rv_format_ahd, "720p", 30),
+                3 to stringResource(R.string.rv_format_ahd, "1080p", 25),
+                4 to stringResource(R.string.rv_format_ahd, "1080p", 30),
+            )
+        if (read) {
+            StatusLine(
+                current?.let { c -> stringResource(R.string.rv_format_now, options.first { it.first == c }.second) }
+                    ?: stringResource(R.string.rv_format_unknown),
+                current != null,
+            )
+        }
+        Choices(options, current ?: -1) { i ->
+            scope.launch {
+                val err = withContext(Dispatchers.IO) { org.librehu.service.atc.AtcTools.write(context, org.librehu.service.atc.CameraFormat.values(i)) }
+                if (err == null) {
+                    current = i
+                    ReverseView.get(context).cameraFormat = i
+                    saved = true
+                    status = null
+                } else {
+                    status = if (err == "root") noRoot else err
+                }
+            }
+        }
+        status?.let { Hint(it) }
+        Hint(stringResource(R.string.rv_format_hint))
+        if (saved) {
+            Hint(stringResource(R.string.atc_reboot_needed))
+            Actions {
+                Pill(stringResource(R.string.atc_reboot)) { scope.launch(Dispatchers.IO) { org.librehu.service.atc.AtcTools.reboot() } }
+            }
         }
     }
 }

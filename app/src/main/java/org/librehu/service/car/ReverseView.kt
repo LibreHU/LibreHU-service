@@ -299,6 +299,14 @@ class ReverseView private constructor(
     }
 
     /** The chosen camera, else the rear one of Jancar's config ("10"), the other usual ids, then the back cameras. */
+    /**
+     * Camera format last read or set on the Rear view page ([org.librehu.service.atc.CameraFormat] index: 0 CVBS,
+     * 1..4 AHD), -1 when unknown. Chooses Jancar's camera in automatic mode.
+     */
+    var cameraFormat: Int
+        get() = prefs.getInt(PREF_FORMAT, -1)
+        set(value) = prefs.edit().putInt(PREF_FORMAT, value).apply()
+
     internal fun cameraCandidates(s: ReverseViewSettings): List<String> {
         if (s.cameraId.isNotEmpty()) return listOf(s.cameraId)
         val listed = runCatching { cameras.cameraIdList.toList() }.getOrDefault(emptyList())
@@ -307,7 +315,10 @@ class ReverseView private constructor(
                 runCatching { cameras.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) }.getOrNull() !=
                     CameraCharacteristics.LENS_FACING_FRONT
             }
-        return (AUTO_IDS + back + listed).distinct()
+        // Jancar's rule (BackCarCommon): CVBS rear camera "3"; AHD "2", "10" in its dual-recording DVR mode, "8" with
+        // the 9963 chip.
+        val auto = if (cameraFormat == 0) listOf(CVBS_ID) + AHD_IDS else AHD_IDS + CVBS_ID
+        return (auto + back + listed).distinct()
     }
 
     @SuppressLint("MissingPermission") // checked in open()
@@ -641,7 +652,8 @@ class ReverseView private constructor(
                         ?.getOutputSizes(SurfaceTexture::class.java)
                         ?.maxByOrNull { it.width * it.height }
                 val hidden = if (id in listed) "" else " · " + app.getString(R.string.rv_hidden)
-                RearCameraInfo(id, "$facing${best?.let { " · ${it.width}×${it.height}" }.orEmpty()}$hidden")
+                val role = ROLES[id]?.let { app.getString(it) + " · " }.orEmpty()
+                RearCameraInfo(id, "$role$facing${best?.let { " · ${it.width}×${it.height}" }.orEmpty()}$hidden")
             }
     }
 
@@ -677,8 +689,23 @@ class ReverseView private constructor(
         private const val KEY_STEERING = "11.steering_angle"
         private val RADAR_KEYS = listOf("41.rear_left", "41.rear_center_left", "41.rear_center_right", "41.rear_right")
 
-        /** Rear camera of Jancar's config (`ivi-config.ini`: AHD rear camera, used by the DVR), then the usual ones. */
-        private val AUTO_IDS = listOf("10", "2", "8", "3")
+        private const val PREF_FORMAT = "reverse_camera_format"
+
+        /** Jancar's camera ids (BackCarCommon of its apps, `[CameraIndex]` of ivi-config.ini). */
+        private const val CVBS_ID = "3"
+        private val AHD_IDS = listOf("2", "10", "8")
+        private val ROLES =
+            mapOf(
+                "2" to R.string.rv_role_ahd,
+                "10" to R.string.rv_role_ahd_dvr,
+                "8" to R.string.rv_role_ahd_9963,
+                "3" to R.string.rv_role_cvbs,
+                "9" to R.string.rv_role_front_9963,
+                "11" to R.string.rv_role_front,
+                "6" to R.string.rv_role_left,
+                "7" to R.string.rv_role_right,
+                "0" to R.string.rv_role_web,
+            )
 
         @Volatile
         private var instance: ReverseView? = null

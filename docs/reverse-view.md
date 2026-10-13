@@ -12,8 +12,15 @@ de l'ARM2 (avant le démarrage d'Android) reste celui d'Autochips.
 Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par-dessus les autres applis**.
 
 ## Caméra
-- Automatique : id `10` (caméra AHD arrière de `ivi-config.ini`, celle du DVR), puis `2`, `8`, `3`, puis les caméras
-  qui ne sont pas avant. La liste des réglages montre aussi les ids que Camera2 accepte sans les lister (0 à 15).
+- **Format de la caméra** (en tête de la page Recul, pour tous les modes) : CVBS (analogique, PAL / NTSC détecté
+  seul), AHD 720p 25 / 30 i/s, AHD 1080p 25 / 30 i/s, comme `BackCarVideoSource` de `ivi-customer.ini` ; écrit dans la
+  metazone (root) et appliqué au redémarrage. Un mauvais format donne une image absente, qui défile ou scintille.
+- Ids des caméras, d'après les applis Jancar (`BackCarCommon`) : `3` CVBS / AV arrière, `2` AHD arrière, `10` AHD en
+  mode DVR double enregistrement (`CameraType=0`), `8` AHD avec la puce 9963, `9` avant (9963), `11` avant / 360,
+  `6` / `7` 360 gauche / droite, `0` caméra de façade (`[CameraIndex]` d'`ivi-config.ini`). La liste des réglages
+  affiche ce rôle à côté de chaque id, ainsi que les ids que Camera2 accepte sans les lister (0 à 15).
+- Automatique : comme Jancar, `3` en premier si le format est CVBS, sinon `2`, `10`, `8` puis `3`, puis les caméras qui
+  ne sont pas avant.
 - Une caméra n'a qu'un utilisateur : si le DVR enregistre, l'ouverture échoue (« caméra utilisée »). Réglage **Arrêter le
   DVR** (root : `am force-stop com.jancar.hd2cam` avant l'ouverture).
 - Image : miroir, retournement, rotation 0 / 90 / 180 / 270, remplir l'écran (recadrage) ou image entière, zoom
