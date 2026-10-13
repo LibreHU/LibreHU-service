@@ -112,6 +112,9 @@ class LibreHuService : Service() {
             .start(this) // Open Headunit: session state, day / night from the headlights
         org.librehu.service.projection.CarPlay
             .start(this) // CarPlay (xcertplay LibreHU): session state, day / night from the headlights
+        org.librehu.service.tweaks.Tweaks
+            .get(this)
+            .applyAtStart() // kernel tweaks kept by the user (skipped after a start that died right after them)
         obd = ObdManager.get(this).also { it.start() }
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =

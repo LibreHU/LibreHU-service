@@ -913,4 +913,27 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cp_hint">CarPlay par xcertplay, récepteur CarPlay libre : iPhone en filaire (USB), avec la puce MFi de l\'autoradio trouvée toute seule sur le bus I2C. Le nom de la voiture, la marque, le modèle et les adresses viennent de Véhicule. Ses propres réglages sont dans l\'appli CarPlay.</string>
     <string name="cp_night_hint">Nuit quand les phares sont allumés, jour sinon ; désactivé : le mode sombre du launcher décide.</string>
     <string name="cp_integration_hint">L\'appli CarPlay suit aussi le mode clair / sombre et la couleur d\'accent du launcher.</string>
+    <string name="tab_tweaks">Tweaks</string>
+    <string name="tw_title">Réglages du noyau</string>
+    <string name="tw_boot">Appliquer au démarrage</string>
+    <string name="tw_boot_hint">Tes choix à nouveau après chaque démarrage, sous surveillance pendant 90 s : si l\'autoradio redémarre avant, le démarrage suivant les saute.</string>
+    <string name="tw_skipped">Le dernier démarrage s\'est arrêté juste après les réglages : ils n\'ont pas été appliqués cette fois. Vérifier les valeurs, puis réactiver l\'option.</string>
+    <string name="tw_skipped_ok">Compris</string>
+    <string name="tw_factory">Valeurs d\'origine</string>
+    <string name="tw_hint">Root. Les choix s\'appliquent tout de suite. Des fréquences maximales plus basses chauffent moins (utile l\'été derrière le tableau de bord) ; des minimums plus hauts rendent l\'interface plus vive mais chauffent plus. Retour à la normale : Valeurs d\'origine, ou un redémarrage avec l\'option désactivée.</string>
+    <string name="tw_cpu">CPU %1$s</string>
+    <string name="tw_cpu_now">Maintenant %1$s · %2$s · de %3$s à %4$s</string>
+    <string name="tw_governor">Gouverneur</string>
+    <string name="tw_min">Fréquence minimale</string>
+    <string name="tw_max">Fréquence maximale</string>
+    <string name="tw_gpu">GPU (PowerVR)</string>
+    <string name="tw_gpu_auto">Automatique (DVFS)</string>
+    <string name="tw_gpu_hint">Paliers de MediaTek : le GPU gardé sur l\'un d\'eux, ou libre de changer selon la charge. Pas de surcadençage : le noyau ne connaît que ces fréquences.</string>
+    <string name="tw_io">Stockage (%1$s)</string>
+    <string name="tw_io_scheduler">Ordonnanceur d\'E/S</string>
+    <string name="tw_read_ahead">Lecture anticipée</string>
+    <string name="tw_memory_network">Mémoire et réseau</string>
+    <string name="tw_swappiness">Swappiness (zram)</string>
+    <string name="tw_tcp">Contrôle de congestion TCP</string>
+    <string name="tw_temps">Températures</string>
 </resources>

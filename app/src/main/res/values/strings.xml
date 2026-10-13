@@ -913,4 +913,27 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cp_hint">CarPlay through xcertplay, free CarPlay receiver: wired iPhone (USB), with the MFi chip of the head unit found by itself on the I2C bus. The car\'s name, make, model and addresses come from Vehicle. Its own settings are in the CarPlay app.</string>
     <string name="cp_night_hint">Night when the headlights are on, day otherwise; off: the launcher\'s dark mode decides.</string>
     <string name="cp_integration_hint">The CarPlay app also follows the launcher\'s light / dark mode and accent colour.</string>
+    <string name="tab_tweaks">Tweaks</string>
+    <string name="tw_title">Kernel tweaks</string>
+    <string name="tw_boot">Apply at start-up</string>
+    <string name="tw_boot_hint">Your choices again after each start, 90 s guarded: if the head unit restarts before, the next start skips them.</string>
+    <string name="tw_skipped">The last start died right after the tweaks: they were not applied this time. Check the values, then switch the option back on.</string>
+    <string name="tw_skipped_ok">Understood</string>
+    <string name="tw_factory">Factory values</string>
+    <string name="tw_hint">Root. Choices apply at once. Lower maximum frequencies run cooler (useful in summer behind the dashboard); higher minimums make the interface snappier but warmer. Back to normal: Factory values, or a restart with the option off.</string>
+    <string name="tw_cpu">CPU %1$s</string>
+    <string name="tw_cpu_now">Now %1$s · %2$s · %3$s to %4$s</string>
+    <string name="tw_governor">Governor</string>
+    <string name="tw_min">Minimum frequency</string>
+    <string name="tw_max">Maximum frequency</string>
+    <string name="tw_gpu">GPU (PowerVR)</string>
+    <string name="tw_gpu_auto">Automatic (DVFS)</string>
+    <string name="tw_gpu_hint">MediaTek\'s operating points: the GPU kept at one of them, or free to change with the load. No overclock: the kernel only knows these frequencies.</string>
+    <string name="tw_io">Storage (%1$s)</string>
+    <string name="tw_io_scheduler">I/O scheduler</string>
+    <string name="tw_read_ahead">Read-ahead</string>
+    <string name="tw_memory_network">Memory and network</string>
+    <string name="tw_swappiness">Swappiness (zram)</string>
+    <string name="tw_tcp">TCP congestion control</string>
+    <string name="tw_temps">Temperatures</string>
 </resources>
