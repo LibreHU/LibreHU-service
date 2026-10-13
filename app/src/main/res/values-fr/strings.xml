@@ -787,4 +787,34 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="reverse_widget_description">Ouvre la vue de la caméra de recul LibreHU en plein écran, ou la ferme.</string>
     <string name="can_keys_claimed">%1$d bouton(s) gérés par LibreHU BtnRemap : le service les lui laisse (une seule action par appui).</string>
     <string name="can_keys_by_btnremap">Géré par LibreHU BtnRemap</string>
+    <string name="tab_android_auto">Android Auto</string>
+    <string name="aa_title">Android Auto (Open Headunit)</string>
+    <string name="aa_app_librehu">Open Headunit LibreHU installé</string>
+    <string name="aa_app_upstream">Open Headunit installé</string>
+    <string name="aa_app_none">Open Headunit n\'est pas installé</string>
+    <string name="aa_state_unknown">Aucune session signalée pour l\'instant</string>
+    <string name="aa_state_connecting">Connexion</string>
+    <string name="aa_state_connected">Connecté</string>
+    <string name="aa_state_projecting">Android Auto à l\'écran</string>
+    <string name="aa_state_disconnected">Déconnecté</string>
+    <string name="aa_state_failed">Échec</string>
+    <string name="aa_open">Ouvrir</string>
+    <string name="aa_check_usb">Chercher le téléphone (USB)</string>
+    <string name="aa_disconnect">Déconnecter</string>
+    <string name="aa_restart_audio">Relancer le son</string>
+    <string name="aa_hint">Android Auto par Open Headunit (libre, USB et sans fil), ou son fork LibreHU depuis LibreHU Apps (signé avec la clé LibreHU : ses réglages ci-dessous sans aucun interrupteur, et la prochaine manœuvre sur le launcher). Le port USB doit être en mode hôte (Avancé → Autochips). Sa session (connexion, à l\'écran…) est affichée ici et sur le launcher.</string>
+    <string name="aa_integration">Intégration</string>
+    <string name="aa_night_headlights">Jour / nuit selon les phares</string>
+    <string name="aa_night_headlights_hint">Android Auto passe en sombre avec les phares, comme le launcher ; désactivé = réglage d\'Open Headunit.</string>
+    <string name="aa_integration_hint">Les touches au volant et tactiles envoient des touches média, qui arrivent à Android Auto quand il joue ; la vue arrière passe par-dessus ; le gain du micro (Audio) s\'applique à ses appels et à l\'assistant vocal.</string>
+    <string name="aa_settings_title">Réglages d\'Open Headunit</string>
+    <string name="aa_settings_hint_fork">Tous les réglages enregistrés par Open Headunit LibreHU, modifiés ici directement. Certains ne s\'appliquent qu\'à la connexion suivante.</string>
+    <string name="aa_settings_hint_upstream">Open Headunit ne donne ses réglages aux autres applis qu\'avec « Autoriser la configuration externe » activé dans ses réglages (ou avec Open Headunit LibreHU).</string>
+    <string name="aa_settings_reload">Recharger</string>
+    <string name="aa_settings_filter">Filtrer</string>
+    <string name="aa_settings_empty">Aucun réglage.</string>
+    <string name="aa_settings_save">Enregistrer</string>
+    <string name="aa_settings_saved">Enregistré.</string>
+    <string name="aa_settings_saved_restart">Enregistré : appliqué à la prochaine connexion.</string>
+    <string name="aa_settings_refused">Réglages indisponibles : %1$s</string>
 </resources>

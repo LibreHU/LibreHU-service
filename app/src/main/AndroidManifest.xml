@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Built-in rear view (Camera2). -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Open Headunit LibreHU (org.librehu.headunit): its automation receiver for the LibreHU key, configuration
+         included (signature permission it declares). -->
+    <uses-permission android:name="org.librehu.headunit.permission.CONFIGURE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -82,6 +85,9 @@
         <!-- Rear camera apps (car/ReverseCamera) and the list of apps to choose from. -->
         <package android:name="com.jancar.hd2cam" />
         <package android:name="com.baony.avm360" />
+        <!-- Android Auto receivers (projection/AndroidAuto). -->
+        <package android:name="org.librehu.headunit" />
+        <package android:name="com.andrerinas.headunitrevived" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

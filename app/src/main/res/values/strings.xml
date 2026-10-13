@@ -787,4 +787,34 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="reverse_widget_description">Opens LibreHU\'s rear camera view full screen, or closes it.</string>
     <string name="can_keys_claimed">%1$d button(s) handled by LibreHU BtnRemap: the service leaves them to it (one action per press).</string>
     <string name="can_keys_by_btnremap">Handled by LibreHU BtnRemap</string>
+    <string name="tab_android_auto">Android Auto</string>
+    <string name="aa_title">Android Auto (Open Headunit)</string>
+    <string name="aa_app_librehu">Open Headunit LibreHU installed</string>
+    <string name="aa_app_upstream">Open Headunit installed</string>
+    <string name="aa_app_none">Open Headunit not installed</string>
+    <string name="aa_state_unknown">No session reported yet</string>
+    <string name="aa_state_connecting">Connecting</string>
+    <string name="aa_state_connected">Connected</string>
+    <string name="aa_state_projecting">Android Auto on screen</string>
+    <string name="aa_state_disconnected">Disconnected</string>
+    <string name="aa_state_failed">Failed</string>
+    <string name="aa_open">Open</string>
+    <string name="aa_check_usb">Look for the phone (USB)</string>
+    <string name="aa_disconnect">Disconnect</string>
+    <string name="aa_restart_audio">Restart sound</string>
+    <string name="aa_hint">Android Auto by Open Headunit (open source, USB and wireless), or its LibreHU fork from LibreHU Apps (signed with the LibreHU key: its settings below without any switch, and the next turn on the launcher). The USB port has to be in host mode (Advanced → Autochips). Its session (connecting, on screen…) is reported here and on the launcher.</string>
+    <string name="aa_integration">Integration</string>
+    <string name="aa_night_headlights">Day / night from the headlights</string>
+    <string name="aa_night_headlights_hint">Android Auto turns dark with the headlights, as the launcher; off = Open Headunit\'s own setting.</string>
+    <string name="aa_integration_hint">Steering wheel and touch keys send media keys, which reach Android Auto while it plays; the rear view goes over it; the microphone gain (Audio) applies to its calls and voice assistant.</string>
+    <string name="aa_settings_title">Open Headunit settings</string>
+    <string name="aa_settings_hint_fork">Every setting Open Headunit LibreHU stored, changed here directly. Some only apply at the next connection.</string>
+    <string name="aa_settings_hint_upstream">Open Headunit only gives its settings to other apps with \"Allow external configuration\" turned on in its settings (or with Open Headunit LibreHU).</string>
+    <string name="aa_settings_reload">Reload</string>
+    <string name="aa_settings_filter">Filter</string>
+    <string name="aa_settings_empty">No setting.</string>
+    <string name="aa_settings_save">Save</string>
+    <string name="aa_settings_saved">Saved.</string>
+    <string name="aa_settings_saved_restart">Saved: applies at the next connection.</string>
+    <string name="aa_settings_refused">Settings not available: %1$s</string>
 </resources>

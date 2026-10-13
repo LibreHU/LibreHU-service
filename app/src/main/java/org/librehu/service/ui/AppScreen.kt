@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
@@ -78,6 +79,7 @@ enum class Tab(
     CAN(Icons.Default.Cable, R.string.tab_can),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
+    ANDROID_AUTO(Icons.Default.Smartphone, R.string.tab_android_auto),
     DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
     TOUCH(Icons.Default.TouchApp, R.string.tab_touch),
     LIGHTS(Icons.Default.Lightbulb, R.string.tab_lights),
@@ -100,6 +102,7 @@ enum class Section(
     VEHICLE(Icons.Default.DirectionsCar, R.string.section_vehicle, listOf(Tab.VEHICLE, Tab.REVERSE, Tab.OBD, Tab.CAN)),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio, listOf(Tab.AUDIO)),
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
+    ANDROID_AUTO(Icons.Default.Smartphone, R.string.tab_android_auto, listOf(Tab.ANDROID_AUTO)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
     SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS)),
     ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.ATC, Tab.DIAG)),
@@ -170,6 +173,7 @@ fun AppScreen(
                     Tab.CAN -> CanScreen(actions)
                     Tab.AUDIO -> AudioScreen(client)
                     Tab.BLUETOOTH -> BluetoothScreen(client, actions)
+                    Tab.ANDROID_AUTO -> AndroidAutoScreen()
                     Tab.DISPLAY -> DisplayScreen(actions)
                     Tab.TOUCH -> TouchScreen(actions)
                     Tab.LIGHTS -> LightsScreen(actions)

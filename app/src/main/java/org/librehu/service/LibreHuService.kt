@@ -108,6 +108,8 @@ class LibreHuService : Service() {
         display.start()
         bluetoothModule = BluetoothModule(this).also { it.start() }
         Microphone.applyAtStart(this) // microphone gain of the factory settings, forgotten by the audio HAL at each start
+        org.librehu.service.projection.AndroidAuto
+            .start(this) // Open Headunit: session state, day / night from the headlights
         obd = ObdManager.get(this).also { it.start() }
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
@@ -214,6 +216,8 @@ class LibreHuService : Service() {
         obd.stop()
         time.stop()
         touchKeys.stop()
+        org.librehu.service.projection.AndroidAuto
+            .stop(this)
         callbacks.kill()
         super.onDestroy()
     }
