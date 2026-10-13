@@ -645,6 +645,15 @@ class ReverseView private constructor(
             }
     }
 
+    /** Preview size of the first camera that answers (the one the view would open), without opening it. */
+    internal fun previewSize(s: ReverseViewSettings): Size? {
+        for (id in cameraCandidates(s)) {
+            val c = runCatching { cameras.getCameraCharacteristics(id) }.getOrNull() ?: continue
+            return pickPreview(c.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)?.getOutputSizes(SurfaceTexture::class.java))
+        }
+        return null
+    }
+
     private fun pickPreview(sizes: Array<Size>?): Size {
         if (sizes.isNullOrEmpty()) return Size(1280, 720)
         val fitting = sizes.filter { it.width <= 1920 && it.height <= 1080 }.ifEmpty { sizes.toList() }

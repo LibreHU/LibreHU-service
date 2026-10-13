@@ -18,14 +18,18 @@ import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.media.Image
 import android.media.ImageReader
+import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.os.Message
+import android.os.Messenger
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import android.util.Size
 import android.view.Gravity
+import android.view.Surface
 import android.view.View
 import android.widget.RemoteViews
 import org.librehu.service.R
@@ -33,11 +37,14 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Live picture of the rear camera in the home screen widget. An app widget cannot show a camera stream (its
- * RemoteViews have no surface), so small frames are read from the camera (ImageReader, YUV), turned into bitmaps and
- * sent to the widget, [ReverseViewSettings.widgetFps] per second. Only while the widget can be seen: LibreHU
- * Launcher says when its home screen shows ([ACTION_HOME_VISIBLE]), or in [WidgetLive.ALWAYS] while the screen is
- * on; never while the full rear view is open, which takes the camera ([release]).
+ * Live picture of the rear camera in the home screen widget, two ways:
+ * - **Stream** ([attachSurface]): LibreHU Launcher shows its own view in place of the widget and hands its surface
+ *   over (RearPreviewService); the camera draws straight into it, at full rate.
+ * - **Pictures**, for any launcher: an app widget cannot show a camera stream (its RemoteViews have no surface), so
+ *   small frames are read from the camera (ImageReader, YUV), turned into bitmaps and sent to the widget,
+ *   [ReverseViewSettings.widgetFps] per second, while the widget can be seen: LibreHU Launcher says when its home
+ *   screen shows ([ACTION_HOME_VISIBLE]), or in [WidgetLive.ALWAYS] while the screen is on.
+ * Never while the full rear view is open, which takes the camera ([release]).
  */
 class ReverseWidgetLive private constructor(
     context: Context,
@@ -50,6 +57,11 @@ class ReverseWidgetLive private constructor(
     private var homeVisible = false
     private var screenOn = app.getSystemService(PowerManager::class.java).isInteractive
     private var running = false
+
+    /** Surface of LibreHU Launcher's view, and how to tell it the state (main thread). */
+    private var target: Surface? = null
+    private var client: Messenger? = null
+    private var streaming = false
 
     // Camera thread.
     private var thread: HandlerThread? = null
@@ -107,17 +119,56 @@ class ReverseWidgetLive private constructor(
         }
         main.removeCallbacks(retry)
         val s = view.settings.value
-        val want =
+        val allowed =
             s.widgetLive != WidgetLive.OFF &&
                 screenOn &&
-                (homeVisible || s.widgetLive == WidgetLive.ALWAYS) &&
                 !view.showing.value &&
-                app.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
-                widgetIds().isNotEmpty()
-        if (want && !running) {
-            start(s)
-        } else if (!want && running) {
-            stop()
+                app.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val stream = allowed && target != null
+        val pictures = allowed && !stream && (homeVisible || s.widgetLive == WidgetLive.ALWAYS) && widgetIds().isNotEmpty()
+        if (running && (streaming != stream || !(stream || pictures))) stop()
+        if (!running && (stream || pictures)) start(s, stream)
+        if (target != null && !stream) tell(if (view.showing.value) STATE_PAUSED else STATE_OFF, "")
+    }
+
+    /** LibreHU Launcher's view is on screen: the camera draws into [surface]; [messenger] gets the state. */
+    fun attachSurface(
+        surface: Surface,
+        messenger: Messenger?,
+    ) {
+        main.post {
+            if (running && streaming) stop()
+            target = surface
+            client = messenger
+            runCatching { messenger?.binder?.linkToDeath({ main.post { if (client === messenger) detachSurface() } }, 0) }
+            evaluate()
+        }
+    }
+
+    /** The launcher's view is gone (or its surface): back to pictures if they are wanted. */
+    fun detachSurface() {
+        main.post {
+            if (target == null) return@post
+            target = null
+            client = null
+            if (running && streaming) stop()
+            evaluate()
+        }
+    }
+
+    /** State to the launcher's view ([STATE_LIVE], [STATE_PAUSED]…) with a reason. */
+    private fun tell(
+        state: Int,
+        text: String,
+    ) {
+        val m = client ?: return
+        runCatching {
+            m.send(
+                Message.obtain(null, RearPreviewService.MSG_STATE, state, 0).apply {
+                    data =
+                        Bundle().apply { putString("text", text) }
+                },
+            )
         }
     }
 
@@ -131,15 +182,24 @@ class ReverseWidgetLive private constructor(
     private fun widgetIds(): IntArray =
         AppWidgetManager.getInstance(app)?.getAppWidgetIds(ComponentName(app, ReverseWidget::class.java)) ?: IntArray(0)
 
-    private fun start(s: ReverseViewSettings) {
+    private fun start(
+        s: ReverseViewSettings,
+        stream: Boolean,
+    ) {
         running = true
+        streaming = stream
         val gen = ++generation
         val t = HandlerThread("widget-camera").also { it.start() }
         thread = t
         val h = Handler(t.looper)
         cam = h
+        // A camera just closed (switch between pictures and stream) is free only once it says so.
+        val previous = closed
         closed = CountDownLatch(1)
-        h.post { tryOpen(view.cameraCandidates(s), 0, gen) }
+        h.post {
+            previous?.await(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            tryOpen(view.cameraCandidates(s), 0, gen)
+        }
     }
 
     private fun stop() {
@@ -180,7 +240,9 @@ class ReverseWidgetLive private constructor(
         Log.w(TAG, why)
         main.post {
             if (gen != generation) return@post
+            val wasStream = streaming
             stop()
+            if (wasStream) tell(STATE_ERROR, why)
             main.postDelayed(retry, delayMs)
         }
     }
@@ -254,6 +316,7 @@ class ReverseWidgetLive private constructor(
         d: CameraDevice,
         gen: Int,
     ) {
+        if (streaming) return startStream(d, gen)
         val sizes =
             runCatching {
                 cameras
@@ -292,6 +355,60 @@ class ReverseWidgetLive private constructor(
             )
         } catch (e: Exception) {
             fail(gen, "session: ${e.message}", RETRY_MS)
+        }
+    }
+
+    /** The camera draws into the launcher's surface (its buffer size set by the launcher from [ReverseView.previewSize]). */
+    @Suppress("DEPRECATION")
+    private fun startStream(
+        d: CameraDevice,
+        gen: Int,
+    ) {
+        val surface = target ?: return fail(gen, "no surface", RETRY_SHORT_MS)
+        try {
+            d.createCaptureSession(
+                listOf(surface),
+                object : CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(s: CameraCaptureSession) {
+                        if (gen != generation) {
+                            s.close()
+                            return
+                        }
+                        session = s
+                        try {
+                            val request = d.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                            request.addTarget(surface)
+                            s.setRepeatingRequest(request.build(), null, cam)
+                            main.post { if (gen == generation) tell(STATE_LIVE, d.id) }
+                        } catch (e: Exception) {
+                            dropSurface(gen, "request: ${e.message}")
+                        }
+                    }
+
+                    override fun onConfigureFailed(s: CameraCaptureSession) {
+                        dropSurface(gen, "session")
+                    }
+                },
+                cam,
+            )
+        } catch (e: Exception) {
+            dropSurface(gen, "session: ${e.message}")
+        }
+    }
+
+    /** The launcher's surface does not work (gone, refused by the camera): pictures instead, until it attaches again. */
+    private fun dropSurface(
+        gen: Int,
+        why: String,
+    ) {
+        Log.w(TAG, "stream: $why")
+        main.post {
+            if (gen != generation) return@post
+            tell(STATE_ERROR, why)
+            stop()
+            target = null
+            client = null
+            evaluate()
         }
     }
 
@@ -400,6 +517,12 @@ class ReverseWidgetLive private constructor(
 
     companion object {
         private const val TAG = "LibreHU-WidgetLive"
+
+        /** States sent to LibreHU Launcher's view (MSG_STATE arg1). */
+        const val STATE_OFF = 0
+        const val STATE_LIVE = 1
+        const val STATE_PAUSED = 2
+        const val STATE_ERROR = 3
 
         /** Sent by LibreHU Launcher to this package, extra [EXTRA_VISIBLE]. */
         const val ACTION_HOME_VISIBLE = "org.librehu.action.HOME_VISIBLE"

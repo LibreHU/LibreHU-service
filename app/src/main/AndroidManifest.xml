@@ -167,6 +167,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Live rear camera stream drawn into LibreHU Launcher's own view (apps with the LibreHU key only). -->
+        <service
+            android:name=".car.RearPreviewService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.librehu.service.REAR_PREVIEW" />
+            </intent-filter>
+        </service>
+
         <!-- Rear view widget: live picture, opens / closes LibreHU's rear view. -->
         <receiver
             android:name=".car.ReverseWidget"

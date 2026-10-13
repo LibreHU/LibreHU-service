@@ -616,8 +616,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="rv_widget_off">Désactivée (bouton)</string>
     <string name="rv_widget_launcher">Avec LibreHU Launcher</string>
     <string name="rv_widget_always">Écran allumé</string>
-    <string name="rv_widget_fps">Images par seconde</string>
-    <string name="rv_widget_hint">Un widget ne peut pas afficher de flux vidéo : de petites images de la caméra lui sont envoyées. « Avec LibreHU Launcher » : seulement quand son écran d\'accueil est affiché (la caméra est libre le reste du temps). « Écran allumé » : pour les autres launchers, la caméra reste utilisée tant que l\'écran est allumé. L\'image s\'arrête pendant la vue arrière plein écran, et quand une autre appli (DVR Jancar…) prend la caméra ; elle reprend toute seule.</string>
+    <string name="rv_widget_fps">Images par seconde (autres launchers)</string>
+    <string name="rv_widget_hint">LibreHU Launcher affiche lui-même le flux de la caméra à la place du widget (pleine cadence, la caméra dessine directement dans sa vue). Les autres launchers reçoivent de petites images, un widget ne pouvant pas afficher de flux vidéo ; « Écran allumé » garde la caméra utilisée tant que l\'écran est allumé. L\'image s\'arrête pendant la vue arrière plein écran, et quand une autre appli (DVR Jancar…) prend la caméra ; elle reprend toute seule.</string>
     <string name="rv_lines_title">Lignes de guidage</string>
     <string name="rv_lines_show">Afficher les lignes</string>
     <string name="rv_lines_hint">Les lignes forment un rectangle au sol derrière la voiture, de la largeur de la voiture : placer son côté proche sur le pare-chocs et son côté éloigné à la longueur choisie (se garer face à un mur ou poser deux repères au sol), aperçu ouvert.</string>

@@ -48,7 +48,15 @@ du mauvais côté.
   baissée (focus audio « duck ») ou en pause pendant le recul.
 
 ## Widget d'écran d'accueil (image en direct)
-- Un widget Android n'affiche que des `RemoteViews` : pas de surface vidéo possible. `car/ReverseWidgetLive.kt` lit
+- **Avec LibreHU Launcher : vrai flux.** Le launcher reconnaît le widget (`org.librehu.service/.car.ReverseWidget`)
+  et pose par-dessus sa propre `TextureView`. Il se lie à `car/RearPreviewService.kt` (action
+  `org.librehu.service.REAR_PREVIEW`, Messenger, applis signées avec la clé LibreHU seulement), demande la taille de
+  tampon (`MSG_QUERY` → `MSG_INFO` : taille d'aperçu de la caméra, miroir, rotation, zoom, décalage), règle sa
+  `SurfaceTexture` dessus et envoie sa `Surface` (un `Parcelable`, `MSG_ATTACH`). Le service ajoute cette surface
+  comme sortie Camera2 : la caméra dessine directement dans la vue du launcher, à sa cadence normale, sans copie
+  d'image. Le launcher retire la surface quand le tableau de bord n'est plus affiché (surface détruite) ; la vue
+  plein écran la met en pause (`MSG_STATE`), le widget redevient visible dessous pendant ce temps.
+- **Autres launchers : images.** Un widget Android n'affiche que des `RemoteViews` : pas de surface vidéo possible. `car/ReverseWidgetLive.kt` lit
   donc de petites images de la caméra (`ImageReader` YUV, la plus petite taille ≥ 400 px de large, réduite à ~400 px),
   les convertit en bitmap (BT.601, miroir / retournement / rotation des réglages) et les envoie au widget
   (`partiallyUpdateAppWidget`), 10 par seconde par défaut (5 à 20).
@@ -62,8 +70,10 @@ du mauvais côté.
 - Un toucher ouvre ou ferme toujours la vue arrière plein écran.
 
 ## Limites connues
-- Widget : l'image passe par le launcher (Binder) : quelques images par seconde, pas un vrai flux à 30 i/s. Si la
-  caméra AHD ne fournit pas de sortie YUV, le widget reste un bouton (à vérifier sur l'unité).
+- Widget, autres launchers : les images passent par Binder, quelques images par seconde, pas 30 i/s ; si la caméra
+  AHD ne fournit pas de sortie YUV, le widget reste un bouton. Avec LibreHU Launcher, le flux dans une surface d'un
+  autre processus est le fonctionnement normal de Camera2 (la caméra dessine toujours dans des surfaces d'applis),
+  mais reste à vérifier sur l'unité.
 - Non testé sur l'unité au moment de l'écriture : l'id de caméra, le double flux et le sens des radars sont à vérifier.
 - Android 9 refuse la caméra aux applis inactives ; le service LibreHU est un service au premier plan, ce qui suffit en
   principe (à confirmer sur l'unité).
