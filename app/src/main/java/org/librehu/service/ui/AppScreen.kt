@@ -42,7 +42,11 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -359,6 +363,7 @@ fun AudioScreen(client: ServiceClient) {
                 }
             }
         }
+        MicrophoneCard()
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         Card(stringResource(R.string.audio_tone)) {
             SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }
@@ -385,3 +390,52 @@ fun AudioScreen(client: ServiceClient) {
 private fun db(step: Int) = "%+d dB".format((step - 10) * 2)
 
 private fun centred(v: Int) = (v - 30).let { if (it == 0) "0" else "%+d".format(it) }
+
+/** Microphone gain and echo / noise reduction of Jancar's factory settings (see Microphone). */
+@Composable
+private fun MicrophoneCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val mic by org.librehu.service.Microphone
+        .get(context)
+        .collectAsStateWithLifecycle()
+    var now by remember { mutableStateOf<Pair<Int?, Boolean?>>(null to null) }
+    LaunchedEffect(mic) {
+        kotlinx.coroutines.delay(300)
+        now =
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                org.librehu.service.Microphone
+                    .current()
+            }
+    }
+    Card(stringResource(R.string.mic_title)) {
+        BodyText(stringResource(R.string.mic_gain))
+        Choices(
+            listOf(0 to stringResource(R.string.mic_rom)) +
+                org.librehu.service.Microphone.GAINS
+                    .mapIndexed { i, g -> g to "${i + 1}" },
+            mic.gain,
+        ) { g ->
+            org.librehu.service.Microphone
+                .update(context) { it.copy(gain = g) }
+        }
+        BodyText(stringResource(R.string.mic_ecnr))
+        Choices(
+            listOf(-1 to stringResource(R.string.mic_rom), 0 to stringResource(R.string.off), 1 to stringResource(R.string.on)),
+            mic.ecnr?.let { if (it) 1 else 0 } ?: -1,
+        ) { v ->
+            org.librehu.service.Microphone
+                .update(context) { it.copy(ecnr = if (v < 0) null else v == 1) }
+        }
+        Hint(
+            stringResource(
+                R.string.mic_hint,
+                now.first
+                    ?.let {
+                        org.librehu.service.Microphone.GAINS
+                            .indexOf(it) + 1
+                    }?.toString() ?: "?",
+                now.second?.let { stringResource(if (it) R.string.on else R.string.off) } ?: "?",
+            ),
+        )
+    }
+}

@@ -753,6 +753,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="rv_info_fps">%1$d fps</string>
     <string name="aux_mix">Android over AUX</string>
     <string name="aux_mix_hint">While AUX is selected, Android\'s audio (navigation, notifications, music) is mixed in through the chip\'s mixing input, as ivi-services does. Mono, its level follows the volume.</string>
+    <string name="mic_title">Microphone</string>
+    <string name="mic_gain">Hardware gain (calls, voice assistant, CarPlay / Android Auto)</string>
+    <string name="mic_rom">ROM</string>
+    <string name="mic_ecnr">Echo cancellation / noise reduction (ECNR 1)</string>
+    <string name="mic_hint">Same settings as Jancar\'s factory settings (Mic gain 1 / 2 / 3, ECNR), without ivi-settings: the gain is sent to the audio HAL (MIC1_HW_GAIN / MIC2_HW_GAIN = 3 / 4 / 5) and again at each start; ECNR applies from the next call. Root keeps them in the ROM\'s properties. Now: gain %1$s, ECNR %2$s.</string>
     <string name="aux_mix_level">Android level over AUX</string>
     <string name="atc_ygps">YGPS (GPS test)</string>
     <string name="atc_usb_not_switched">The port did not switch now (role file missing or refused): saved for the next start-up, restart the head unit.</string>
