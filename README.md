@@ -55,7 +55,7 @@ Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), san
 | Démarrage des applis | applis LibreHU lancées au démarrage d'Android (récepteurs `BOOT_COMPLETED`) activables une à une (root, `pm enable/disable`) ; Système, carte Démarrage | `power/BootApps.kt` |
 | Interface | réglages façon Android Auto, rangés en 7 rubriques (barre de gauche) avec leurs pages en pastilles : **Accueil** ; **Véhicule** (véhicule, OBD, CAN) ; **Audio** ; **Bluetooth** ; **Écran** (affichage, dalle tactile, lumières) ; **Système** (root, veille, démarrage des applis, watchdog ; GPS et heure) ; **Avancé** (MCU, outils MCU, diag audio, diagnostic : trafic décodé, journal, envoi de trames, accès au service) ; thème et couleur d'accent du launcher sur tous les éléments | `MainActivity`, `ui/` |
 
-Ce qui manque encore (sources radio / AV, caméra…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
+Ce qui manque encore (sources radio / AV de la puce audio, entrées vidéo…) : voir le tableau ci-dessous. Pas encore fait non plus : couche
 de compatibilité `com.jancar.services.*`.
 
 ## LibreHU vs ivi-services
@@ -97,7 +97,7 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 | | Mode sombre Android selon les feux | ❌ | ✅ | service ou launcher |
 | | Calibration tactile | ✅ (`pointercal.xml`) | ✅ (root ; peut aussi écrire `pointercal.xml`) | onglet Dalle tactile |
 | | Rotation, économiseur d'écran | ✅ | ❌ | — |
-| **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | 🟡 (vue intégrée Camera2 avec lignes, radars, bips et mouvement, ou appli au choix ; recul rapide Autochips toujours actif au démarrage) | service, Véhicule |
+| **Caméra / vidéo** | Lancement de la caméra de recul | ✅ (avec l'app Autochips) | ✅ (vue intégrée Camera2 avec lignes, radars, bips et mouvement, ou appli au choix ; avant Android, le recul rapide de l'ARM2 d'Autochips, réglable dans Avancé → Autochips) | service, Véhicule |
 | | Entrées AV, blocage vidéo frein desserré | ✅ | ❌ | — |
 | **CAN (Hiworld)** | Relais des trames du boîtier | ✅ | ✅ | service (`onCanData`, `sendCanData`) |
 | | Décodage (portes, clim, volant…) | ➖ (fait par `ivi-canbus`) | 🟡 (profils de voiture : valeurs affichées, touches volant) | service, onglet CAN |
@@ -118,9 +118,10 @@ Légende : ✅ fait · 🟡 partiel · ❌ absent · ➖ sans objet sur l'UJC201
 Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 1. valider la veille sur l'appareil (sortie de suspension, consommation) ;
 2. sources radio / AV de la puce audio et priorités (navigation, marche arrière) ;
-3. caméra de recul après le démarrage d'Android ;
-4. touche power, rotation, économiseur d'écran ;
-5. mise à jour de la MCU, LED de façade, infrarouge.
+3. valider sur l'appareil la vue de recul intégrée (id de caméra, sens des radars) et la radio FM sans l'appli Jancar ;
+4. entrées AV et blocage vidéo frein desserré ;
+5. touche power, rotation, économiseur d'écran ;
+6. mise à jour de la MCU, infrarouge, ventilateur.
 
 ## Installer et tester
 
