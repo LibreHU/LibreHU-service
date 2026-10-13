@@ -903,4 +903,14 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="rv_role_left">360 gauche / TV</string>
     <string name="rv_role_right">360 droite</string>
     <string name="rv_role_web">Caméra de façade</string>
+    <string name="tab_carplay">CarPlay</string>
+    <string name="section_projection">Projection</string>
+    <string name="cp_title">CarPlay</string>
+    <string name="cp_app_librehu">CarPlay (xcertplay LibreHU) installé</string>
+    <string name="cp_app_upstream">xcertplay installé (sans l\'intégration LibreHU)</string>
+    <string name="cp_app_none">CarPlay non installé (LibreHU Apps : CarPlay)</string>
+    <string name="cp_state_active">iPhone connecté (CarPlay à l\'écran)</string>
+    <string name="cp_hint">CarPlay par xcertplay, récepteur CarPlay libre : iPhone en filaire (USB), avec la puce MFi de l\'autoradio trouvée toute seule sur le bus I2C. Le nom de la voiture, la marque, le modèle et les adresses viennent de Véhicule. Ses propres réglages sont dans l\'appli CarPlay.</string>
+    <string name="cp_night_hint">Nuit quand les phares sont allumés, jour sinon ; désactivé : le mode sombre du launcher décide.</string>
+    <string name="cp_integration_hint">L\'appli CarPlay suit aussi le mode clair / sombre et la couleur d\'accent du launcher.</string>
 </resources>

@@ -110,6 +110,8 @@ class LibreHuService : Service() {
         Microphone.applyAtStart(this) // microphone gain of the factory settings, forgotten by the audio HAL at each start
         org.librehu.service.projection.AndroidAuto
             .start(this) // Open Headunit: session state, day / night from the headlights
+        org.librehu.service.projection.CarPlay
+            .start(this) // CarPlay (xcertplay LibreHU): session state, day / night from the headlights
         obd = ObdManager.get(this).also { it.start() }
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
@@ -219,6 +221,8 @@ class LibreHuService : Service() {
         time.stop()
         touchKeys.stop()
         org.librehu.service.projection.AndroidAuto
+            .stop(this)
+        org.librehu.service.projection.CarPlay
             .stop(this)
         callbacks.kill()
         super.onDestroy()

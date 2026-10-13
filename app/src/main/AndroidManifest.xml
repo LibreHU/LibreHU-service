@@ -27,6 +27,8 @@
     <!-- Open Headunit LibreHU (org.librehu.headunit): its automation receiver for the LibreHU key, configuration
          included (signature permission it declares). -->
     <uses-permission android:name="org.librehu.headunit.permission.CONFIGURE" />
+    <!-- Day / night from the headlights to CarPlay (xcertplay LibreHU, signature permission it declares). -->
+    <uses-permission android:name="org.librehu.carplay.permission.CONFIGURE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -78,6 +80,9 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <queries>
+        <!-- Projection apps (Android 11+ package visibility). -->
+        <package android:name="org.librehu.carplay" />
+        <package android:name="com.shilapi.xcertplay" />
         <package android:name="com.jancar.services" />
         <package android:name="com.jancar.btservice" />
         <package android:name="com.android.bluetooth" />
