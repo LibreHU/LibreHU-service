@@ -27,6 +27,8 @@ enum class ReverseExit {
 
 data class ReverseCameraSettings(
     val enabled: Boolean = false,
+    /** LibreHU's own view ([ReverseView]) or another app. */
+    val mode: ReverseMode = ReverseMode.BUILT_IN,
     /** Package of the camera app; empty = the first known rear view app found. */
     val packageName: String = "",
     val delayMs: Int = 0,
@@ -34,8 +36,8 @@ data class ReverseCameraSettings(
 )
 
 /**
- * Opens the rear camera app when the reverse gear is engaged (MCU / reverse GPIO, after the "invert" setting) and
- * leaves it when the gear is released.
+ * Shows the rear view when the reverse gear is engaged (MCU / reverse GPIO, after the "invert" setting) and leaves it
+ * when the gear is released: LibreHU's own view ([ReverseView]) or a camera app.
  */
 class ReverseCamera private constructor(
     private val context: Context,
@@ -53,6 +55,9 @@ class ReverseCamera private constructor(
         if (_settings.value.enabled) warmUp(_settings.value)
     }
 
+    private val view by lazy { ReverseView.get(context) }
+    private val hideView = Runnable { if (!reverse) view.hide() }
+
     fun update(transform: (ReverseCameraSettings) -> ReverseCameraSettings) {
         val s = transform(_settings.value)
         _settings.value = s
@@ -63,6 +68,7 @@ class ReverseCamera private constructor(
                 PREF,
                 JSONObject()
                     .put("enabled", s.enabled)
+                    .put("mode", s.mode.name)
                     .put("pkg", s.packageName)
                     .put("delay", s.delayMs)
                     .put("exit", s.exit.name)
@@ -86,10 +92,18 @@ class ReverseCamera private constructor(
         }
     }
 
-    /** Opens the camera app now (test button). */
-    fun test() = open(_settings.value)
+    /** Shows the rear view now (test button); the built-in one as a preview with a close button. */
+    fun test() {
+        val s = _settings.value
+        if (s.mode == ReverseMode.BUILT_IN) view.show(preview = true) else open(s)
+    }
 
     private fun open(s: ReverseCameraSettings) {
+        if (s.mode == ReverseMode.BUILT_IN) {
+            main.removeCallbacks(hideView)
+            view.show()
+            return
+        }
         val pkg = s.packageName.ifEmpty { detect() } ?: return
         val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: return
         if (pkg == AVM) warmUp(s)
@@ -109,6 +123,7 @@ class ReverseCamera private constructor(
 
     /** Starts the AVM 360 app's process (its CAN bus service), where its reverse receiver lives. */
     private fun warmUp(s: ReverseCameraSettings) {
+        if (s.mode != ReverseMode.APP) return
         if ((s.packageName.ifEmpty { detect() }) != AVM) return
         try {
             context.startService(Intent(AVM_SERVICE).setComponent(ComponentName(AVM, AVM_SERVICE)))
@@ -122,6 +137,14 @@ class ReverseCamera private constructor(
     }
 
     private fun leave(s: ReverseCameraSettings) {
+        if (s.mode == ReverseMode.BUILT_IN || view.showing.value) {
+            main.postDelayed(
+                hideView,
+                view.settings.value.closeDelayMs
+                    .toLong(),
+            )
+            if (s.mode == ReverseMode.BUILT_IN) return
+        }
         val pkg = opened ?: return
         opened = null
         if (pkg == AVM) avmReverse(0)
@@ -174,6 +197,8 @@ class ReverseCamera private constructor(
                 val o = JSONObject(it)
                 ReverseCameraSettings(
                     enabled = o.optBoolean("enabled", false),
+                    // Settings saved before the built-in view opened an app.
+                    mode = ReverseMode.entries.firstOrNull { m -> m.name == o.optString("mode") } ?: ReverseMode.APP,
                     packageName = o.optString("pkg", ""),
                     delayMs = o.optInt("delay", 0),
                     exit = ReverseExit.entries.firstOrNull { e -> e.name == o.optString("exit") } ?: ReverseExit.CLOSE,

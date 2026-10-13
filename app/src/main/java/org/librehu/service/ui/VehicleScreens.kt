@@ -1,7 +1,5 @@
 package org.librehu.service.ui
 
-import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,13 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +35,6 @@ import org.librehu.service.ServiceState
 import org.librehu.service.car.CarName
 import org.librehu.service.car.FrontLed
 import org.librehu.service.car.LedMode
-import org.librehu.service.car.ReverseCamera
-import org.librehu.service.car.ReverseExit
 import org.librehu.service.root.RootShell
 
 // --- Vehicle -----------------------------------------------------------------------------------------------------
@@ -51,7 +43,6 @@ import org.librehu.service.root.RootShell
 fun VehicleScreen() {
     Page(stringResource(R.string.tab_vehicle)) {
         CarNameCard()
-        ReverseCameraCard()
         VehicleInputsCard()
     }
 }
@@ -104,94 +95,6 @@ private fun CarNameCard() {
             if (!r.deviceName || !r.hostname) Hint(stringResource(R.string.car_name_root))
         }
     }
-}
-
-/** Rear camera app opened with the reverse gear. */
-@Composable
-private fun ReverseCameraCard() {
-    val context = LocalContext.current
-    val camera = ReverseCamera.get(context)
-    val s by camera.settings.collectAsStateWithLifecycle()
-    val v by ServiceState.vehicle.collectAsStateWithLifecycle()
-    var picking by remember { mutableStateOf(false) }
-    val pm = context.packageManager
-    val chosen = s.packageName.ifEmpty { camera.detect().orEmpty() }
-    val label =
-        remember(chosen) {
-            if (chosen.isEmpty()) {
-                null
-            } else {
-                runCatching { pm.getApplicationLabel(pm.getApplicationInfo(chosen, 0)).toString() }.getOrDefault(chosen)
-            }
-        }
-    Card(stringResource(R.string.reverse_title)) {
-        StatusLine(stringResource(if (v.reverse) R.string.reverse_engaged else R.string.reverse_released), if (v.reverse) true else null)
-        SwitchRow(stringResource(R.string.reverse_enable), s.enabled, stringResource(R.string.reverse_enable_hint)) { on ->
-            camera.update { it.copy(enabled = on) }
-        }
-        ListRow(
-            stringResource(R.string.reverse_app),
-            label?.let { if (s.packageName.isEmpty()) stringResource(R.string.reverse_app_auto, it) else it }
-                ?: stringResource(R.string.reverse_app_none),
-            onClick = { picking = true },
-        )
-        BodyText(stringResource(R.string.reverse_exit))
-        Choices(
-            listOf(
-                ReverseExit.CLOSE to stringResource(R.string.reverse_exit_close),
-                ReverseExit.HOME to stringResource(R.string.reverse_exit_home),
-                ReverseExit.NOTHING to stringResource(R.string.reverse_exit_nothing),
-            ),
-            s.exit,
-        ) { e -> camera.update { it.copy(exit = e) } }
-        SliderRow(stringResource(R.string.reverse_delay), s.delayMs / 100, 0..30, { "${it * 100} ms" }) { d ->
-            camera.update { it.copy(delayMs = d * 100) }
-        }
-        Hint(stringResource(R.string.reverse_hint))
-        Actions { Pill(stringResource(R.string.reverse_test), enabled = chosen.isNotEmpty()) { camera.test() } }
-    }
-    if (picking) {
-        AppPicker(
-            onDismiss = { picking = false },
-            onPick = { pkg ->
-                picking = false
-                camera.update { it.copy(packageName = pkg) }
-            },
-        )
-    }
-}
-
-/** Launchable apps, with an "automatic" entry (empty package). */
-@Composable
-private fun AppPicker(
-    onDismiss: () -> Unit,
-    onPick: (String) -> Unit,
-) {
-    val context = LocalContext.current
-    var apps by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        apps =
-            withContext(Dispatchers.IO) {
-                val pm = context.packageManager
-                pm
-                    .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL)
-                    .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
-                    .distinctBy { it.first }
-                    .sortedBy { it.second.lowercase() }
-            }
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.reverse_app)) },
-        text = {
-            LazyColumn(Modifier.fillMaxWidth()) {
-                item { ListRow(stringResource(R.string.reverse_app_auto_short), onClick = { onPick("") }) }
-                items(apps, key = { it.first }) { (pkg, label) -> ListRow(label, pkg, onClick = { onPick(pkg) }) }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
-    )
 }
 
 /** Inputs wired the other way round, and the turn signals on SoC GPIOs. */

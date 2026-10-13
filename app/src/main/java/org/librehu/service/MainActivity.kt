@@ -73,6 +73,16 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val reverseSoundLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            // Kept readable after a restart (the sound plays from the service).
+            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            org.librehu.service.car.ReverseView
+                .get(this)
+                .update { it.copy(soundUri = uri.toString(), sound = org.librehu.service.car.EngageSound.CUSTOM) }
+        }
+
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { client.refreshDevices() }
 
@@ -119,6 +129,8 @@ class MainActivity : ComponentActivity() {
                 },
                 requestAudioPermission = { permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO)) },
                 openNotificationAccess = { openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS") },
+                requestCameraPermission = { permissions.launch(arrayOf(Manifest.permission.CAMERA)) },
+                pickReverseSound = { reverseSoundLauncher.launch(arrayOf("audio/*")) },
             )
         setContent {
             CarTheme {

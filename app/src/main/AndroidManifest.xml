@@ -14,6 +14,9 @@
     <!-- Volume panel over the apps (overlay/VolumeOverlay), granted by the user or with
          adb shell appops set org.librehu.service SYSTEM_ALERT_WINDOW allow -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Built-in rear view (Camera2). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Clock from the MCU RTC: granted only to privileged / system installs. -->

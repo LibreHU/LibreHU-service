@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,6 +68,7 @@ enum class Tab(
 ) {
     HOME(Icons.Default.Home, R.string.tab_home),
     VEHICLE(Icons.Default.DirectionsCar, R.string.tab_vehicle),
+    REVERSE(Icons.Default.Videocam, R.string.tab_reverse),
     OBD(Icons.Default.Speed, R.string.tab_obd),
     CAN(Icons.Default.Cable, R.string.tab_can),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
@@ -89,7 +91,7 @@ enum class Section(
     val tabs: List<Tab>,
 ) {
     HOME(Icons.Default.Home, R.string.tab_home, listOf(Tab.HOME)),
-    VEHICLE(Icons.Default.DirectionsCar, R.string.section_vehicle, listOf(Tab.VEHICLE, Tab.OBD, Tab.CAN)),
+    VEHICLE(Icons.Default.DirectionsCar, R.string.section_vehicle, listOf(Tab.VEHICLE, Tab.REVERSE, Tab.OBD, Tab.CAN)),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio, listOf(Tab.AUDIO)),
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
@@ -117,6 +119,8 @@ class AppActions(
     val exportCanVehicle: (String) -> Unit,
     val requestAudioPermission: () -> Unit = {},
     val openNotificationAccess: () -> Unit = {},
+    val requestCameraPermission: () -> Unit = {},
+    val pickReverseSound: () -> Unit = {},
 )
 
 /** Android Auto-like layout: sections on the left, the selected page (and its sibling pages) on the right. */
@@ -154,6 +158,7 @@ fun AppScreen(
                 when (tab) {
                     Tab.HOME -> HomeScreen(client, onTab)
                     Tab.VEHICLE -> VehicleScreen()
+                    Tab.REVERSE -> ReverseScreen(actions)
                     Tab.OBD -> ObdScreen(client)
                     Tab.CAN -> CanScreen(actions)
                     Tab.AUDIO -> AudioScreen(client)
