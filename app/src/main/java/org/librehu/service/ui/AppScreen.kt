@@ -131,6 +131,9 @@ class AppActions(
     val exportLog: () -> Unit,
     val importCanVehicle: () -> Unit,
     val exportCanVehicle: (String) -> Unit,
+    /** Car file for the ELM327 (ddt4all ECU or LibreHU car); true = its ECUs added to the selected car. */
+    val importObdCar: (Boolean) -> Unit = {},
+    val exportObdCar: (String) -> Unit = {},
     val requestAudioPermission: () -> Unit = {},
     val openNotificationAccess: () -> Unit = {},
     val requestCameraPermission: () -> Unit = {},
@@ -174,7 +177,7 @@ fun AppScreen(
                     Tab.HOME -> HomeScreen(client, onTab)
                     Tab.VEHICLE -> VehicleScreen()
                     Tab.REVERSE -> ReverseScreen(actions)
-                    Tab.OBD -> ObdScreen(client)
+                    Tab.OBD -> ObdScreen(client, actions)
                     Tab.CAN -> CanScreen(actions)
                     Tab.AUDIO -> AudioScreen(client)
                     Tab.BLUETOOTH -> BluetoothScreen(client, actions)

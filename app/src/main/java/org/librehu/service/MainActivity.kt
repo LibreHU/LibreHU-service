@@ -10,6 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.librehu.service.display.DisplayController
 import org.librehu.service.touch.TouchCalibrationActivity
 import org.librehu.service.ui.AppActions
@@ -21,8 +25,10 @@ import org.librehu.service.ui.ServiceClient
 import org.librehu.service.ui.Tab
 import org.librehu.service.ui.ThemeFollower
 import org.librehu.service.ui.exportCanVehicle
+import org.librehu.service.ui.exportObdCar
 import org.librehu.service.ui.exportProfile
 import org.librehu.service.ui.importCanVehicle
+import org.librehu.service.ui.importObdCar
 import org.librehu.service.ui.importProfile
 import org.librehu.service.ui.profileFileName
 
@@ -60,6 +66,25 @@ class MainActivity : ComponentActivity() {
             val id = exportingVehicle
             exportingVehicle = null
             if (uri != null && id != null) toast(exportCanVehicle(this, id, uri))
+        }
+
+    private var obdCarInto = false
+    private var exportingObdCar: String? = null
+
+    private val obdCarImportLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            val into = obdCarInto
+            lifecycleScope.launch {
+                toast(withContext(Dispatchers.IO) { importObdCar(this@MainActivity, uri, into) })
+            }
+        }
+
+    private val obdCarExportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            val id = exportingObdCar
+            exportingObdCar = null
+            if (uri != null && id != null) toast(exportObdCar(this, id, uri))
         }
 
     private val logLauncher =
@@ -142,6 +167,14 @@ class MainActivity : ComponentActivity() {
                 exportCanVehicle = { id ->
                     exportingVehicle = id
                     canExportLauncher.launch("$id.json")
+                },
+                importObdCar = { into ->
+                    obdCarInto = into
+                    obdCarImportLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                },
+                exportObdCar = { id ->
+                    exportingObdCar = id
+                    obdCarExportLauncher.launch("$id.json")
                 },
                 exportLog = {
                     val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())

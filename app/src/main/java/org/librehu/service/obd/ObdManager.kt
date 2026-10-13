@@ -13,7 +13,11 @@ import com.hoho.android.usbserial.driver.UsbSerialProber
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.librehu.core.obd.EcuAnswer
 import org.librehu.core.obd.Elm327
+import org.librehu.core.obd.ObdCarEcu
+import org.librehu.core.obd.ObdCarReading
+import org.librehu.core.obd.ObdCars
 import org.librehu.core.obd.ObdPid
 import org.librehu.service.LibreHu
 import java.io.IOException
@@ -60,12 +64,17 @@ data class ObdState(
     val supported: Set<Int> = emptySet(),
     val dtcs: List<String>? = null,
     val updated: Long = 0,
+    /** Manufacturer values of the selected car ([ObdCarStore]), and the last problem reading them. */
+    val car: Map<String, ObdCarReading> = emptyMap(),
+    val carMessage: String = "",
 )
 
 /**
  * ELM327 OBD-II adapter over Bluetooth SPP or USB serial: initialises it, finds the supported PIDs, polls the chosen
  * values (fast ones every round, slow ones every [SLOW_EVERY] rounds) and reads / clears trouble codes on request.
  * Values go to [state], to the widget ([ObdWidget]) and to other apps ([LibreHu.ACTION_OBD], AIDL getObdValues).
+ * With a car selected ([ObdCarStore]), its chosen manufacturer values are read too, every [CAR_EVERY] rounds, with
+ * ddt4all's addressing (header, flow control and receive filter of the ECU), read requests only.
  */
 class ObdManager private constructor(
     context: Context,
@@ -81,6 +90,7 @@ class ObdManager private constructor(
     val state: StateFlow<ObdState> = _state.asStateFlow()
 
     private val requests = LinkedBlockingQueue<String>()
+    private val cars by lazy { ObdCarStore.get(app) }
 
     @Volatile
     private var thread: Thread? = null
@@ -225,6 +235,8 @@ class ObdManager private constructor(
                 throw IOException("No answer from the adapter")
             }
         }
+        // The car's own adapter commands (protocol…), before the protocol search.
+        cars.current()?.elmInit?.forEach { link.ask(it, 1_500) }
         val voltage = Elm327.voltage(link.ask(Elm327.READ_VOLTAGE))
         // The first request makes the adapter search the car's protocol: give it time.
         val supported = mutableSetOf<Int>()
@@ -239,6 +251,8 @@ class ObdManager private constructor(
             if ((base + 0x20) !in supported) break
         }
         val protocol = Elm327.lines(link.ask(Elm327.DESCRIBE_PROTOCOL)).firstOrNull().orEmpty()
+        // 6 / 8 = CAN 11-bit (500 / 250 kbit/s), 7 / 9 = 29-bit; "A6" = found automatically.
+        val can = protocol.removePrefix("A").toIntOrNull()?.takeIf { it in 6..9 }
         setState {
             it.copy(
                 connection = ObdConnection.CONNECTED,
@@ -259,10 +273,91 @@ class ObdManager private constructor(
                 if (Thread.interrupted()) throw InterruptedException()
             }
             if (round % SLOW_EVERY == 0) Elm327.voltage(link.ask(Elm327.READ_VOLTAGE))?.let { values[BATTERY] = it }
+            if (round % CAR_EVERY == 0) readCar(link, can)
             setState { it.copy(values = values, updated = System.currentTimeMillis()) }
             publish(values)
             round++
             if (wanted.isEmpty()) Thread.sleep(1_000)
+        }
+    }
+
+    /** The chosen values of the selected car: each ECU addressed in turn, then the adapter back to standard OBD. */
+    private fun readCar(
+        link: ObdLink,
+        can: Int?,
+    ) {
+        val car = cars.current()
+        val wanted = cars.chosen.value
+        if (car == null || wanted.isEmpty()) {
+            if (_state.value.car.isNotEmpty() || _state.value.carMessage.isNotEmpty()) setState { it.copy(car = emptyMap(), carMessage = "") }
+            return
+        }
+        if (can == null) {
+            setState { it.copy(carMessage = "Not a CAN protocol: manufacturer values need the diagnostic CAN bus") }
+            return
+        }
+        val out = HashMap<String, ObdCarReading>()
+        var message = ""
+        try {
+            for (ecu in car.ecus) {
+                val reqs = ecu.requests.filter { r -> r.items.any { ObdCars.key(ecu, it) in wanted } }
+                if (reqs.isEmpty()) continue
+                address(link, ecu)
+                for (r in reqs) {
+                    val answer = ObdCars.answer(link.ask(r.send, CAR_TIMEOUT_MS), r.service)
+                    for (item in r.items) {
+                        val key = ObdCars.key(ecu, item)
+                        if (key !in wanted) continue
+                        out[key] =
+                            if (answer is EcuAnswer.Positive && answer.bytes.size >= r.minBytes) {
+                                ObdCars.decode(key, ecu.name, item, answer.bytes)
+                            } else {
+                                ObdCarReading(key, ecu.name, item.name, "—", error = true)
+                            }
+                    }
+                    when (answer) {
+                        is EcuAnswer.Negative -> message = "${ecu.name} · ${r.name}: refused (NRC ${"%02X".format(answer.code)})"
+                        is EcuAnswer.None -> message = "${ecu.name} · ${r.name}: ${answer.message}"
+                        is EcuAnswer.Positive -> {}
+                    }
+                    if (Thread.interrupted()) throw InterruptedException()
+                }
+            }
+        } finally {
+            standardAddress(link, can)
+        }
+        setState { it.copy(car = out, carMessage = message) }
+    }
+
+    /** ddt4all's addressing of a CAN ECU (elm.py set_can_addr): header, flow control to the ECU, receive filter. */
+    private fun address(
+        link: ObdLink,
+        ecu: ObdCarEcu,
+    ) {
+        if (ecu.extended) {
+            link.ask("ATCP" + ecu.sendId.take(2))
+            link.ask("ATSH" + ecu.sendId.drop(2))
+        } else {
+            link.ask("ATSH" + ecu.sendId)
+        }
+        link.ask("ATFCSH" + ecu.sendId)
+        link.ask("ATFCSD300000")
+        link.ask("ATFCSM1")
+        link.ask("ATCRA" + ecu.recvId)
+    }
+
+    /** Back to the functional OBD address (7DF, or 18DB33F1 on 29-bit) and no filter. */
+    private fun standardAddress(
+        link: ObdLink,
+        can: Int,
+    ) {
+        link.ask("ATCRA")
+        link.ask("ATFCSM0")
+        if (can == 7 || can == 9) {
+            link.ask("ATCP18")
+            link.ask("ATSHDB33F1")
+        } else {
+            link.ask("ATSH7DF")
         }
     }
 
@@ -288,7 +383,11 @@ class ObdManager private constructor(
         val now = System.currentTimeMillis()
         if (now - lastPublish < PUBLISH_MS) return
         lastPublish = now
-        val extras = Bundle().apply { values.forEach { (k, v) -> putDouble(k, v) } }
+        val extras =
+            Bundle().apply {
+                values.forEach { (k, v) -> putDouble(k, v) }
+                _state.value.car.values.forEach { r -> r.number?.let { putDouble("car:" + r.key, it) } }
+            }
         app.sendBroadcast(Intent(LibreHu.ACTION_OBD).putExtras(extras))
         ObdWidget.refresh(app)
     }
@@ -335,6 +434,8 @@ class ObdManager private constructor(
         private const val RETRY_MS = 10_000L
         private const val PUBLISH_MS = 1_000L
         private const val SLOW_EVERY = 5
+        private const val CAR_EVERY = 2
+        private const val CAR_TIMEOUT_MS = 2_000L
         const val WIDGET_SLOTS = 4
 
         /** Adapter supply voltage (`ATRV`): car battery, available even engine off. */

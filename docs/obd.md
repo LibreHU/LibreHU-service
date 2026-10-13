@@ -23,3 +23,77 @@ Lecture du calculateur moteur par un adaptateur **ELM327** (prise OBD-II), en **
 
 Clio 3 : prise OBD sous le volant ; l'EOBD est obligatoire depuis 2001 (essence) et 2004 (diesel), le protocole est
 détecté automatiquement. Les valeurs non gérées par le calculateur apparaissent grisées.
+
+## Voiture : valeurs constructeur (Renault et autres, fichiers ddt4all)
+
+L'OBD standard (mode 01) ne donne que les valeurs légales anti-pollution. Les calculateurs Renault (UCH, tableau de
+bord, injection, ABS…) en donnent beaucoup plus par les requêtes de diagnostic constructeur, décrites dans les
+fichiers de calculateur de **ddt4all** (github.com/cedricp/ddt4all, GPL-3.0). LibreHU les lit avec le même ELM327.
+
+**Rien n'est embarqué** : les descriptions viennent de vos propres fichiers. ddt4all lit la base de données XML
+DDT2000 et la convertit en JSON (`ecu.zip`, dossier `json/`) ; un fichier JSON = un calculateur. LibreHU ne fournit
+ni n'invente aucun identifiant.
+
+Carte **Voiture (valeurs constructeur)** de l'onglet OBD :
+- **Importer une voiture** : un fichier de calculateur ddt4all (devient une voiture nommée d'après le calculateur)
+  ou un fichier voiture LibreHU (plusieurs calculateurs, à partager). **Ajouter un calculateur** : ajoute ceux du
+  fichier à la voiture choisie (même nom = remplacé). **Exporter** : fichier voiture LibreHU de la voiture.
+- **Valeurs de la voiture** : recherche par nom (calculateur ou valeur), un appui = lue / plus lue. Les valeurs
+  choisies sont lues un tour sur deux, après les valeurs standard, et apparaissent en tuiles. Les nombres partent
+  aussi dans le broadcast `org.librehu.action.OBD` (extras `car:<calculateur>/<valeur>`).
+
+### Sécurité : lecture seule
+
+À l'import, seules les requêtes **21** (ReadDataByLocalIdentifier) et **22** (ReadDataByIdentifier), sans
+paramètre, sont gardées ; un fichier LibreHU contenant autre chose est refusé. Aucune écriture, aucun reset, aucun
+test d'actionneur, aucune ouverture de session de diagnostic n'est jamais envoyé. Les commandes adaptateur d'un
+fichier voiture (`elm_init`) doivent être des commandes `AT` et celles qui écrivent la mémoire de l'adaptateur
+(`ATPP`, `ATSD`…) sont refusées.
+
+Limites : calculateurs **CAN** seulement (pas de K-Line / KWP2000 par l'ELM327 ici). Certaines valeurs ne répondent
+qu'en session étendue : elles restent à « — » avec le code de refus (NRC) affiché, LibreHU n'ouvre pas de session.
+
+### Adressage (comme ddt4all)
+
+Pour chaque calculateur (`elm.py`, `set_can_addr`) : `ATSH <send_id>` (29 bits : `ATCP` + `ATSH`), contrôle de flux
+vers le calculateur `ATFCSH <send_id>`, `ATFCSD300000`, `ATFCSM1`, filtre de réception `ATCRA <recv_id>` ; puis la
+requête, avec le formatage CAN de l'ELM327 (réponses multi-trames réassemblées : ligne de longueur puis `0:`, `1:`…).
+Ensuite retour à l'OBD standard : `ATCRA`, `ATFCSM0`, `ATSH7DF` (ou `ATCP18` + `ATSHDB33F1` en 29 bits).
+
+### Calcul des valeurs (comme ddt4all)
+
+D'après `ecu_data.py` (`getHexValue`, `getDisplayValue`) et `data_item.py` :
+- `firstbyte` compte depuis 1 sur toute la réponse (octet de service `61` / `62` compris), `bitoffset` depuis le bit
+  de poids fort de cet octet, sur `bitscount` bits (8 par défaut) ; `endian: Little` = octets inversés.
+- `signed` : complément à deux sur 8 ou 16 bits (`bytescount` 1 ou 2).
+- `scaled` : `(brut × step + offset) / divideby`, décimales selon `format` (`0.0` = 1) ; sinon libellé de `lists`
+  ou valeur brute en hexadécimal ; `bytesascii` : texte (VIN…).
+
+Les tests `ObdCarTest` (module core) vérifient ce calcul ; les valeurs attendues ont été comparées avec le code
+Python de ddt4all lancé sur les mêmes octets.
+
+### Fichier voiture LibreHU (`librehu-obd-car`)
+
+```json
+{
+  "format": "librehu-obd-car", "version": 1,
+  "id": "clio3-k4j", "name": "Renault Clio III 1.4 16V",
+  "elm_init": ["ATSP6"],
+  "pids": ["RPM", "SPEED", "COOLANT_TEMP"],
+  "ecus": [{
+    "name": "Injection", "send_id": "7E0", "recv_id": "7E8",
+    "requests": [{
+      "name": "…", "send": "21xx", "reply": "61xx", "min_bytes": 0,
+      "items": [{"name": "…", "firstbyte": 3, "bitoffset": 0, "bits": 16, "scaled": true,
+                 "step": 0.1, "offset": 0, "divideby": 1, "format": "0.0", "unit": "°C",
+                 "lists": {"0": "…"}}]
+    }]
+  }]
+}
+```
+
+- `elm_init` : commandes `AT` envoyées à la connexion, après l'initialisation (ex. `ATSP6` = CAN 11 bits 500 kbit/s).
+- `pids` : valeurs OBD standard à lire avec cette voiture (vide = garder votre choix).
+- Les champs des valeurs reprennent ceux de ddt4all (`bits` = `bitscount`, `bytes` = `bytescount`, `ascii` =
+  `bytesascii`, `endian` = `little` ou absent).
+- Les identifiants ci-dessus ne sont qu'un exemple de forme : prenez ceux de vos fichiers ddt4all.

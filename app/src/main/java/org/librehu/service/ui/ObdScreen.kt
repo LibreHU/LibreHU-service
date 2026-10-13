@@ -22,10 +22,13 @@ import org.librehu.service.obd.ObdLabels
 import org.librehu.service.obd.ObdManager
 import org.librehu.service.obd.ObdTransport
 
-/** ELM327 adapter: connection, live values, values to read, widget, trouble codes. */
+/** ELM327 adapter: connection, live values, values to read, car (manufacturer values), widget, trouble codes. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ObdScreen(client: ServiceClient) {
+fun ObdScreen(
+    client: ServiceClient,
+    actions: AppActions,
+) {
     val context = LocalContext.current
     val obd = ObdManager.get(context)
     val s by obd.settings.collectAsStateWithLifecycle()
@@ -106,6 +109,8 @@ fun ObdScreen(client: ServiceClient) {
                 }
             }
         }
+
+        ObdCarCards(st, actions)
 
         Card(stringResource(R.string.obd_widget)) {
             Hint(stringResource(R.string.obd_widget_hint))
