@@ -15,7 +15,8 @@ import java.io.File
 
 /**
  * Name of the car, given to everything that shows one: Bluetooth (what the phone sees), Android's device name,
- * the network host name (DHCP, hotspot clients) and the Wi-Fi hotspot SSID.
+ * the network host name (DHCP, hotspot clients), the Wi-Fi hotspot SSID and the Wi-Fi Direct name (wireless
+ * Android Auto / CarPlay).
  */
 object CarName {
     private const val TAG = "LibreHU-CarName"
@@ -31,6 +32,8 @@ object CarName {
         val deviceName: Boolean,
         val hostname: Boolean,
         val hotspot: Hotspot,
+        /** Wi-Fi Direct device name (`wifi_p2p_device_name`, used from the next start of Wi-Fi Direct). */
+        val wifiDirect: Boolean = false,
     )
 
     enum class Hotspot { SKIPPED, DONE, AFTER_REBOOT, FAILED }
@@ -66,7 +69,7 @@ object CarName {
         name: String,
         hotspot: Boolean,
     ): Result {
-        if (name.isEmpty()) return Result(false, false, false, Hotspot.SKIPPED)
+        if (name.isEmpty()) return Result(false, false, false, Hotspot.SKIPPED, false)
         val bt =
             try {
                 @Suppress("DEPRECATION")
@@ -83,7 +86,14 @@ object CarName {
             }
         val host = setHostname(name)
         val ap = if (hotspot) setHotspotSsid(context, name) else Hotspot.SKIPPED
-        return Result(bt, device, host, ap)
+        val p2p =
+            try {
+                Settings.Global.putString(context.contentResolver, "wifi_p2p_device_name", name.take(32))
+            } catch (_: SecurityException) {
+                RootShell.run("settings put global wifi_p2p_device_name ${quote(name.take(32))}") != null
+            }
+        context.contentResolver.notifyChange(VehicleInfo.URI, null)
+        return Result(bt, device, host, ap, p2p)
     }
 
     /** DHCP host name: letters, digits and dashes, 63 characters at most. */

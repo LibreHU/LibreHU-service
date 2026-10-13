@@ -4,6 +4,14 @@
 
     <!-- Clients declare <uses-permission android:name="org.librehu.permission.HEADUNIT" />.
          TODO: move to signature|privileged once the LibreHU apps share a signing key. -->
+    <!-- The car's description and the head unit's radio names and MAC addresses (car/VehicleProvider): the apps
+         signed with the LibreHU key only (launcher, Open Headunit LibreHU, CarPlay LibreHU). -->
+    <permission
+        android:name="org.librehu.permission.VEHICLE"
+        android:label="@string/permission_vehicle_label"
+        android:description="@string/permission_vehicle_description"
+        android:protectionLevel="signature" />
+
     <permission
         android:name="org.librehu.permission.HEADUNIT"
         android:description="@string/permission_description"
@@ -174,6 +182,13 @@
         </receiver>
 
         <!-- Live rear camera stream drawn into LibreHU Launcher's own view (apps with the LibreHU key only). -->
+        <provider
+            android:name=".car.VehicleProvider"
+            android:authorities="org.librehu.service.vehicle"
+            android:exported="true"
+            android:readPermission="org.librehu.permission.VEHICLE"
+            android:writePermission="org.librehu.permission.VEHICLE" />
+
         <service
             android:name=".car.RearPreviewService"
             android:exported="true">

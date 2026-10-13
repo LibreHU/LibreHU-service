@@ -43,6 +43,7 @@ import org.librehu.service.root.RootShell
 fun VehicleScreen() {
     Page(stringResource(R.string.tab_vehicle)) {
         CarNameCard()
+        VehicleDetailsCard()
         VehicleInputsCard()
     }
 }
@@ -80,6 +81,7 @@ private fun CarNameCard() {
             StatusLine(stringResource(R.string.car_name_bt), r.bluetooth)
             StatusLine(stringResource(R.string.car_name_device), r.deviceName)
             StatusLine(stringResource(R.string.car_name_hostname), r.hostname)
+            StatusLine(stringResource(R.string.car_name_wifi_direct), r.wifiDirect)
             if (r.hotspot != CarName.Hotspot.SKIPPED) {
                 StatusLine(
                     stringResource(
@@ -95,6 +97,81 @@ private fun CarNameCard() {
             if (!r.deviceName || !r.hostname) Hint(stringResource(R.string.car_name_root))
         }
     }
+}
+
+/**
+ * Make, model, year, colour, plate, fuel and driver's side, and what the phone sees of the head unit (names and MAC
+ * addresses): given to the LibreHU apps (launcher SOS screen, Android Auto, CarPlay) by VehicleProvider.
+ */
+@Composable
+private fun VehicleDetailsCard() {
+    val context = LocalContext.current
+    val v by org.librehu.service.car.VehicleInfo
+        .get(context)
+        .collectAsStateWithLifecycle()
+    var radios by remember { mutableStateOf<org.librehu.service.car.Radios?>(null) }
+    LaunchedEffect(Unit) {
+        radios =
+            withContext(Dispatchers.IO) {
+                org.librehu.service.car.VehicleInfo
+                    .radios(context)
+            }
+    }
+
+    fun set(transform: (org.librehu.service.car.Vehicle) -> org.librehu.service.car.Vehicle) =
+        org.librehu.service.car.VehicleInfo
+            .update(context, transform)
+    Card(stringResource(R.string.vehicle_title)) {
+        Hint(stringResource(R.string.vehicle_hint))
+        VehicleField(stringResource(R.string.vehicle_make), v.make) { t -> set { it.copy(make = t) } }
+        VehicleField(stringResource(R.string.vehicle_model), v.model) { t -> set { it.copy(model = t) } }
+        VehicleField(stringResource(R.string.vehicle_year), v.year) { t -> set { it.copy(year = t.filter(Char::isDigit).take(4)) } }
+        VehicleField(stringResource(R.string.vehicle_color), v.color) { t -> set { it.copy(color = t) } }
+        VehicleField(stringResource(R.string.vehicle_plate), v.plate) { t -> set { it.copy(plate = t) } }
+        VehicleField(stringResource(R.string.vehicle_fuel), v.fuel) { t -> set { it.copy(fuel = t) } }
+        BodyText(stringResource(R.string.vehicle_driver_side))
+        Choices(
+            listOf(
+                org.librehu.service.car.DriverSide.LEFT to stringResource(R.string.vehicle_driver_left),
+                org.librehu.service.car.DriverSide.RIGHT to stringResource(R.string.vehicle_driver_right),
+            ),
+            v.driverSide,
+        ) { d -> set { it.copy(driverSide = d) } }
+        radios?.let { r ->
+            BodyText(stringResource(R.string.vehicle_radios))
+            ListRow(
+                stringResource(R.string.vehicle_bt),
+                listOf(r.bluetoothName, r.bluetoothMac)
+                    .filter {
+                        it.isNotEmpty()
+                    }.joinToString(" · ")
+                    .ifEmpty { "?" },
+            )
+            ListRow(stringResource(R.string.vehicle_wifi), r.wifiMac.ifEmpty { "?" })
+            ListRow(stringResource(R.string.vehicle_hotspot), r.hotspotSsid.ifEmpty { "?" })
+            ListRow(stringResource(R.string.vehicle_wifi_direct), r.wifiDirectName.ifEmpty { "?" })
+            if (r.bluetoothMac.isEmpty() || r.wifiMac.isEmpty()) Hint(stringResource(R.string.vehicle_macs_root))
+        }
+    }
+}
+
+@Composable
+private fun VehicleField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+) {
+    var text by remember(value) { mutableStateOf(value) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it.take(40)
+            onChange(text)
+        },
+        singleLine = true,
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 /** Inputs wired the other way round, and the turn signals on SoC GPIOs. */

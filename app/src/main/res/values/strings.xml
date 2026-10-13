@@ -817,4 +817,24 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="aa_settings_saved">Saved.</string>
     <string name="aa_settings_saved_restart">Saved: applies at the next connection.</string>
     <string name="aa_settings_refused">Settings not available: %1$s</string>
+    <string name="permission_vehicle_label">read the car\'s description</string>
+    <string name="permission_vehicle_description">Car name, make, model, plate and the head unit\'s radio names and addresses (LibreHU apps only).</string>
+    <string name="car_name_wifi_direct">Wi-Fi Direct name (wireless Android Auto / CarPlay)</string>
+    <string name="vehicle_title">Vehicle</string>
+    <string name="vehicle_hint">Typed once, given to the LibreHU apps: SOS screen of the launcher (to read to the emergency services), Android Auto (Open Headunit LibreHU) and CarPlay LibreHU, with the head unit\'s names and addresses below.</string>
+    <string name="vehicle_make">Make</string>
+    <string name="vehicle_model">Model</string>
+    <string name="vehicle_year">Year</string>
+    <string name="vehicle_color">Colour</string>
+    <string name="vehicle_plate">Licence plate</string>
+    <string name="vehicle_fuel">Fuel</string>
+    <string name="vehicle_driver_side">Driver\'s side</string>
+    <string name="vehicle_driver_left">Left</string>
+    <string name="vehicle_driver_right">Right</string>
+    <string name="vehicle_radios">What the phone sees</string>
+    <string name="vehicle_bt">Bluetooth</string>
+    <string name="vehicle_wifi">Wi-Fi (MAC)</string>
+    <string name="vehicle_hotspot">Hotspot</string>
+    <string name="vehicle_wifi_direct">Wi-Fi Direct</string>
+    <string name="vehicle_macs_root">Android hides the MAC addresses from apps: root reads them once.</string>
 </resources>
