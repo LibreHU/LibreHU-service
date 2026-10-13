@@ -148,9 +148,12 @@ class ReverseCamera private constructor(
         }
     }
 
-    /** First installed rear view app among the known ones. */
+    /**
+     * First installed rear view app among the known ones, in the order of the ROM's camera type
+     * (`Settings.Global avm_hd2cam`, set by Jancar's settings app: 1 = AVM 360, else the hd2cam DVR).
+     */
     fun detect(): String? =
-        KNOWN.firstOrNull { pkg ->
+        (if (avmSelected()) listOf(AVM, HD2CAM) else listOf(HD2CAM, AVM)).firstOrNull { pkg ->
             try {
                 context.packageManager.getPackageInfo(pkg, 0)
                 context.packageManager.getLaunchIntentForPackage(pkg) != null
@@ -158,6 +161,12 @@ class ReverseCamera private constructor(
                 false
             }
         }
+
+    private fun avmSelected(): Boolean =
+        runCatching {
+            android.provider.Settings.Global
+                .getInt(context.contentResolver, KEY_CAMERA_TYPE, 0) == 1
+        }.getOrDefault(false)
 
     private fun load(): ReverseCameraSettings =
         prefs.getString(PREF, null)?.let {
@@ -177,8 +186,8 @@ class ReverseCamera private constructor(
         private const val PREF = "reverse_camera"
 
         /**
-         * Baony AVM 360 (vendor/app/ivi-avm360) of the stock UJC201 ROM: the rear view with guide lines. It shows it
-         * on its "CAN" reverse broadcast; ivi-services itself starts no camera app.
+         * Baony AVM 360 (vendor/app/ivi-avm360) of the stock UJC201 ROM, used when the camera type is AVM: it shows
+         * its rear view on its "CAN" reverse broadcast. ivi-services itself starts no camera app.
          */
         const val AVM = "com.baony.avm360"
         private const val AVM_SERVICE = "com.baony.ui.service.AVMCanBusService"
@@ -189,8 +198,11 @@ class ReverseCamera private constructor(
         private const val ACTION_BACKCAR_STARTED = "android.backcar.action.STARTED"
         private const val ACTION_BACKCAR_FINISH = "android.backcar.action.FINISH"
 
-        /** Rear view apps tried when none is chosen: AVM 360 (guide lines), then the hd2cam DVR. */
-        private val KNOWN = listOf(AVM, "com.jancar.hd2cam")
+        /** Jancar's DVR (dual recording); with ivi-services it shows the rear camera itself, in an overlay window. */
+        const val HD2CAM = "com.jancar.hd2cam"
+
+        /** `JACSettings.Global.KEY_AVM_HD2CAM` of the ROM: camera type, 1 = AVM 360. */
+        private const val KEY_CAMERA_TYPE = "avm_hd2cam"
 
         @Volatile
         private var instance: ReverseCamera? = null

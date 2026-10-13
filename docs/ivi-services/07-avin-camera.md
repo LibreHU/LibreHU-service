@@ -10,7 +10,17 @@
   (dump stock, system et vendor). Sur AC8257, `exitFastReverse()` ne fait rien. A la marche arriere, `CarService`
   envoie seulement `android.backcar.action.STARTED` / `FINISH` et `onCcdChanged` : **ivi-services n'ouvre aucune
   appli camera**.
-- **Vue arriere avec lignes de guidage = `com.baony.avm360`** (`vendor/app/ivi-avm360`, v2.22.141 ; les variantes
+- **Qui affiche le recul depend du type de camera** : `[Customer] CameraType` de `/jancar/config/ivi-customer.ini`
+  (vide sur l'UJC201 = 0 : double enregistrement DVR ; 1 : AVM 360) et le reglage utilisateur
+  `Settings.Global avm_hd2cam` (`JACSettings.getCameraType`, 1 = AVM). Camera arriere : `BackCarVideoSource=1`
+  (AHD 720p 25 i/s).
+- **Type DVR (defaut) : `com.jancar.hd2cam`**. Son `CameraService` (`CameraServiceImpl`) se met a l'ecoute de la
+  marche arriere par **`CarManager.onCcdChanged` d'ivi-services** (et par `com.autochips.backcar.BackCar`, evenement 2
+  de l'ARM2 pendant le recul rapide) puis `startRVC()` : **fenetre en surimpression** (`car_event_window_layout` :
+  deux `SurfaceView` avant / arriere, message « pas de signal »), `stopRVC()` au retrait. Ni ligne de guidage dans
+  cette fenetre, ni intent pour la declencher : **sans ivi-services, pas de vue de recul hd2cam** ; ouvrir son
+  activite donne seulement l'interface du DVR.
+- **Type AVM : `com.baony.avm360`** (`vendor/app/ivi-avm360`, v2.22.141 ; les variantes
   `ivi-avm360-bus` / `-dvr` 9.24 ont le meme paquet, Android garde la plus recente). Elle se met en vue arriere sur le
   broadcast **`Voice_Reverse_State`** (extra int `Signal_State` 1 / 0, `CanBusBroadcastReceiver` → `CanBusHandler.onReverse`
   → passe au premier plan) ; recepteur dynamique enregistre par son `Application` : le processus doit tourner (service
