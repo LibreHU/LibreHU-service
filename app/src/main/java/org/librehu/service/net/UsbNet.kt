@@ -13,8 +13,8 @@ import org.librehu.service.root.RootShell
  * (Realtek RTL8152 / RTL8153, Android RNDIS tethering, iPhone, LAN78xx, SMSC, Davicom, CoreChips…) come as modules
  * from the flashable zip `usb-net` (LibreHU-flashablesZips, kernel category): `/vendor/lib/modules/librehu-usbnet`,
  * loaded by `/vendor/etc/init/init.librehu_usbnet.rc` once Android has started. That script keeps a crash guard:
- * `persist.librehu.usbnet.off` = 1 after a restart during the loading (or when switched off here), and
- * `sys.librehu.usbnet.arm` = 1 loads them now. Android's EthernetService (started because of the USB host feature)
+ * `persist.vendor.librehu.usbnet.off` = 1 after a restart during the loading (or when switched off here), and
+ * `vendor.librehu.usbnet.arm` = 1 loads them now. Android's EthernetService (started because of the USB host feature)
  * takes the `eth*` interfaces with DHCP.
  */
 object UsbNet {
@@ -87,7 +87,7 @@ object UsbNet {
         val installed: List<String> = emptyList(),
         /** Modules of the zip loaded now. */
         val loaded: List<String> = emptyList(),
-        /** persist.librehu.usbnet.off = 1: not loaded at start (switched off, or a restart while loading). */
+        /** persist.vendor.librehu.usbnet.off = 1: not loaded at start (switched off, or a restart while loading). */
         val off: Boolean = false,
         /** Android has an Ethernet network, and it reaches the Internet. */
         val ethernetUp: Boolean = false,
@@ -193,10 +193,10 @@ object UsbNet {
         }.getOrDefault(false to false)
 
     /** Loads the zip's modules now, through its init script (same crash guard), and at every start again. */
-    fun load(): Boolean = RootShell.run("setprop persist.librehu.usbnet.off 0 && setprop sys.librehu.usbnet.arm 1") != null
+    fun load(): Boolean = RootShell.run("setprop persist.vendor.librehu.usbnet.off 0 && setprop vendor.librehu.usbnet.arm 1") != null
 
     /** Not loaded at the next starts (the ones loaded stay until the restart). */
-    fun disableAtStart(): Boolean = RootShell.run("setprop persist.librehu.usbnet.off 1") != null
+    fun disableAtStart(): Boolean = RootShell.run("setprop persist.vendor.librehu.usbnet.off 1") != null
 
     /**
      * iPhone: Linux picks its first configuration (picture transfer), without the tethering interface (ipheth:
@@ -283,6 +283,6 @@ object UsbNet {
         ip -4 -o addr show 2>/dev/null | while read -r _ dev _ addr _; do echo "A|${'$'}dev|${'$'}addr"; done
         while read -r mod _; do echo "M|${'$'}mod"; done < /proc/modules
         ls $MODULE_DIR 2>/dev/null | sed 's/^/F|/'
-        echo "P|off|${'$'}(getprop persist.librehu.usbnet.off)"
+        echo "P|off|${'$'}(getprop persist.vendor.librehu.usbnet.off)"
         """.trimIndent()
 }
