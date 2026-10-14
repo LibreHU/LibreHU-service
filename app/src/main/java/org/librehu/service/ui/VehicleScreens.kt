@@ -303,6 +303,7 @@ fun SystemScreen() {
         RootCard()
         StandbyCard()
         BootAppsCard()
+        AppDataCard()
         WatchdogCard()
     }
 }

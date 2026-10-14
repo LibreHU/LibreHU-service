@@ -1,8 +1,8 @@
 package org.librehu.service.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -14,12 +14,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
-import org.librehu.service.atc.AtcTools
-import org.librehu.service.atc.Mtz
 import org.librehu.service.car.CvbsActivity
 import org.librehu.service.car.CvbsInput
 import org.librehu.service.car.CvbsPosition
-import org.librehu.service.car.VideoOutSettings
+import org.librehu.service.car.VideoOut
 
 /** CVBS IN 1 / 2 (video only), the CVBS rear camera's input and the rear video output (VIDEO OUT / AUDIO OUT). */
 @Composable
@@ -75,70 +73,62 @@ private fun CvbsReverseCard() {
 }
 
 /**
- * VIDEO OUT: Autochips' rear display switch (metazone, read at start-up) and the format / borders Jancar's "Rear output
- * settings" set (root).
+ * VIDEO OUT: a USB display chip fed by Jancar's `com.jancar.usbdisplay` ([VideoOut]): chip detection, on / off
+ * (`key_rear_display`, root) and Jancar's own output settings.
  */
 @Composable
 private fun VideoOutCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val out by CvbsInput.videoOut(context).collectAsStateWithLifecycle()
-    var enabled by remember { mutableStateOf<Boolean?>(null) }
+    var revision by remember { mutableIntStateOf(0) }
     var status by remember { mutableStateOf<String?>(null) }
-    var rebootNeeded by remember { mutableStateOf(false) }
+    val installed = remember(revision) { VideoOut.installed(context) }
+    val enabled = remember(revision) { VideoOut.enabled(context) }
+    val devices = remember(revision) { VideoOut.usbDevices(context) }
+    val sending = remember(revision) { VideoOut.sending() }
+    val chip = devices.any { it.second }
     val noRoot = stringResource(R.string.atc_no_root)
-    val applied = stringResource(R.string.cvbs_out_applied)
-    LaunchedEffect(Unit) {
-        when (val r = withContext(Dispatchers.IO) { AtcTools.read(context, listOf(Mtz.REAR_DISPLAY)) }) {
-            is AtcTools.Result.Values -> enabled = r.values[Mtz.REAR_DISPLAY] == 1
-            is AtcTools.Result.Error -> status = r.message
-            AtcTools.Result.NoRoot -> status = noRoot
-        }
-    }
-
-    fun change(transform: (VideoOutSettings) -> VideoOutSettings) = CvbsInput.updateVideoOut(context, transform)
-
     Card(stringResource(R.string.cvbs_out_title)) {
         Hint(stringResource(R.string.cvbs_out_hint))
-        val (exists, open) = remember { CvbsInput.composerState() }
-        Hint(stringResource(R.string.cvbs_out_state, exists.ifEmpty { "-" }, open.ifEmpty { "-" }))
-        enabled?.let { on ->
-            SwitchRow(stringResource(R.string.cvbs_out_enable), on, stringResource(R.string.cvbs_out_enable_hint)) { v ->
-                scope.launch {
-                    val err = withContext(Dispatchers.IO) { AtcTools.write(context, mapOf(Mtz.REAR_DISPLAY to if (v) 1 else 0)) }
-                    if (err == null) {
-                        enabled = v
-                        rebootNeeded = true
-                        status = null
-                    } else {
-                        status = err
-                    }
-                }
+        StatusLine(
+            stringResource(if (installed) R.string.cvbs_out_app_ok else R.string.cvbs_out_app_missing),
+            installed,
+        )
+        StatusLine(stringResource(if (chip) R.string.cvbs_out_chip_ok else R.string.cvbs_out_chip_missing), chip)
+        if (devices.isEmpty()) {
+            Hint(stringResource(R.string.cvbs_out_usb_none))
+        } else {
+            for ((d, isChip) in devices) BodyText((if (isChip) "▶ " else "· ") + d, mono = true)
+        }
+        sending?.let { Hint(stringResource(if (it) R.string.cvbs_out_sending else R.string.cvbs_out_stopped)) }
+        SwitchRow(
+            stringResource(R.string.cvbs_out_enable),
+            enabled,
+            stringResource(R.string.cvbs_out_enable_hint),
+            enabled = installed,
+        ) { on ->
+            scope.launch {
+                val err = withContext(Dispatchers.IO) { VideoOut.setEnabled(context, on) }
+                status = if (err == "root") noRoot else err
+                // CaptureService needs a moment to find the chip and start sending.
+                kotlinx.coroutines.delay(2500)
+                revision++
             }
-        }
-        if (rebootNeeded) {
-            Hint(stringResource(R.string.atc_reboot_needed))
-            Actions { Pill(stringResource(R.string.atc_reboot)) { scope.launch(Dispatchers.IO) { AtcTools.reboot() } } }
-        }
-        BodyText(stringResource(R.string.cvbs_out_format))
-        Choices(listOf(true to "PAL", false to "NTSC"), out.pal) { pal -> change { it.copy(pal = pal) } }
-        val range = 0..VideoOutSettings.MARGIN_MAX
-        SliderRow(stringResource(R.string.cvbs_out_top), out.top, range) { v -> change { it.copy(top = v) } }
-        SliderRow(stringResource(R.string.cvbs_out_bottom), out.bottom, range) { v -> change { it.copy(bottom = v) } }
-        SliderRow(stringResource(R.string.cvbs_out_left), out.left, range) { v -> change { it.copy(left = v) } }
-        SliderRow(stringResource(R.string.cvbs_out_right), out.right, range) { v -> change { it.copy(right = v) } }
-        SwitchRow(stringResource(R.string.cvbs_out_at_start), out.apply, stringResource(R.string.cvbs_out_at_start_hint)) { on ->
-            change { it.copy(apply = on) }
         }
         Actions {
-            Pill(stringResource(R.string.cvbs_out_apply)) {
+            Pill(stringResource(R.string.cvbs_out_settings), enabled = installed) {
+                if (!VideoOut.openSettings(context)) status = context.getString(R.string.cvbs_out_app_missing)
+            }
+            Pill(stringResource(R.string.cvbs_out_search), enabled = installed) {
+                VideoOut.refresh(context)
                 scope.launch {
-                    val err = withContext(Dispatchers.IO) { CvbsInput.applyVideoOut(context, enabled != false) }
-                    status = err ?: applied
+                    kotlinx.coroutines.delay(1500)
+                    revision++
                 }
             }
+            Pill(stringResource(R.string.cvbs_out_reload)) { revision++ }
         }
-        if (!CvbsInput.hasCaptureService(context)) Hint(stringResource(R.string.cvbs_out_no_jancar))
-        status?.let { StatusLine(it, null) }
+        if (!chip) Hint(stringResource(R.string.cvbs_out_chip_hint))
+        status?.let { StatusLine(it, false) }
     }
 }

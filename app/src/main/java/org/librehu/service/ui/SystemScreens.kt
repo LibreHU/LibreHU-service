@@ -15,12 +15,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.librehu.core.mcu.JacDebug
 import org.librehu.core.mcu.Mcu
 import org.librehu.core.mcu.McuFrame
@@ -496,6 +500,38 @@ internal fun BootAppsCard() {
                         org.librehu.service.power.BootApps
                             .list(context)
                 }.start()
+            }
+        }
+        if (message.isNotEmpty()) Hint(message)
+    }
+}
+
+/** Data directories left to an old uid (an app crashing at each start): checked and given back (root). */
+@Composable
+internal fun AppDataCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var message by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val noRoot = stringResource(R.string.atc_no_root)
+    Card(stringResource(R.string.app_data_title)) {
+        Hint(stringResource(R.string.app_data_hint))
+        Actions {
+            Pill(stringResource(R.string.app_data_check), enabled = !busy) {
+                busy = true
+                scope.launch {
+                    message =
+                        withContext(Dispatchers.IO) {
+                            val repair = org.librehu.service.power.AppDataRepair
+                            val issues = repair.scan(context)
+                            when {
+                                issues == null -> noRoot
+                                issues.isEmpty() -> context.getString(R.string.app_data_ok)
+                                else -> context.getString(R.string.app_data_fixed, repair.repair(context, issues).joinToString())
+                            }
+                        }
+                    busy = false
+                }
             }
         }
         if (message.isNotEmpty()) Hint(message)

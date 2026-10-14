@@ -62,6 +62,11 @@ fun CarPlayScreen() {
                     settings.nightFromHeadlights,
                     stringResource(R.string.cp_night_hint),
                 ) { on -> CarPlay.update(context) { it.copy(nightFromHeadlights = on) } }
+                SwitchRow(
+                    stringResource(R.string.cp_open_on_iphone),
+                    settings.openOnIphone,
+                    stringResource(R.string.cp_open_on_iphone_hint),
+                ) { on -> CarPlay.update(context) { it.copy(openOnIphone = on) } }
                 Hint(stringResource(R.string.cp_integration_hint))
             }
         }

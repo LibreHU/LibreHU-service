@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
@@ -32,6 +34,11 @@ data class CpSession(
 data class CarPlaySettings(
     /** CarPlay's day / night from the headlights (else the launcher's dark mode, else Android's). */
     val nightFromHeadlights: Boolean = true,
+    /**
+     * CarPlay opened when an iPhone is plugged in (USB, Apple vendor id): the app only connects while its screen is
+     * open, and its own USB filter only lists its CH341 MFi adapter.
+     */
+    val openOnIphone: Boolean = true,
 )
 
 /**
@@ -48,6 +55,13 @@ object CarPlay {
     private const val SESSION_STATE = "org.librehu.carplay.SESSION_STATE"
     private const val SET_NIGHT_MODE = "org.librehu.carplay.action.SET_NIGHT_MODE"
     private const val PREF_NIGHT = "cp_night_headlights"
+    private const val PREF_OPEN_ON_IPHONE = "cp_open_on_iphone"
+    private const val APPLE_VENDOR_ID = 0x05ac
+
+    /** The iPhone re-enumerates during the CarPlay handshake: one opening per plug. */
+    private const val OPEN_DEBOUNCE_MS = 20_000L
+    private var lastAutoOpen = 0L
+    private var usbReceiver: BroadcastReceiver? = null
 
     private val _session = MutableStateFlow(CpSession())
     val session: StateFlow<CpSession> = _session.asStateFlow()
@@ -71,8 +85,25 @@ object CarPlay {
 
     fun start(context: Context) {
         val app = context.applicationContext
-        _settings.value = CarPlaySettings(LibreHuService.prefs(app).getBoolean(PREF_NIGHT, true))
+        val p = LibreHuService.prefs(app)
+        _settings.value = CarPlaySettings(p.getBoolean(PREF_NIGHT, true), p.getBoolean(PREF_OPEN_ON_IPHONE, true))
         if (receiver != null) return
+        usbReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    c: Context,
+                    intent: Intent,
+                ) {
+                    @Suppress("DEPRECATION")
+                    val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE) ?: return
+                    if (device.vendorId == APPLE_VENDOR_ID) onIphone(app)
+                }
+            }
+        if (Build.VERSION.SDK_INT >= 33) {
+            app.registerReceiver(usbReceiver, IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED), Context.RECEIVER_EXPORTED)
+        } else {
+            app.registerReceiver(usbReceiver, IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED))
+        }
         receiver =
             object : BroadcastReceiver() {
                 override fun onReceive(
@@ -104,6 +135,8 @@ object CarPlay {
     fun stop(context: Context) {
         receiver?.let { runCatching { context.applicationContext.unregisterReceiver(it) } }
         receiver = null
+        usbReceiver?.let { runCatching { context.applicationContext.unregisterReceiver(it) } }
+        usbReceiver = null
         scope?.cancel()
         scope = null
     }
@@ -118,6 +151,7 @@ object CarPlay {
             .prefs(context)
             .edit()
             .putBoolean(PREF_NIGHT, s.nightFromHeadlights)
+            .putBoolean(PREF_OPEN_ON_IPHONE, s.openOnIphone)
             .apply()
         applyNight(context)
     }
@@ -137,6 +171,18 @@ object CarPlay {
         } catch (e: Exception) {
             Log.w(TAG, "night: ${e.message}")
         }
+    }
+
+    /** An iPhone was plugged in: CarPlay opened, unless a session is already starting or running. */
+    private fun onIphone(context: Context) {
+        if (!_settings.value.openOnIphone) return
+        val state = _session.value.state
+        if (state == "connecting" || state == "active") return
+        val now = SystemClock.elapsedRealtime()
+        if (lastAutoOpen != 0L && now - lastAutoOpen < OPEN_DEBOUNCE_MS) return
+        lastAutoOpen = now
+        Log.i(TAG, "iPhone plugged in: opening CarPlay")
+        runCatching { open(context) }.onFailure { Log.w(TAG, "open: ${it.message}") }
     }
 
     /** Opens CarPlay (its screen; the projection when an iPhone is connected). */

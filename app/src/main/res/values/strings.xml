@@ -925,6 +925,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cp_app_none">CarPlay not installed (LibreHU Apps: CarPlay)</string>
     <string name="cp_state_active">iPhone connected (CarPlay on screen)</string>
     <string name="cp_hint">CarPlay through xcertplay, free CarPlay receiver: wired iPhone (USB), with the MFi chip of the head unit found by itself on the I2C bus. The car\'s name, make, model and addresses come from Vehicle. Its own settings are in the CarPlay app.</string>
+    <string name="cp_open_on_iphone">Open CarPlay when the iPhone is plugged in</string>
+    <string name="cp_open_on_iphone_hint">The CarPlay app only connects while its screen is open: the service opens it when an Apple USB device appears (once per plug, not during a session).</string>
     <string name="cp_night_hint">Night when the headlights are on, day otherwise; off: the launcher\'s dark mode decides.</string>
     <string name="cp_integration_hint">The CarPlay app also follows the launcher\'s light / dark mode and accent colour.</string>
     <string name="tab_tweaks">Tweaks</string>
@@ -977,21 +979,20 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cvbs_reverse_switch">Switch to the rear camera input before the rear view</string>
     <string name="cvbs_reverse_hint">When the rear view opens the CVBS camera (3), the switch is first set to this position, as Jancar\'s AV app does on reverse. The CVBS IN screen gives the camera back during reverse.</string>
     <string name="cvbs_out_title">Video output (VIDEO OUT)</string>
-    <string name="cvbs_out_hint">Copy of the screen on the VIDEO OUT RCA (rear seat screen, headrests). Turned on by Autochips\' \"Rear display\" (metazone, read at start-up: restart). Format and borders are what Jancar\'s \"Rear output settings\" set; their effect depends on the system\'s composer and is not verified on this unit.</string>
-    <string name="cvbs_out_state">Composer: output present %1$s, open %2$s (hwc.external_display_enable / _open)</string>
-    <string name="cvbs_out_enable">Rear display (VIDEO OUT)</string>
-    <string name="cvbs_out_enable_hint">Autochips metazone 65550, root. Applied at the next start.</string>
-    <string name="cvbs_out_format">Output format</string>
-    <string name="cvbs_out_top">Top border</string>
-    <string name="cvbs_out_bottom">Bottom border</string>
-    <string name="cvbs_out_left">Left border</string>
-    <string name="cvbs_out_right">Right border</string>
-    <string name="cvbs_out_at_start">Apply at each start</string>
-    <string name="cvbs_out_at_start_hint">The hwc.rear_disp_* properties are lost on restart: the service sets them again (root).</string>
-    <string name="cvbs_out_apply">Apply now</string>
-    <string name="cvbs_out_applied">Applied</string>
-    <string name="cvbs_out_no_root">Root needed</string>
-    <string name="cvbs_out_no_jancar">Jancar\'s rear output app (com.jancar.usbdisplay) is not installed: only the properties and the metazone switch are set.</string>
+    <string name="cvbs_out_hint">Copy of the screen on the VIDEO OUT RCA (rear seat screen, headrests). On this head unit it is a USB display chip (MacroSilicon, CVBS output) driven by Jancar\'s app com.jancar.usbdisplay: it captures the screen and sends it over USB. It is turned on by the key_rear_display setting; Autochips\' "rear display" (metazone) is not used.</string>
+    <string name="cvbs_out_app_ok">Jancar\'s output app (com.jancar.usbdisplay) installed</string>
+    <string name="cvbs_out_app_missing">Jancar\'s output app (com.jancar.usbdisplay) missing: the output cannot work</string>
+    <string name="cvbs_out_chip_ok">USB video chip found</string>
+    <string name="cvbs_out_chip_missing">USB video chip (534d:6021 or 345f:9132) not seen by Android</string>
+    <string name="cvbs_out_usb_none">No USB device seen by Android.</string>
+    <string name="cvbs_out_sending">Jancar\'s capture: sending (runtime.reardisplay.status 54)</string>
+    <string name="cvbs_out_stopped">Jancar\'s capture: stopped (runtime.reardisplay.status 55)</string>
+    <string name="cvbs_out_enable">Rear video output</string>
+    <string name="cvbs_out_enable_hint">key_rear_display (root), then Jancar\'s capture service started; kept after a restart.</string>
+    <string name="cvbs_out_settings">Output settings (PAL / NTSC, frame)</string>
+    <string name="cvbs_out_search">Look for the chip</string>
+    <string name="cvbs_out_reload">Refresh</string>
+    <string name="cvbs_out_chip_hint">The chip sits on a USB port of the head unit: in device mode (adb) or with the port in use by something else, it does not appear. Check Advanced → Autochips → USB mode (host), plug a screen on VIDEO OUT, then "Look for the chip".</string>
     <string name="cvbs_audio_out_title">Audio output (AUDIO OUT)</string>
     <string name="cvbs_audio_out_hint">The AUDIO OUT RCAs are a line output of the sound processor (BD37534): the same sound as the speakers, after its volume. Jancar\'s software has no setting of its own for them; to know which output they carry (rear or subwoofer), play music and move the fader front / rear, or turn the subwoofer output on / off (Audio).</string>
     <string name="cvbs_blocked_reverse">Reverse gear: camera given to the rear view</string>
@@ -1001,4 +1002,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cvbs_fit_fill">Full screen</string>
     <string name="cvbs_settings">Settings</string>
     <string name="cvbs_close">Close</string>
+
+    <!-- power/AppDataRepair -->
+    <string name="app_data_title">App data</string>
+    <string name="app_data_hint">After a ROM reflash or a reinstall an app can keep a data directory owned by its old uid: Android refuses it and the app crashes at each start (ViPER4Android at boot: no effects). Checked and repaired by the service at each start (root); the button does it now.</string>
+    <string name="app_data_check">Check and repair</string>
+    <string name="app_data_ok">All app data directories have the right owner.</string>
+    <string name="app_data_fixed">Repaired: %1$s</string>
 </resources>

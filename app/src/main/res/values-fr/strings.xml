@@ -925,6 +925,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cp_app_none">CarPlay non installé (LibreHU Apps : CarPlay)</string>
     <string name="cp_state_active">iPhone connecté (CarPlay à l\'écran)</string>
     <string name="cp_hint">CarPlay par xcertplay, récepteur CarPlay libre : iPhone en filaire (USB), avec la puce MFi de l\'autoradio trouvée toute seule sur le bus I2C. Le nom de la voiture, la marque, le modèle et les adresses viennent de Véhicule. Ses propres réglages sont dans l\'appli CarPlay.</string>
+    <string name="cp_open_on_iphone">Ouvrir CarPlay au branchement de l\'iPhone</string>
+    <string name="cp_open_on_iphone_hint">L\'appli CarPlay ne se connecte que si son écran est ouvert : le service l\'ouvre quand un appareil USB Apple apparaît (une fois par branchement, pas pendant une session).</string>
     <string name="cp_night_hint">Nuit quand les phares sont allumés, jour sinon ; désactivé : le mode sombre du launcher décide.</string>
     <string name="cp_integration_hint">L\'appli CarPlay suit aussi le mode clair / sombre et la couleur d\'accent du launcher.</string>
     <string name="tab_tweaks">Tweaks</string>
@@ -977,21 +979,20 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cvbs_reverse_switch">Commuter sur l\'entrée de la caméra arrière avant la vue de recul</string>
     <string name="cvbs_reverse_hint">Quand la vue de recul ouvre la caméra CVBS (3), le commutateur est d\'abord mis sur cette position, comme le fait l\'appli AV de Jancar en marche arrière. L\'écran CVBS IN rend la caméra pendant le recul.</string>
     <string name="cvbs_out_title">Sortie vidéo (VIDEO OUT)</string>
-    <string name="cvbs_out_hint">Copie de l\'écran sur la RCA VIDEO OUT (écran arrière, appuie-têtes). Activée par « Écran arrière » d\'Autochips (metazone, lue au démarrage : redémarrer). Format et bords sont ceux que règle « Rear output settings » de Jancar ; leur effet dépend du compositeur du système et n\'est pas vérifié sur cet autoradio.</string>
-    <string name="cvbs_out_state">Compositeur : sortie présente %1$s, ouverte %2$s (hwc.external_display_enable / _open)</string>
-    <string name="cvbs_out_enable">Écran arrière (VIDEO OUT)</string>
-    <string name="cvbs_out_enable_hint">Metazone Autochips 65550, root. Appliqué au prochain démarrage.</string>
-    <string name="cvbs_out_format">Format de sortie</string>
-    <string name="cvbs_out_top">Bord haut</string>
-    <string name="cvbs_out_bottom">Bord bas</string>
-    <string name="cvbs_out_left">Bord gauche</string>
-    <string name="cvbs_out_right">Bord droit</string>
-    <string name="cvbs_out_at_start">Appliquer à chaque démarrage</string>
-    <string name="cvbs_out_at_start_hint">Les propriétés hwc.rear_disp_* sont perdues au redémarrage : le service les remet (root).</string>
-    <string name="cvbs_out_apply">Appliquer maintenant</string>
-    <string name="cvbs_out_applied">Appliqué</string>
-    <string name="cvbs_out_no_root">Root nécessaire</string>
-    <string name="cvbs_out_no_jancar">L\'appli de sortie arrière de Jancar (com.jancar.usbdisplay) n\'est pas installée : seuls les propriétés et l\'interrupteur metazone sont réglés.</string>
+    <string name="cvbs_out_hint">Copie de l\'écran sur la RCA VIDEO OUT (écran arrière, appuie-têtes). Sur cet autoradio c\'est une puce d\'affichage USB (MacroSilicon, sortie CVBS) pilotée par l\'appli Jancar com.jancar.usbdisplay : elle capture l\'écran et l\'envoie en USB. Elle s\'active par le réglage key_rear_display ; l\'« écran arrière » d\'Autochips (metazone) n\'est pas utilisé.</string>
+    <string name="cvbs_out_app_ok">Appli de sortie Jancar (com.jancar.usbdisplay) installée</string>
+    <string name="cvbs_out_app_missing">Appli de sortie Jancar (com.jancar.usbdisplay) absente : la sortie ne peut pas marcher</string>
+    <string name="cvbs_out_chip_ok">Puce vidéo USB trouvée</string>
+    <string name="cvbs_out_chip_missing">Puce vidéo USB (534d:6021 ou 345f:9132) non vue par Android</string>
+    <string name="cvbs_out_usb_none">Aucun périphérique USB vu par Android.</string>
+    <string name="cvbs_out_sending">Capture Jancar : en émission (runtime.reardisplay.status 54)</string>
+    <string name="cvbs_out_stopped">Capture Jancar : arrêtée (runtime.reardisplay.status 55)</string>
+    <string name="cvbs_out_enable">Sortie vidéo arrière</string>
+    <string name="cvbs_out_enable_hint">key_rear_display (root), puis service de capture Jancar lancé ; gardé après un redémarrage.</string>
+    <string name="cvbs_out_settings">Réglages de la sortie (PAL / NTSC, cadrage)</string>
+    <string name="cvbs_out_search">Rechercher la puce</string>
+    <string name="cvbs_out_reload">Actualiser</string>
+    <string name="cvbs_out_chip_hint">La puce est sur un port USB de l\'autoradio : en mode périphérique (adb) ou si le port est pris, elle n\'apparaît pas. Vérifiez Avancé → Autochips → mode USB (hôte), branchez un écran sur VIDEO OUT, puis « Rechercher la puce ».</string>
     <string name="cvbs_audio_out_title">Sortie audio (AUDIO OUT)</string>
     <string name="cvbs_audio_out_hint">Les RCA AUDIO OUT sont une sortie ligne du processeur audio (BD37534) : le même son que les haut-parleurs, après son volume. Le logiciel Jancar n\'a pas de réglage propre pour elles ; pour savoir quelle sortie elles portent (arrière ou caisson), lancez de la musique et déplacez le fader avant / arrière, ou activez / coupez la sortie caisson (Audio).</string>
     <string name="cvbs_blocked_reverse">Marche arrière : caméra laissée à la vue de recul</string>
@@ -1001,4 +1002,11 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cvbs_fit_fill">Plein écran</string>
     <string name="cvbs_settings">Réglages</string>
     <string name="cvbs_close">Fermer</string>
+
+    <!-- power/AppDataRepair -->
+    <string name="app_data_title">Données des applis</string>
+    <string name="app_data_hint">Après un reflash de la ROM ou une réinstallation, une appli peut garder un dossier de données appartenant à son ancien UID : Android le refuse et l\'appli plante à chaque démarrage (ViPER4Android au boot : pas d\'effets). Vérifié et réparé par le service à chaque démarrage (root) ; le bouton le fait tout de suite.</string>
+    <string name="app_data_check">Vérifier et réparer</string>
+    <string name="app_data_ok">Tous les dossiers de données des applis ont le bon propriétaire.</string>
+    <string name="app_data_fixed">Réparé : %1$s</string>
 </resources>

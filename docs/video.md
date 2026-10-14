@@ -45,16 +45,25 @@ d'ouvrir la caméra 3, la vue de recul et le widget en direct mettent le commuta
 Sans ivi-services, rien d'autre ne le faisait. Le widget ne commute pas pendant que l'écran CVBS IN est ouvert.
 
 ## VIDEO OUT
-- **Activation** : « Écran arrière » d'ATC Settings (`AtcDisplaySettingsUtils.setRearDisplay`, metazone **65550**),
-  lu au démarrage ; ATC Settings affiche « redémarrage nécessaire ». Le compositeur (`hwcomposer.ac8257.so`) gère un
-  écran externe en miroir et publie `hwc.external_display_enable` / `hwc.external_display_open` (affichés sur la page).
-- **Réglages de Jancar** (ivi-settings, `RearOutputActivity`, « Rear output settings ») : format `hwc.rear_disp_fmt`
-  (`P` PAL / `N` NTSC), bords `hwc.rear_disp_lb_y_top`, `_y_bottom`, `_x_left`, `_x_right` (0 à 50), gardés dans
-  `/jancar/config/jac_rear_output.json` ; puis `Settings.Global key_rear_display` et le service
-  `com.jancar.usbdisplay/.service.CaptureService` (action `change_rear_display`, extra `change`), arrêté puis relancé.
-- LibreHU fait la même chose en root (**Appliquer maintenant**, et **Appliquer à chaque démarrage** car les propriétés
-  `hwc.*` ne survivent pas à un redémarrage). L'APK `ivi-usbdisplay` n'a pas pu être décompilé (absent de la collecte) :
-  qui lit `hwc.rear_disp_*` n'est pas vérifié (pas le compositeur, dont les chaînes ne les citent pas).
+L'APK `ivi-usbdisplay` (`com.jancar.usbdisplay`, fourni depuis l'autoradio) montre que VIDEO OUT n'est **pas** une
+sortie vidéo du SoC : c'est une **puce d'affichage USB MacroSilicon** (sortie CVBS) alimentée par une capture d'écran.
+- Puces reconnues (`res/xml/device_filter.xml`, `USBVendorId`) : USB `534d:6021` et `345f:9132` (sortie CVBS,
+  S-Vidéo ou HDMI selon la puce ; CVBS : `720x480P_60HZ` « NTSC » ou `720x576P_50HZ` « PAL »).
+- Activation : `Settings.Global key_rear_display = 1`. Le `MainService` de l'appli (persistante) lance alors
+  `CaptureService` à chaque démarrage, et son `UsbReceiver` le fait quand la puce apparaît.
+- `CaptureService` attend la sortie de l'ARM2 (`BackCar.getArm2Status() == 2`), cherche la puce (USBMonitor), ouvre
+  `MediaProjectionActivity` (capture d'écran, accordée d'office à cette appli système qui a `CAPTURE_VIDEO_OUTPUT`),
+  puis envoie les images en USB bulk. `change_rear_display` (extra `change`) démarre ou arrête l'envoi ;
+  `runtime.reardisplay.status` vaut 54 pendant l'envoi, 55 à l'arrêt.
+- Format, taille, décalages et mise à l'échelle : son écran `SettingActivity` (exporté), gardés dans
+  `/jancar/config/usb_display.json`.
+- Ni l'« écran arrière » d'Autochips (metazone 65550), ni `hwc.rear_disp_*` (ivi-settings) ne sont lus par cette
+  appli : la première version de la page Vidéo, qui les réglait, n'avait donc aucun effet.
+
+Page Vidéo, carte VIDEO OUT : présence de l'appli Jancar, puce vue ou non par Android (liste des périphériques USB),
+état de l'envoi, interrupteur `key_rear_display` (root) + lancement du service de capture, boutons **Réglages de la
+sortie** (l'écran de Jancar), **Rechercher la puce** (`com.jancar.usbdisplay.USB_REFRESH`) et **Actualiser**. Si la
+puce n'apparaît pas : le port USB doit être en mode hôte (Avancé → Autochips), et un écran branché sur VIDEO OUT.
 
 ## AUDIO OUT
 Sortie ligne du BD37534 (même son que les haut-parleurs, après le volume). Aucun réglage propre dans la ROM Jancar
@@ -64,4 +73,4 @@ puis fader avant / arrière ou sortie caisson activée / coupée (Audio, ou l'é
 ## À vérifier sur l'autoradio
 - position de chaque RCA (bouton Tester) et image sur la position 0/1 ;
 - que l'écriture des GPIO 167 / 165 est acceptée par `/dev/gpios_ioctl` (message « écriture GPIO refusée » sinon) ;
-- VIDEO OUT : image sur un écran branché après « Écran arrière » + redémarrage, effet du format et des bords.
+- VIDEO OUT : puce USB vue (`534d:6021` / `345f:9132`), image sur un écran branché après l'interrupteur.
