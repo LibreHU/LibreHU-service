@@ -1013,4 +1013,43 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <!-- power/EarlyStart -->
     <string name="boot_early">Start early: %1$s</string>
     <string name="boot_early_hint">Started as soon as Android unlocks the storage, instead of waiting for its turn in the boot broadcast (one app after the other; a slow Jancar receiver can hold it a minute): the audio effects come with the sound (root).</string>
+
+    <!-- phone/PhoneInfo, phone/PhoneWidget, ui/PhoneScreen -->
+    <string name="tab_phone">Phone</string>
+    <string name="phone_bt_title">Bluetooth phone</string>
+    <string name="phone_none">No phone connected</string>
+    <string name="phone_address">Address</string>
+    <string name="phone_battery">Battery</string>
+    <string name="phone_battery_bt">about %1$d %%</string>
+    <string name="phone_signal">Signal</string>
+    <string name="phone_operator">Operator</string>
+    <string name="phone_roaming">Roaming</string>
+    <string name="phone_yes">yes</string>
+    <string name="phone_no">no</string>
+    <string name="phone_bt_hint">What hands-free Bluetooth gives, for Android and iPhone alike: name, battery (5 steps), signal, operator. Bluetooth has nothing more (no temperature nor battery cycles).</string>
+    <string name="phone_iphone_title">iPhone (wired CarPlay)</string>
+    <string name="phone_iphone_none">No iPhone seen yet</string>
+    <string name="phone_iphone_last">%1$s, last seen %2$s</string>
+    <string name="phone_iphone_hint">Read by the LibreHU CarPlay app while the iPhone is plugged in: name, model and iOS (Lockdown), battery level, charge, external power (Lockdown, iAP2), and from iOS diagnostics (IOPMPowerSource, as pymobiledevice3): cycles, temperature, capacities, voltage, current. Re-read every minute; what the iPhone refuses is not shown.</string>
+    <string name="phone_model">Model</string>
+    <string name="phone_charging">Charging</string>
+    <string name="phone_external_power">External power</string>
+    <string name="phone_health">Battery health (estimate)</string>
+    <string name="phone_capacity">Capacity (max / design)</string>
+    <string name="phone_cycles">Charge cycles</string>
+    <string name="phone_temperature">Battery temperature</string>
+    <string name="phone_voltage">Voltage</string>
+    <string name="phone_current">Current</string>
+    <string name="phone_bt_address">Bluetooth address</string>
+    <string name="phone_iphone_pair_title">iPhone plugged in</string>
+    <string name="phone_iphone_pair">Turn Bluetooth on and pair the iPhone</string>
+    <string name="phone_iphone_pair_hint">When an iPhone is plugged in, Bluetooth is turned on; once the CarPlay app gave the iPhone\'s Bluetooth address, the head unit asks to pair if they are not paired yet (accept on the iPhone).</string>
+    <string name="phone_widget_title">Phone</string>
+    <string name="phone_widget_description">Connected phone: battery, temperature and cycles (iPhone), signal and operator (Bluetooth)</string>
+    <string name="phone_details">Details</string>
+    <string name="phone_cycles_short">%1$d cycles</string>
+    <string name="phone_health_short">health %1$d %%</string>
+    <string name="phone_iphone_connected">iPhone connected</string>
+    <string name="phone_signal_short">signal %1$d/5</string>
+    <string name="phone_bt_connected">Connected in Bluetooth</string>
 </resources>

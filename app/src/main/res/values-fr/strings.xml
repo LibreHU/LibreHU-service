@@ -1013,4 +1013,43 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <!-- power/EarlyStart -->
     <string name="boot_early">Démarrage anticipé : %1$s</string>
     <string name="boot_early_hint">Lancé dès qu\'Android déverrouille le stockage, sans attendre son tour dans la diffusion de démarrage (une appli après l\'autre ; un récepteur Jancar lent peut la bloquer une minute) : les effets audio arrivent avec le son (root).</string>
+
+    <!-- phone/PhoneInfo, phone/PhoneWidget, ui/PhoneScreen -->
+    <string name="tab_phone">Téléphone</string>
+    <string name="phone_bt_title">Téléphone Bluetooth</string>
+    <string name="phone_none">Aucun téléphone connecté</string>
+    <string name="phone_address">Adresse</string>
+    <string name="phone_battery">Batterie</string>
+    <string name="phone_battery_bt">environ %1$d %%</string>
+    <string name="phone_signal">Signal</string>
+    <string name="phone_operator">Opérateur</string>
+    <string name="phone_roaming">Itinérance</string>
+    <string name="phone_yes">oui</string>
+    <string name="phone_no">non</string>
+    <string name="phone_bt_hint">Ce que donne le Bluetooth mains libres, pour Android comme pour l\'iPhone : nom, batterie (5 paliers), signal, opérateur. Le Bluetooth ne donne rien de plus (ni température ni cycles de batterie).</string>
+    <string name="phone_iphone_title">iPhone (CarPlay filaire)</string>
+    <string name="phone_iphone_none">Aucun iPhone vu pour l\'instant</string>
+    <string name="phone_iphone_last">%1$s, vu le %2$s</string>
+    <string name="phone_iphone_hint">Lu par l\'appli CarPlay LibreHU pendant que l\'iPhone est branché : nom, modèle et iOS (Lockdown), niveau de batterie, charge, alimentation (Lockdown, iAP2), et dans les diagnostics d\'iOS (IOPMPowerSource, comme pymobiledevice3) : cycles, température, capacités, tension, courant. Relu chaque minute ; ce que l\'iPhone refuse n\'est pas affiché.</string>
+    <string name="phone_model">Modèle</string>
+    <string name="phone_charging">En charge</string>
+    <string name="phone_external_power">Alimentation externe</string>
+    <string name="phone_health">État de la batterie (estimation)</string>
+    <string name="phone_capacity">Capacité (max / d\'origine)</string>
+    <string name="phone_cycles">Cycles de charge</string>
+    <string name="phone_temperature">Température de la batterie</string>
+    <string name="phone_voltage">Tension</string>
+    <string name="phone_current">Courant</string>
+    <string name="phone_bt_address">Adresse Bluetooth</string>
+    <string name="phone_iphone_pair_title">iPhone branché</string>
+    <string name="phone_iphone_pair">Activer le Bluetooth et appairer l\'iPhone</string>
+    <string name="phone_iphone_pair_hint">Quand un iPhone est branché, le Bluetooth est activé ; dès que l\'appli CarPlay a donné l\'adresse Bluetooth de l\'iPhone, l\'autoradio demande l\'appairage s\'ils ne sont pas encore appairés (accepter sur l\'iPhone).</string>
+    <string name="phone_widget_title">Téléphone</string>
+    <string name="phone_widget_description">Téléphone connecté : batterie, température et cycles (iPhone), signal et opérateur (Bluetooth)</string>
+    <string name="phone_details">Détails</string>
+    <string name="phone_cycles_short">%1$d cycles</string>
+    <string name="phone_health_short">état %1$d %%</string>
+    <string name="phone_iphone_connected">iPhone connecté</string>
+    <string name="phone_signal_short">signal %1$d/5</string>
+    <string name="phone_bt_connected">Connecté en Bluetooth</string>
 </resources>

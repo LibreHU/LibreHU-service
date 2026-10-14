@@ -83,6 +83,7 @@ enum class Tab(
     CAN(Icons.Default.Cable, R.string.tab_can),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio),
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth),
+    PHONE(Icons.Default.Smartphone, R.string.tab_phone),
     ANDROID_AUTO(Icons.Default.Smartphone, R.string.tab_android_auto),
     CARPLAY(Icons.Default.PhoneIphone, R.string.tab_carplay),
     DISPLAY(Icons.Default.Brightness6, R.string.tab_display),
@@ -108,7 +109,7 @@ enum class Section(
     HOME(Icons.Default.Home, R.string.tab_home, listOf(Tab.HOME)),
     VEHICLE(Icons.Default.DirectionsCar, R.string.section_vehicle, listOf(Tab.VEHICLE, Tab.REVERSE, Tab.VIDEO, Tab.OBD, Tab.CAN)),
     AUDIO(Icons.Default.Equalizer, R.string.tab_audio, listOf(Tab.AUDIO)),
-    BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH)),
+    BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH, Tab.PHONE)),
     PROJECTION(Icons.Default.Smartphone, R.string.section_projection, listOf(Tab.ANDROID_AUTO, Tab.CARPLAY)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
     SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS, Tab.NETWORK, Tab.TWEAKS)),
@@ -184,6 +185,7 @@ fun AppScreen(
                     Tab.CAN -> CanScreen(actions)
                     Tab.AUDIO -> AudioScreen(client)
                     Tab.BLUETOOTH -> BluetoothScreen(client, actions)
+                    Tab.PHONE -> PhoneScreen()
                     Tab.ANDROID_AUTO -> AndroidAutoScreen()
                     Tab.CARPLAY -> CarPlayScreen()
                     Tab.DISPLAY -> DisplayScreen(actions)

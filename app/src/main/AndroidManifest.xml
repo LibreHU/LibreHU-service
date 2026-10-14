@@ -240,6 +240,18 @@
         </receiver>
 
         <!-- Android Auto and CarPlay: session, open, disconnect (projection/ProjectionWidgets). -->
+        <!-- Phone widget: iPhone (CarPlay app) or Bluetooth phone details (phone/PhoneWidget). -->
+        <receiver
+            android:name=".phone.PhoneWidget"
+            android:exported="true"
+            android:label="@string/phone_widget_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/phone_widget_info" />
+        </receiver>
         <receiver
             android:name=".projection.AndroidAutoWidget"
             android:exported="true"

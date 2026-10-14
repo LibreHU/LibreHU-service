@@ -116,6 +116,8 @@ class LibreHuService : Service() {
             .start(this) // Open Headunit: session state, day / night from the headlights
         org.librehu.service.projection.CarPlay
             .start(this) // CarPlay (xcertplay LibreHU): session state, day / night from the headlights
+        org.librehu.service.phone.PhoneInfo
+            .start(this) // iPhone details from the CarPlay app, Bluetooth on and pairing when an iPhone is plugged in
         org.librehu.service.tweaks.Tweaks
             .get(this)
             .applyAtStart() // kernel tweaks kept by the user (skipped after a start that died right after them)

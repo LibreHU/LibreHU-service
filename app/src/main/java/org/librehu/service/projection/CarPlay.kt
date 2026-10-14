@@ -96,7 +96,11 @@ object CarPlay {
                 ) {
                     @Suppress("DEPRECATION")
                     val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE) ?: return
-                    if (device.vendorId == APPLE_VENDOR_ID) onIphone(app)
+                    if (device.vendorId == APPLE_VENDOR_ID) {
+                        org.librehu.service.phone.PhoneInfo
+                            .onIphonePlugged(app)
+                        onIphone(app)
+                    }
                 }
             }
         if (Build.VERSION.SDK_INT >= 33) {

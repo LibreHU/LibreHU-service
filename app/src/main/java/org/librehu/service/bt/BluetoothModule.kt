@@ -537,6 +537,8 @@ class BluetoothModule(
         if (next != currentStatus) {
             currentStatus = next
             each { it.onStatusChanged(next) }
+            org.librehu.service.phone.PhoneInfo
+                .onBluetooth(context, next)
         }
     }
 
