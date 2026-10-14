@@ -13,8 +13,10 @@ Code : `projection/AndroidAuto.kt`, onglet **Android Auto**.
 - **Commandes** (diffusion explicite vers `AutomationReceiver`, ou `LibreHuAutomationReceiver` pour le fork) :
   ouvrir (ou `ACTION_RAISE_PROJECTION` pendant une session), `ACTION_CHECK_USB`, `ACTION_DISCONNECT`,
   `ACTION_RESTART_AUDIO`.
-- **Jour / nuit selon les phares** (active par defaut) : `ACTION_SET_NIGHT_MODE` `state` = night / day a chaque
-  changement des phares et a chaque nouvelle session ; desactive = `auto` (reglage d'Open Headunit).
+- **Jour / nuit selon les phares** (active par defaut) : a chaque changement des phares et a chaque nouvelle session,
+  `ACTION_SET_NIGHT_MODE`. Fork LibreHU : `state=car` + `headlight=on/off`, son mode « Signal des phares (ILL+) »
+  (mode nuit d'Android Auto, et theme de l'appli s'il ne suit pas le launcher) suit alors les phares, visible dans ses
+  reglages. Open Headunit d'origine : `state` = night / day. Desactive = `auto` (lever / coucher du soleil).
 - **Reglages d'Open Headunit dans LibreHU-service** : `ACTION_GET_SETTINGS` (diffusion ordonnee, reponse JSON) puis
   edition par type (interrupteur, nombre, texte) et `ACTION_SET_SETTINGS` d'une seule cle (format
   `open-headunit-settings` version 1). Avec Open Headunit d'origine il faut activer « Autoriser la configuration

@@ -352,7 +352,18 @@ object AndroidAuto {
     ) {
         if (!_settings.value.nightFromHeadlights || headlights == null || headlights == lastNight) return
         lastNight = headlights
-        send(context, SET_NIGHT_MODE, Bundle().apply { putString("state", if (headlights) "night" else "day") })
+        val extras =
+            if (installed(context) == HeadunitApp.LIBREHU) {
+                // The fork's own "Car Headlight Signal" mode, fed with the headlights: Android Auto's night mode and the
+                // app theme set on it follow them, and the user sees that mode in its settings.
+                Bundle().apply {
+                    putString("state", "car")
+                    putString("headlight", if (headlights) "on" else "off")
+                }
+            } else {
+                Bundle().apply { putString("state", if (headlights) "night" else "day") }
+            }
+        send(context, SET_NIGHT_MODE, extras)
     }
 
     /** A command to the installed app; false when none is installed. */

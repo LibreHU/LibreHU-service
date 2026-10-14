@@ -21,8 +21,8 @@ data class TimeSettings(
     val fromMcu: Boolean = true,
     /** Android's clock to the MCU every minute. */
     val toMcu: Boolean = true,
-    /** Android's clock from GPS time, every [gpsIntervalMin] minutes (and at start). */
-    val fromGps: Boolean = false,
+    /** Android's clock from GPS time, every [gpsIntervalMin] minutes (and at start). On by default. */
+    val fromGps: Boolean = true,
     val gpsIntervalMin: Int = 60,
 )
 
@@ -126,6 +126,7 @@ class TimeController private constructor(
     fun start() {
         if (started) return
         started = true
+        if (_settings.value.fromGps) ensureLocationPermission()
         refreshEnabled()
         main.postDelayed(periodic, START_DELAY_MS)
     }
@@ -240,6 +241,15 @@ class TimeController private constructor(
             }
         }, "gps-reset").start()
 
+    /** GPS time needs the location permission: granted by root when it is missing (no prompt in the car). */
+    private fun ensureLocationPermission() {
+        if (app.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        Thread({
+            val ok = org.librehu.service.root.RootShell.run("pm grant ${app.packageName} android.permission.ACCESS_FINE_LOCATION", timeoutS = 10) != null
+            Log.i(TAG, "location permission by root: $ok")
+        }, "time-perm").start()
+    }
+
     private fun finishSync(message: String) {
         syncPending = false
         main.removeCallbacks(giveUp)
@@ -276,6 +286,10 @@ class TimeController private constructor(
 
     private fun load(): TimeSettings {
         val d = TimeSettings()
+        // GPS time became the default: switched on once on installs that had it off.
+        if (!prefs.getBoolean(KEY_GPS_DEFAULT_ON, false)) {
+            prefs.edit().putBoolean("from_gps", true).putBoolean(KEY_GPS_DEFAULT_ON, true).apply()
+        }
         return TimeSettings(
             fromMcu = prefs.getBoolean("from_mcu", d.fromMcu),
             toMcu = prefs.getBoolean("to_mcu", d.toMcu),
@@ -290,6 +304,7 @@ class TimeController private constructor(
         private const val TOLERANCE_MS = 2_000L
         private const val SYNC_TIMEOUT_MS = 5 * 60_000L
         private const val START_DELAY_MS = 30_000L
+        private const val KEY_GPS_DEFAULT_ON = "gps_default_on"
         val INTERVALS = listOf(15, 60, 240, 720)
 
         @Volatile

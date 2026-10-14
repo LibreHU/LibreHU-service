@@ -14,7 +14,7 @@ premier fix. Demande `ACCESS_FINE_LOCATION` (bouton « Permissions »).
 |---|---|---|
 | Heure Android depuis la MCU | au démarrage de la liaison, heure Android ← RTC de la MCU (`09 00` / `09 01`) | oui |
 | Horloge MCU depuis Android | chaque minute, Android → MCU (affichage de veille) | oui |
-| Heure depuis le GPS | au démarrage puis toutes les 15 min / 1 h / 4 h / 12 h ; attend un fix 5 min max ; corrige l'âge du fix (`elapsedRealtimeNanos`) ; ne change l'heure que si l'écart dépasse 2 s, puis l'envoie à la MCU | non |
+| Heure depuis le GPS | au démarrage puis toutes les 15 min / 1 h / 4 h / 12 h ; attend un fix 5 min max ; corrige l'âge du fix (`elapsedRealtimeNanos`) ; ne change l'heure que si l'écart dépasse 2 s, puis l'envoie à la MCU ; permission de localisation accordée par root si elle manque | **oui** (activé une fois sur les installations existantes) |
 
 Boutons : synchro GPS immédiate, envoyer à la MCU, relire la MCU (`F0 09 00`), réglages date et heure d'Android.
 
