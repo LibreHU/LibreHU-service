@@ -1009,4 +1009,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="app_data_check">Vérifier et réparer</string>
     <string name="app_data_ok">Tous les dossiers de données des applis ont le bon propriétaire.</string>
     <string name="app_data_fixed">Réparé : %1$s</string>
+
+    <!-- power/EarlyStart -->
+    <string name="boot_early">Démarrage anticipé : %1$s</string>
+    <string name="boot_early_hint">Lancé dès qu\'Android déverrouille le stockage, sans attendre son tour dans la diffusion de démarrage (une appli après l\'autre ; un récepteur Jancar lent peut la bloquer une minute) : les effets audio arrivent avec le son (root).</string>
 </resources>

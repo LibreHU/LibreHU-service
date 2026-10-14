@@ -502,6 +502,25 @@ internal fun BootAppsCard() {
                 }.start()
             }
         }
+        var early by remember {
+            mutableStateOf(
+                org.librehu.service.power.EarlyStart
+                    .enabled(context),
+            )
+        }
+        SwitchRow(
+            stringResource(
+                R.string.boot_early,
+                org.librehu.service.power.EarlyStart.APPS
+                    .joinToString { it.second },
+            ),
+            early,
+            stringResource(R.string.boot_early_hint),
+        ) { on ->
+            org.librehu.service.power.EarlyStart
+                .setEnabled(context, on)
+            early = on
+        }
         if (message.isNotEmpty()) Hint(message)
     }
 }

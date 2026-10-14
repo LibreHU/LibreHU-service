@@ -110,6 +110,8 @@ class LibreHuService : Service() {
         Microphone.applyAtStart(this) // microphone gain of the factory settings, forgotten by the audio HAL at each start
         org.librehu.service.power.AppDataRepair
             .runAtStart(this) // data directories left to an old uid (ViPER crashing at boot): given back, boot resent
+        org.librehu.service.power.EarlyStart
+            .start(this) // ViPER started when the storage unlocks, not after the slow BOOT_COMPLETED queue
         org.librehu.service.projection.AndroidAuto
             .start(this) // Open Headunit: session state, day / night from the headlights
         org.librehu.service.projection.CarPlay
@@ -437,6 +439,7 @@ class LibreHuService : Service() {
     private var startToastShown = false
 
     /** Back from standby: the MCU waits for PC_READY again and cuts the SoC without it. */
+
     /** An iPhone plugged in: its USB tethering configuration (ipheth, from the usb-net zip), see [UsbNet]. */
     private val usbReceiver =
         object : BroadcastReceiver() {
@@ -445,8 +448,14 @@ class LibreHuService : Service() {
                 intent: Intent,
             ) {
                 @Suppress("DEPRECATION")
-                val device = intent.getParcelableExtra<android.hardware.usb.UsbDevice>(android.hardware.usb.UsbManager.EXTRA_DEVICE) ?: return
-                if (device.vendorId != org.librehu.service.net.UsbNet.APPLE_VID || !org.librehu.service.net.UsbNet.iphoneAuto(context)) return
+                val device =
+                    intent.getParcelableExtra<android.hardware.usb.UsbDevice>(android.hardware.usb.UsbManager.EXTRA_DEVICE) ?: return
+                if (device.vendorId != org.librehu.service.net.UsbNet.APPLE_VID ||
+                    !org.librehu.service.net.UsbNet
+                        .iphoneAuto(context)
+                ) {
+                    return
+                }
                 Thread({
                     Thread.sleep(1500) // its interfaces and the ipheth binding settle first
                     val net = org.librehu.service.net.UsbNet

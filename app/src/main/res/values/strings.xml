@@ -1009,4 +1009,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="app_data_check">Check and repair</string>
     <string name="app_data_ok">All app data directories have the right owner.</string>
     <string name="app_data_fixed">Repaired: %1$s</string>
+
+    <!-- power/EarlyStart -->
+    <string name="boot_early">Start early: %1$s</string>
+    <string name="boot_early_hint">Started as soon as Android unlocks the storage, instead of waiting for its turn in the boot broadcast (one app after the other; a slow Jancar receiver can hold it a minute): the audio effects come with the sound (root).</string>
 </resources>
