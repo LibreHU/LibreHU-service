@@ -81,6 +81,7 @@ object CarPlay {
                 ) {
                     val state = intent.getStringExtra("state").orEmpty()
                     _session.value = CpSession(state, intent.getStringExtra("detail").orEmpty(), SystemClock.elapsedRealtime())
+                    ProjectionWidgets.refresh(app)
                     // A new session takes the current day / night.
                     if (state == "active") applyNight(app)
                 }

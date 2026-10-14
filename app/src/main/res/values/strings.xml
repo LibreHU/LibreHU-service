@@ -950,4 +950,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="tw_swappiness">Swappiness (zram)</string>
     <string name="tw_tcp">TCP congestion control</string>
     <string name="tw_temps">Temperatures</string>
+    <string name="android_auto_widget_title">Android Auto</string>
+    <string name="android_auto_widget_description">Android Auto session: open, back to it, disconnect</string>
+    <string name="carplay_widget_description">CarPlay session: open, back to it</string>
+    <string name="proj_widget_waiting">Waiting for a phone</string>
+    <string name="proj_widget_show">Show</string>
 </resources>

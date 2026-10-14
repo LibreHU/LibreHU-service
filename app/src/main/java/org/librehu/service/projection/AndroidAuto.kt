@@ -174,6 +174,7 @@ object AndroidAuto {
                             intent.getStringExtra("reason").orEmpty(),
                             SystemClock.elapsedRealtime(),
                         )
+                    ProjectionWidgets.refresh(app)
                     // A new session takes the current day / night, and the car's state.
                     if (intent.getStringExtra("state") == "connected") {
                         lastNight = null

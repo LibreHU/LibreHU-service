@@ -219,6 +219,30 @@
                 android:resource="@xml/reverse_widget_info" />
         </receiver>
 
+        <!-- Android Auto and CarPlay: session, open, disconnect (projection/ProjectionWidgets). -->
+        <receiver
+            android:name=".projection.AndroidAutoWidget"
+            android:exported="true"
+            android:label="@string/android_auto_widget_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/android_auto_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".projection.CarPlayWidget"
+            android:exported="true"
+            android:label="@string/cp_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/carplay_widget_info" />
+        </receiver>
+
         <!-- OBD-II values (ELM327) for LibreHU Launcher's widget slots or any home screen. -->
         <receiver
             android:name=".obd.ObdWidget"
