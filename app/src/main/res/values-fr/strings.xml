@@ -955,4 +955,50 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="carplay_widget_description">Session CarPlay : ouvrir, y revenir</string>
     <string name="proj_widget_waiting">En attente d\'un téléphone</string>
     <string name="proj_widget_show">Afficher</string>
+
+    <!-- CVBS IN / VIDEO OUT (car/CvbsInput, car/CvbsActivity, ui/VideoScreen) -->
+    <string name="cvbs_app_name">CVBS IN</string>
+    <string name="tab_video">Vidéo</string>
+    <string name="cvbs_pos_av">AV (0/0)</string>
+    <string name="cvbs_pos_unused">Libre (0/1)</string>
+    <string name="cvbs_pos_front">Caméra avant (1/0)</string>
+    <string name="cvbs_pos_rear">Caméra arrière (1/1)</string>
+    <string name="cvbs_in_n">CVBS IN %1$d</string>
+    <string name="cvbs_inputs_title">Entrées CVBS (vidéo seule)</string>
+    <string name="cvbs_inputs_hint">Les RCA CVBS IN 1 et 2 ne portent que la vidéo (pas de son). L\'autoradio a un seul décodeur CVBS (caméra 3) derrière un commutateur analogique (GPIO 167 / 165) : Jancar met son entrée AV en position 0/0, la caméra avant en 1/0 et la caméra arrière en 1/1. « Tester les positions » montre les quatre positions en direct : notez celle de chaque RCA.</string>
+    <string name="cvbs_test">Tester les positions</string>
+    <string name="cvbs_in_position">Position du commutateur pour CVBS IN %1$d</string>
+    <string name="cvbs_position_hint">Par défaut (à vérifier avec le test) : IN 1 = AV, IN 2 = caméra avant. Sans source branchée, l\'image est noire ou bleue.</string>
+    <string name="cvbs_handbrake">Seulement frein à main serré</string>
+    <string name="cvbs_handbrake_hint">Comme l\'appli AV de Jancar : pas de vidéo visible du conducteur en roulant (Code de la route). Ignoré si le lien MCU est coupé.</string>
+    <string name="cvbs_camera">Caméra du décodeur CVBS</string>
+    <string name="cvbs_camera_hint">3 dans la configuration Jancar ([CameraIndex] AV=3, REAR=3).</string>
+    <string name="cvbs_reverse_title">Caméra de recul CVBS</string>
+    <string name="cvbs_reverse_switch">Commuter sur l\'entrée de la caméra arrière avant la vue de recul</string>
+    <string name="cvbs_reverse_hint">Quand la vue de recul ouvre la caméra CVBS (3), le commutateur est d\'abord mis sur cette position, comme le fait l\'appli AV de Jancar en marche arrière. L\'écran CVBS IN rend la caméra pendant le recul.</string>
+    <string name="cvbs_out_title">Sortie vidéo (VIDEO OUT)</string>
+    <string name="cvbs_out_hint">Copie de l\'écran sur la RCA VIDEO OUT (écran arrière, appuie-têtes). Activée par « Écran arrière » d\'Autochips (metazone, lue au démarrage : redémarrer). Format et bords sont ceux que règle « Rear output settings » de Jancar ; leur effet dépend du compositeur du système et n\'est pas vérifié sur cet autoradio.</string>
+    <string name="cvbs_out_state">Compositeur : sortie présente %1$s, ouverte %2$s (hwc.external_display_enable / _open)</string>
+    <string name="cvbs_out_enable">Écran arrière (VIDEO OUT)</string>
+    <string name="cvbs_out_enable_hint">Metazone Autochips 65550, root. Appliqué au prochain démarrage.</string>
+    <string name="cvbs_out_format">Format de sortie</string>
+    <string name="cvbs_out_top">Bord haut</string>
+    <string name="cvbs_out_bottom">Bord bas</string>
+    <string name="cvbs_out_left">Bord gauche</string>
+    <string name="cvbs_out_right">Bord droit</string>
+    <string name="cvbs_out_at_start">Appliquer à chaque démarrage</string>
+    <string name="cvbs_out_at_start_hint">Les propriétés hwc.rear_disp_* sont perdues au redémarrage : le service les remet (root).</string>
+    <string name="cvbs_out_apply">Appliquer maintenant</string>
+    <string name="cvbs_out_applied">Appliqué</string>
+    <string name="cvbs_out_no_root">Root nécessaire</string>
+    <string name="cvbs_out_no_jancar">L\'appli de sortie arrière de Jancar (com.jancar.usbdisplay) n\'est pas installée : seuls les propriétés et l\'interrupteur metazone sont réglés.</string>
+    <string name="cvbs_audio_out_title">Sortie audio (AUDIO OUT)</string>
+    <string name="cvbs_audio_out_hint">Les RCA AUDIO OUT sont une sortie ligne du processeur audio (BD37534) : le même son que les haut-parleurs, après son volume. Le logiciel Jancar n\'a pas de réglage propre pour elles ; pour savoir quelle sortie elles portent (arrière ou caisson), lancez de la musique et déplacez le fader avant / arrière, ou activez / coupez la sortie caisson (Audio).</string>
+    <string name="cvbs_blocked_reverse">Marche arrière : caméra laissée à la vue de recul</string>
+    <string name="cvbs_blocked_handbrake">Vidéo arrêtée en roulant : serrez le frein à main</string>
+    <string name="cvbs_gpio_failed">Commutateur vidéo non réglé (écriture GPIO refusée)</string>
+    <string name="cvbs_fit_43">4:3</string>
+    <string name="cvbs_fit_fill">Plein écran</string>
+    <string name="cvbs_settings">Réglages</string>
+    <string name="cvbs_close">Fermer</string>
 </resources>

@@ -304,6 +304,8 @@ class ReverseWidgetLive private constructor(
                     }
                 }
             }
+        // Not while the CVBS IN screen shows an input: it holds the same camera and switch.
+        if (!CvbsInput.playing) CvbsInput.beforeReverse(app, id)
         try {
             cameras.openCamera(id, callback, cam)
         } catch (e: Exception) {

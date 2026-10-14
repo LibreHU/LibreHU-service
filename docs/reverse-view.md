@@ -21,6 +21,9 @@ Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par
   affiche ce rôle à côté de chaque id, ainsi que les ids que Camera2 accepte sans les lister (0 à 15).
 - Automatique : comme Jancar, `3` en premier si le format est CVBS, sinon `2`, `10`, `8` puis `3`, puis les caméras qui
   ne sont pas avant.
+- Caméra CVBS (3) : le commutateur vidéo est d'abord mis sur l'entrée de la caméra arrière (GPIO 167 / 165 = 1 / 1
+  comme Jancar), l'écran CVBS IN pouvant l'avoir laissé sur une autre entrée ; réglable dans Véhicule → Vidéo, voir
+  [video.md](video.md).
 - Une caméra n'a qu'un utilisateur : si le DVR enregistre, l'ouverture échoue (« caméra utilisée »). Réglage **Arrêter le
   DVR** (root : `am force-stop com.jancar.hd2cam` avant l'ouverture).
 - Image : miroir, retournement, rotation 0 / 90 / 180 / 270, remplir l'écran (recadrage) ou image entière, zoom

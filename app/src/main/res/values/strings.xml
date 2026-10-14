@@ -955,4 +955,50 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="carplay_widget_description">CarPlay session: open, back to it</string>
     <string name="proj_widget_waiting">Waiting for a phone</string>
     <string name="proj_widget_show">Show</string>
+
+    <!-- CVBS IN / VIDEO OUT (car/CvbsInput, car/CvbsActivity, ui/VideoScreen) -->
+    <string name="cvbs_app_name">CVBS IN</string>
+    <string name="tab_video">Video</string>
+    <string name="cvbs_pos_av">AV (0/0)</string>
+    <string name="cvbs_pos_unused">Free (0/1)</string>
+    <string name="cvbs_pos_front">Front camera (1/0)</string>
+    <string name="cvbs_pos_rear">Rear camera (1/1)</string>
+    <string name="cvbs_in_n">CVBS IN %1$d</string>
+    <string name="cvbs_inputs_title">CVBS inputs (video only)</string>
+    <string name="cvbs_inputs_hint">The CVBS IN 1 and 2 RCAs carry video only (no sound). The head unit has one CVBS decoder (camera 3) behind an analog switch (GPIO 167 / 165): Jancar puts its AV input on position 0/0, the front camera on 1/0 and the rear camera on 1/1. \"Test the positions\" shows the four positions live: note the one each RCA uses.</string>
+    <string name="cvbs_test">Test the positions</string>
+    <string name="cvbs_in_position">Switch position of CVBS IN %1$d</string>
+    <string name="cvbs_position_hint">Defaults (to check with the test): IN 1 = AV, IN 2 = front camera. Without a source plugged in the picture is black or blue.</string>
+    <string name="cvbs_handbrake">Only with the handbrake on</string>
+    <string name="cvbs_handbrake_hint">As Jancar\'s AV app: no video for the driver while driving (Highway Code). Ignored when the MCU link is down.</string>
+    <string name="cvbs_camera">Camera of the CVBS decoder</string>
+    <string name="cvbs_camera_hint">3 in Jancar\'s configuration ([CameraIndex] AV=3, REAR=3).</string>
+    <string name="cvbs_reverse_title">CVBS rear camera</string>
+    <string name="cvbs_reverse_switch">Switch to the rear camera input before the rear view</string>
+    <string name="cvbs_reverse_hint">When the rear view opens the CVBS camera (3), the switch is first set to this position, as Jancar\'s AV app does on reverse. The CVBS IN screen gives the camera back during reverse.</string>
+    <string name="cvbs_out_title">Video output (VIDEO OUT)</string>
+    <string name="cvbs_out_hint">Copy of the screen on the VIDEO OUT RCA (rear seat screen, headrests). Turned on by Autochips\' \"Rear display\" (metazone, read at start-up: restart). Format and borders are what Jancar\'s \"Rear output settings\" set; their effect depends on the system\'s composer and is not verified on this unit.</string>
+    <string name="cvbs_out_state">Composer: output present %1$s, open %2$s (hwc.external_display_enable / _open)</string>
+    <string name="cvbs_out_enable">Rear display (VIDEO OUT)</string>
+    <string name="cvbs_out_enable_hint">Autochips metazone 65550, root. Applied at the next start.</string>
+    <string name="cvbs_out_format">Output format</string>
+    <string name="cvbs_out_top">Top border</string>
+    <string name="cvbs_out_bottom">Bottom border</string>
+    <string name="cvbs_out_left">Left border</string>
+    <string name="cvbs_out_right">Right border</string>
+    <string name="cvbs_out_at_start">Apply at each start</string>
+    <string name="cvbs_out_at_start_hint">The hwc.rear_disp_* properties are lost on restart: the service sets them again (root).</string>
+    <string name="cvbs_out_apply">Apply now</string>
+    <string name="cvbs_out_applied">Applied</string>
+    <string name="cvbs_out_no_root">Root needed</string>
+    <string name="cvbs_out_no_jancar">Jancar\'s rear output app (com.jancar.usbdisplay) is not installed: only the properties and the metazone switch are set.</string>
+    <string name="cvbs_audio_out_title">Audio output (AUDIO OUT)</string>
+    <string name="cvbs_audio_out_hint">The AUDIO OUT RCAs are a line output of the sound processor (BD37534): the same sound as the speakers, after its volume. Jancar\'s software has no setting of its own for them; to know which output they carry (rear or subwoofer), play music and move the fader front / rear, or turn the subwoofer output on / off (Audio).</string>
+    <string name="cvbs_blocked_reverse">Reverse gear: camera given to the rear view</string>
+    <string name="cvbs_blocked_handbrake">Video stopped while driving: apply the handbrake</string>
+    <string name="cvbs_gpio_failed">Video switch not set (GPIO write failed)</string>
+    <string name="cvbs_fit_43">4:3</string>
+    <string name="cvbs_fit_fill">Full screen</string>
+    <string name="cvbs_settings">Settings</string>
+    <string name="cvbs_close">Close</string>
 </resources>

@@ -373,6 +373,8 @@ class ReverseView private constructor(
                     }
                 }
             }
+        // CVBS rear camera: the video switch on its input first (the CVBS IN screen may have left it elsewhere).
+        CvbsInput.beforeReverse(app, id)
         try {
             cameras.openCamera(id, callback, cam)
         } catch (e: Exception) {

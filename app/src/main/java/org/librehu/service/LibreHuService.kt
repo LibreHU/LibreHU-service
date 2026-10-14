@@ -108,6 +108,8 @@ class LibreHuService : Service() {
         display.start()
         bluetoothModule = BluetoothModule(this).also { it.start() }
         Microphone.applyAtStart(this) // microphone gain of the factory settings, forgotten by the audio HAL at each start
+        org.librehu.service.car.CvbsInput
+            .applyAtStart(this) // VIDEO OUT format and borders, when kept (hwc.* properties are lost on restart)
         org.librehu.service.projection.AndroidAuto
             .start(this) // Open Headunit: session state, day / night from the headlights
         org.librehu.service.projection.CarPlay

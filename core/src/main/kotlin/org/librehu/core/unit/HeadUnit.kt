@@ -32,6 +32,11 @@ object BoardGpio {
     const val TURN_LEFT = 7 // input, active low
     const val AMP_MUTE = 166 // output, 1 = muted
     const val RADIO_ANTENNA = 110 // output, 1 = antenna powered (with MCU 0x43)
+
+    // Analog video switch in front of the CVBS decoder (camera "3"), `platformSelectInput`: SW1 / SW2 = 0 / 0 AV,
+    // 1 / 0 front camera, 1 / 1 rear camera (0 / 1 unused by Jancar).
+    const val VIDEO_SW1 = 167 // output
+    const val VIDEO_SW2 = 165 // output
 }
 
 /** Vehicle inputs whose polarity can be inverted (wiring or car active the other way). */

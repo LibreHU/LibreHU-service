@@ -147,6 +147,26 @@
             android:screenOrientation="locked"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
 
+        <!-- CVBS IN 1 / 2 full screen (car/CvbsActivity), also an entry of the app drawer ("CVBS IN"). -->
+        <activity
+            android:name=".car.CvbsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="true"
+            android:icon="@drawable/ic_cvbs_launcher"
+            android:label="@string/cvbs_app_name"
+            android:launchMode="singleTask"
+            android:taskAffinity="org.librehu.service.cvbs"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Single-colour icon of this entry for LibreHU Launcher. -->
+            <meta-data
+                android:name="org.librehu.themed_icon"
+                android:resource="@drawable/ic_cvbs" />
+        </activity>
+
         <service
             android:name=".LibreHuService"
             android:directBootAware="true"
