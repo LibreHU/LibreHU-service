@@ -1027,10 +1027,13 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="phone_yes">oui</string>
     <string name="phone_no">non</string>
     <string name="phone_bt_hint">Ce que donne le Bluetooth mains libres, pour Android comme pour l\'iPhone : nom, batterie (5 paliers), signal, opérateur. Le Bluetooth ne donne rien de plus (ni température ni cycles de batterie).</string>
-    <string name="phone_iphone_title">iPhone (CarPlay filaire)</string>
+    <string name="phone_iphone_title">iPhone (CarPlay)</string>
     <string name="phone_iphone_none">Aucun iPhone vu pour l\'instant</string>
     <string name="phone_iphone_last">%1$s, vu le %2$s</string>
-    <string name="phone_iphone_hint">Lu par l\'appli CarPlay LibreHU pendant que l\'iPhone est branché : nom, modèle et iOS (Lockdown), niveau de batterie, charge, alimentation (Lockdown, iAP2), et dans les diagnostics d\'iOS (IOPMPowerSource, comme pymobiledevice3) : cycles, température, capacités, tension, courant. Relu chaque minute ; ce que l\'iPhone refuse n\'est pas affiché.</string>
+    <string name="phone_iphone_hint">Lu par l\'appli CarPlay LibreHU pendant que l\'iPhone est branché : nom, modèle et iOS (Lockdown), niveau de batterie, charge, alimentation (Lockdown, iAP2), et dans les diagnostics d\'iOS (IOPMPowerSource, comme pymobiledevice3) : cycles, température, capacités, tension, courant. Relu chaque minute ; ce que l\'iPhone refuse n\'est pas affiché. En CarPlay sans fil (pas d\'USB, donc pas de Lockdown), seuls le nom, le modèle, l\'adresse Bluetooth, le niveau de batterie et la charge arrivent.</string>
+    <string name="phone_link">Liaison</string>
+    <string name="phone_link_wired">USB (CarPlay filaire)</string>
+    <string name="phone_link_wireless">CarPlay sans fil</string>
     <string name="phone_model">Modèle</string>
     <string name="phone_charging">En charge</string>
     <string name="phone_external_power">Alimentation externe</string>
@@ -1043,7 +1046,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="phone_bt_address">Adresse Bluetooth</string>
     <string name="phone_iphone_pair_title">iPhone branché</string>
     <string name="phone_iphone_pair">Activer le Bluetooth et appairer l\'iPhone</string>
-    <string name="phone_iphone_pair_hint">Quand un iPhone est branché, le Bluetooth est activé ; dès que l\'appli CarPlay a donné l\'adresse Bluetooth de l\'iPhone, l\'autoradio demande l\'appairage s\'ils ne sont pas encore appairés (accepter sur l\'iPhone).</string>
+    <string name="phone_iphone_pair_hint">Quand un iPhone est branché, le Bluetooth est activé ; dès que l\'appli CarPlay a donné l\'adresse Bluetooth de l\'iPhone, l\'autoradio demande l\'appairage s\'ils ne sont pas encore appairés (accepter sur l\'iPhone). Pendant CarPlay filaire, le mains libres et la musique Bluetooth de l\'iPhone restent coupés (appels et son passent par CarPlay) et reviennent quand il est débranché.</string>
     <string name="phone_widget_title">Téléphone</string>
     <string name="phone_widget_description">Téléphone connecté : batterie, température et cycles (iPhone), signal et opérateur (Bluetooth)</string>
     <string name="phone_details">Détails</string>

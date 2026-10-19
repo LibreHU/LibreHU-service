@@ -96,17 +96,23 @@ object CarPlay {
                 ) {
                     @Suppress("DEPRECATION")
                     val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE) ?: return
-                    if (device.vendorId == APPLE_VENDOR_ID) {
+                    if (device.vendorId != APPLE_VENDOR_ID) return
+                    if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
                         org.librehu.service.phone.PhoneInfo
-                            .onIphonePlugged(app)
-                        onIphone(app)
+                            .onIphoneUnplugged()
+                        return
                     }
+                    org.librehu.service.phone.PhoneInfo
+                        .onIphonePlugged(app)
+                    onIphone(app)
                 }
             }
+        val usbFilter =
+            IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED).apply { addAction(UsbManager.ACTION_USB_DEVICE_DETACHED) }
         if (Build.VERSION.SDK_INT >= 33) {
-            app.registerReceiver(usbReceiver, IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED), Context.RECEIVER_EXPORTED)
+            app.registerReceiver(usbReceiver, usbFilter, Context.RECEIVER_EXPORTED)
         } else {
-            app.registerReceiver(usbReceiver, IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED))
+            app.registerReceiver(usbReceiver, usbFilter)
         }
         receiver =
             object : BroadcastReceiver() {

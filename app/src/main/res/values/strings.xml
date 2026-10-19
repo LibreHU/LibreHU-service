@@ -1027,10 +1027,13 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="phone_yes">yes</string>
     <string name="phone_no">no</string>
     <string name="phone_bt_hint">What hands-free Bluetooth gives, for Android and iPhone alike: name, battery (5 steps), signal, operator. Bluetooth has nothing more (no temperature nor battery cycles).</string>
-    <string name="phone_iphone_title">iPhone (wired CarPlay)</string>
+    <string name="phone_iphone_title">iPhone (CarPlay)</string>
     <string name="phone_iphone_none">No iPhone seen yet</string>
     <string name="phone_iphone_last">%1$s, last seen %2$s</string>
-    <string name="phone_iphone_hint">Read by the LibreHU CarPlay app while the iPhone is plugged in: name, model and iOS (Lockdown), battery level, charge, external power (Lockdown, iAP2), and from iOS diagnostics (IOPMPowerSource, as pymobiledevice3): cycles, temperature, capacities, voltage, current. Re-read every minute; what the iPhone refuses is not shown.</string>
+    <string name="phone_iphone_hint">Read by the LibreHU CarPlay app while the iPhone is plugged in: name, model and iOS (Lockdown), battery level, charge, external power (Lockdown, iAP2), and from iOS diagnostics (IOPMPowerSource, as pymobiledevice3): cycles, temperature, capacities, voltage, current. Re-read every minute; what the iPhone refuses is not shown. In wireless CarPlay (no USB, so no Lockdown) only the name, model, Bluetooth address, battery level and charge come.</string>
+    <string name="phone_link">Link</string>
+    <string name="phone_link_wired">USB (wired CarPlay)</string>
+    <string name="phone_link_wireless">wireless CarPlay</string>
     <string name="phone_model">Model</string>
     <string name="phone_charging">Charging</string>
     <string name="phone_external_power">External power</string>
@@ -1043,7 +1046,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="phone_bt_address">Bluetooth address</string>
     <string name="phone_iphone_pair_title">iPhone plugged in</string>
     <string name="phone_iphone_pair">Turn Bluetooth on and pair the iPhone</string>
-    <string name="phone_iphone_pair_hint">When an iPhone is plugged in, Bluetooth is turned on; once the CarPlay app gave the iPhone\'s Bluetooth address, the head unit asks to pair if they are not paired yet (accept on the iPhone).</string>
+    <string name="phone_iphone_pair_hint">When an iPhone is plugged in, Bluetooth is turned on; once the CarPlay app gave the iPhone\'s Bluetooth address, the head unit asks to pair if they are not paired yet (accept on the iPhone). During wired CarPlay the iPhone\'s hands-free and music Bluetooth links stay off (calls and sound go through CarPlay), and come back when it is unplugged.</string>
     <string name="phone_widget_title">Phone</string>
     <string name="phone_widget_description">Connected phone: battery, temperature and cycles (iPhone), signal and operator (Bluetooth)</string>
     <string name="phone_details">Details</string>

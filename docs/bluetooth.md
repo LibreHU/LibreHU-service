@@ -35,6 +35,7 @@ l'appareil.**
 | Répertoire | nombre, pages triées, recherche, journal (tous / reçus / émis / manqués), nom d'un numéro, nouveau téléchargement (reconnexion PBAP) | `BtPhonebook.kt` |
 | Appareils | marche/arrêt, nom, code PIN, visibilité, recherche, appairage / oubli, connexion d'un téléphone (HFP + A2DP, puis PBAP), confirmation d'appairage automatique, accès au répertoire autorisé d'office | `BluetoothModule.kt` |
 | Reconnexion | derniers téléphones connectés (5), essais à 1, 4, 10, 20, 30, 60 s puis toutes les 2 min (20 essais) ; jamais un téléphone déconnecté à la main | `core/.../bt/AutoConnect.kt` |
+| CarPlay filaire | mains libres et musique de l'iPhone coupés pendant la session (CarPlay a les appels et le son), sautés par la reconnexion, rendus à la fin ou au débranchement ; voir [phone.md](phone.md) | `BluetoothModule.kt`, `phone/PhoneInfo.kt` |
 
 ### Cohabitation avec Jancar
 Tant que `com.jancar.btservice` est activé, le module est **passif** (`BtStatus.activeMode = false`) : état, appels

@@ -65,6 +65,10 @@ private fun IphoneCard(d: IphoneDetails?) {
             val at = if (d.at > 0) DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(d.at)) else "-"
             StatusLine(stringResource(R.string.phone_iphone_last, name, at), null)
         }
+        d.wired?.let {
+            val link = stringResource(if (it) R.string.phone_link_wired else R.string.phone_link_wireless)
+            InfoRow(stringResource(R.string.phone_link), link)
+        }
         d.model?.let { InfoRow(stringResource(R.string.phone_model), it) }
         d.os?.let { InfoRow("iOS", it + (d.build?.let { b -> " ($b)" } ?: "")) }
         d.level?.let { InfoRow(stringResource(R.string.phone_battery), "$it %") }

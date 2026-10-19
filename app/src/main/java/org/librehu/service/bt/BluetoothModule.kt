@@ -23,6 +23,7 @@ import org.librehu.core.bt.Calls
 import org.librehu.core.bt.Mru
 import org.librehu.core.bt.PhoneNumbers
 import org.librehu.core.bt.PhonePhase
+import org.librehu.service.phone.PhoneInfo
 
 /**
  * Bluetooth of the head unit, the LibreHU counterpart of Jancar's `ivi-btservice` (`com.jancar.btservice`): it drives
@@ -50,6 +51,9 @@ class BluetoothModule(
     private val plan = AutoConnectPlan()
     private var attempt = 0
     private var started = false
+
+    /** The iPhone in a wired CarPlay session (see [PhoneInfo.carPlayHold]): not connected meanwhile. */
+    private var carPlayHeld: String? = null
 
     /** Phones disconnected on purpose: not reconnected automatically until connected again by hand. */
     private val userDisconnected = mutableSetOf<String>()
@@ -92,9 +96,40 @@ class BluetoothModule(
             .get(context)
             .playPauseHook = ::playPauseIfBluetooth
         phonebook.start()
+        carPlayHeld = PhoneInfo.carPlayHold
+        PhoneInfo.carPlayHoldListener = { address -> main.post { onCarPlayHold(address) } }
         refreshStatus()
         restartAutoConnect()
     }
+
+    /**
+     * Wired CarPlay carries the iPhone's calls and sound: its hands-free and music links would make a second route to
+     * the same head unit (calls rung twice, sound through Bluetooth instead of CarPlay). Dropped for the session, and
+     * auto-connect skips it; back to normal when the session ends. Only when this module drives Bluetooth (with
+     * Jancar's btservice it would reconnect them in a loop).
+     */
+    private fun onCarPlayHold(address: String?) {
+        if (address == carPlayHeld) return
+        carPlayHeld = address
+        if (address != null && activeMode()) {
+            device(address)?.let { d ->
+                val p = profiles
+                val linked =
+                    p != null &&
+                        (
+                            p.state(p.hfp, d) != BluetoothProfile.STATE_DISCONNECTED ||
+                                p.state(p.a2dpSink, d) != BluetoothProfile.STATE_DISCONNECTED
+                        )
+                if (linked) {
+                    Log.i(TAG, "Wired CarPlay: Bluetooth of the iPhone off for the session ($address)")
+                    disconnectProfiles(d, byUser = false)
+                }
+            }
+        }
+        restartAutoConnect()
+    }
+
+    private fun heldByCarPlay(device: BluetoothDevice) = activeMode() && device.address.equals(carPlayHeld, ignoreCase = true)
 
     /**
      * Play / pause key while the phone's music is the source (connected, and playing or nothing else playing): through
@@ -121,6 +156,7 @@ class BluetoothModule(
         org.librehu.service.touch.TouchKeys
             .get(context)
             .playPauseHook = null
+        PhoneInfo.carPlayHoldListener = null
         phonebook.stop()
         ringer.release()
         profiles?.close()
@@ -209,6 +245,10 @@ class BluetoothModule(
 
                     CarProfiles.ACTION_A2DP_SINK_CONNECTION -> {
                         val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, 0)
+                        if (state == BluetoothProfile.STATE_CONNECTED && device != null && heldByCarPlay(device)) {
+                            Log.i(TAG, "Wired CarPlay: music link of the iPhone refused (${device.address})")
+                            disconnectProfiles(device, byUser = false)
+                        }
                         btMedia.setA2dpConnected(state == BluetoothProfile.STATE_CONNECTED)
                         each { it.onDevicesChanged() }
                     }
@@ -238,6 +278,13 @@ class BluetoothModule(
         when (intent.getIntExtra(BluetoothProfile.EXTRA_STATE, 0)) {
             BluetoothProfile.STATE_CONNECTED -> {
                 Log.i(TAG, "Hands-free connected: ${device.address}")
+                if (heldByCarPlay(device)) {
+                    // The iPhone itself reconnects after pairing or a session start: CarPlay has its calls.
+                    Log.i(TAG, "Wired CarPlay: hands-free of the iPhone refused (${device.address})")
+                    disconnectProfiles(device, byUser = false)
+                    each { it.onDevicesChanged() }
+                    return
+                }
                 attempt = 0
                 main.removeCallbacks(autoConnect)
                 userDisconnected.remove(device.address)
@@ -454,7 +501,7 @@ class BluetoothModule(
                 scheduleAutoConnect()
                 return@Runnable
             }
-            val target = plan.target(attempt, history.filter { it !in userDisconnected }, bonded)
+            val target = plan.target(attempt, history.filter { it !in userDisconnected && !it.equals(carPlayHeld, true) }, bonded)
             attempt++
             if (target != null) {
                 Log.i(TAG, "Auto-connect attempt $attempt: $target")

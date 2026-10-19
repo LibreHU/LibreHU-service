@@ -36,6 +36,8 @@ data class IphoneDetails(
     val maxMah: Int? = null,
     val voltageMv: Int? = null,
     val currentMa: Int? = null,
+    /** True in wired CarPlay (USB), false in wireless CarPlay. */
+    val wired: Boolean? = null,
 ) {
     /** Maximum capacity against the design one, as iOS shows "battery health" (approximation). */
     val healthPercent: Int?
@@ -58,6 +60,7 @@ data class IphoneDetails(
             maxMah?.let { put("max_mah", it) }
             voltageMv?.let { put("voltage_mv", it) }
             currentMa?.let { put("current_ma", it) }
+            wired?.let { put("wired", it) }
         }
 
     companion object {
@@ -84,6 +87,7 @@ data class IphoneDetails(
                 maxMah = int("max_mah"),
                 voltageMv = int("voltage_mv"),
                 currentMa = int("current_ma"),
+                wired = bool("wired"),
             )
         }
     }
@@ -94,6 +98,11 @@ data class IphoneDetails(
  * iPhone from the LibreHU CarPlay app (`org.librehu.carplay.PHONE_INFO`, sent to this package only), the last one kept
  * when it is unplugged. When an iPhone is plugged in, Bluetooth is turned on and, once the CarPlay app gave its
  * Bluetooth address, the head unit asks to pair with it if they are not paired yet ([autoPair]).
+ *
+ * During a wired CarPlay session the iPhone's calls and sound go through CarPlay: its hands-free and music Bluetooth
+ * links to the head unit stay off meanwhile ([carPlayHold], used by the Bluetooth module), as head units with wired
+ * CarPlay do. The wired identification does not give the iPhone the head unit's Bluetooth address, so it cannot
+ * tell itself that both links are the same car.
  */
 object PhoneInfo {
     private const val TAG = "LibreHU-Phone"
@@ -114,6 +123,25 @@ object PhoneInfo {
 
     /** Address asked for pairing in this plug, not asked again. */
     private var pairAsked: String? = null
+
+    /** Bluetooth address of the iPhone in a wired CarPlay session, null otherwise. */
+    @Volatile
+    var carPlayHold: String? = null
+        private set
+
+    /** The Bluetooth module, told when [carPlayHold] changes. */
+    @Volatile
+    var carPlayHoldListener: ((String?) -> Unit)? = null
+
+    private fun setCarPlayHold(address: String?) {
+        if (address == carPlayHold) return
+        carPlayHold = address
+        Log.i(TAG, "Bluetooth of the iPhone ${if (address != null) "held during wired CarPlay: $address" else "released"}")
+        carPlayHoldListener?.invoke(address)
+    }
+
+    private fun mac(address: String?): String? =
+        address?.uppercase()?.replace('-', ':')?.takeIf { BluetoothAdapter.checkBluetoothAddress(it) }
 
     fun autoPair(context: Context): Boolean = LibreHuService.prefs(context).getBoolean(PREF_AUTO_PAIR, true)
 
@@ -166,6 +194,7 @@ object PhoneInfo {
     ) {
         if (!intent.getBooleanExtra("connected", false)) {
             pairAsked = null
+            setCarPlayHold(null)
             _iphone.value = _iphone.value?.copy(connected = false)
             PhoneWidget.refresh(context)
             return
@@ -192,8 +221,10 @@ object PhoneInfo {
                 maxMah = int("max_mah"),
                 voltageMv = int("voltage_mv"),
                 currentMa = int("current_ma"),
+                wired = bool("wired"),
             )
         _iphone.value = d
+        setCarPlayHold(if (d.wired == true) mac(d.bluetooth) else null)
         LibreHuService
             .prefs(context)
             .edit()
@@ -216,6 +247,9 @@ object PhoneInfo {
         }
     }
 
+    /** An Apple USB device went away: no wired session any more (also when the CarPlay app died without saying). */
+    fun onIphoneUnplugged() = setCarPlayHold(null)
+
     /** Pairing asked by the head unit (the iPhone shows its pairing prompt) when not paired yet. */
     @SuppressLint("MissingPermission")
     private fun pairIfNeeded(
@@ -223,8 +257,8 @@ object PhoneInfo {
         address: String,
     ) {
         if (!autoPair(context)) return
-        val mac = address.uppercase().replace('-', ':')
-        if (!BluetoothAdapter.checkBluetoothAddress(mac) || pairAsked == mac) return
+        val mac = mac(address) ?: return
+        if (pairAsked == mac) return
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
         if (!adapter.isEnabled) return
         val device = runCatching { adapter.getRemoteDevice(mac) }.getOrNull() ?: return
