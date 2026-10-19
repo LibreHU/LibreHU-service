@@ -2,7 +2,7 @@
 
 Page **Avancé → Autochips** (`ui/AtcScreen.kt`), code `atc/AtcTools.kt` et `atc/AtcHelper.kt`. Reprend l'essentiel
 d'ATC Settings (`com.android.settings/com.autochips.atcsettings.mainui.MainActivity`, voir
-[android_device_alps_ac8257_demo/docs/reglages_caches.md](https://github.com/Dok-T/android_device_alps_ac8257_demo/blob/ccr-eca2d7b0-vz26un/docs/reglages_caches.md)).
+[android_kernel_autochips_ac8257_4.9/docs/ujc201/reglages_caches.md](https://github.com/LibreHU/android_kernel_autochips_ac8257_4.9/blob/master/docs/ujc201/reglages_caches.md)).
 
 ## Assistant root
 Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOTCLASSPATH`), mais la metazone
