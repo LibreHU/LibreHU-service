@@ -304,6 +304,7 @@ fun SystemScreen() {
         StandbyCard()
         BootAppsCard()
         AppDataCard()
+        BackupCard()
         WatchdogCard()
     }
 }

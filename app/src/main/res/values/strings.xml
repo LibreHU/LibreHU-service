@@ -1062,4 +1062,17 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_keys_long">Long press</string>
     <string name="can_keys_long_hint">Key held about 0.8 s (the box repeats the press every 0.4 s). With a long press set, the short press goes on release; without (None), holding the key repeats the short press (volume).</string>
     <string name="can_keys_long_short">long: %1$s</string>
+    <string name="backup_title">Settings backup and migration</string>
+    <string name="backup_hint">Settings of every LibreHU app (and ViPER4Android, Android Auto, CarPlay) in one file, to move to another head unit, a new ROM or after a reset: preferences, files and databases of each app (root), caches left out. File in Download/LibreHU.</string>
+    <string name="backup_export">Export</string>
+    <string name="backup_import">Import a file…</string>
+    <string name="backup_done">Exported: %1$s</string>
+    <string name="backup_failed">Failed: %1$s</string>
+    <string name="backup_bad_file">Unreadable file: %1$s</string>
+    <string name="backup_archive">Backup of %1$s, %2$d apps</string>
+    <string name="backup_restore_hint">The apps ticked are stopped and their settings replaced. LibreHU-service, if ticked, restarts at the end.</string>
+    <string name="backup_restore">Restore</string>
+    <string name="backup_not_installed">not installed here</string>
+    <string name="backup_restored">%1$d apps restored.</string>
+    <string name="backup_restored_self">LibreHU-service restarts in a few seconds with its settings.</string>
 </resources>

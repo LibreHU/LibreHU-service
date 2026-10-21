@@ -1062,4 +1062,17 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_keys_long">Appui long</string>
     <string name="can_keys_long_hint">Touche tenue environ 0,8 s (le boîtier répète l\'appui toutes les 0,4 s). Avec un appui long choisi, l\'appui court part au relâchement ; sans (Aucune), tenir la touche répète l\'appui court (volume).</string>
     <string name="can_keys_long_short">long : %1$s</string>
+    <string name="backup_title">Sauvegarde et migration des réglages</string>
+    <string name="backup_hint">Réglages de toutes les applis LibreHU (et ViPER4Android, Android Auto, CarPlay) dans un seul fichier, pour passer à un autre autoradio, une nouvelle ROM ou après une remise à zéro : préférences, fichiers et bases de chaque appli (root), sans les caches. Fichier dans Téléchargements/LibreHU.</string>
+    <string name="backup_export">Exporter</string>
+    <string name="backup_import">Importer un fichier…</string>
+    <string name="backup_done">Exporté : %1$s</string>
+    <string name="backup_failed">Échec : %1$s</string>
+    <string name="backup_bad_file">Fichier illisible : %1$s</string>
+    <string name="backup_archive">Sauvegarde de %1$s, %2$d applis</string>
+    <string name="backup_restore_hint">Les applis cochées sont arrêtées et leurs réglages remplacés. LibreHU-service, s\'il est coché, redémarre à la fin.</string>
+    <string name="backup_restore">Restaurer</string>
+    <string name="backup_not_installed">pas installée ici</string>
+    <string name="backup_restored">%1$d applis restaurées.</string>
+    <string name="backup_restored_self">LibreHU-service redémarre dans quelques secondes avec ses réglages.</string>
 </resources>
