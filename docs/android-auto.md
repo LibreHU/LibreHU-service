@@ -17,6 +17,9 @@ Code : `projection/AndroidAuto.kt`, onglet **Android Auto**.
   `ACTION_SET_NIGHT_MODE`. Fork LibreHU : `state=car` + `headlight=on/off`, son mode « Signal des phares (ILL+) »
   (mode nuit d'Android Auto, et theme de l'appli s'il ne suit pas le launcher) suit alors les phares, visible dans ses
   reglages. Open Headunit d'origine : `state` = night / day. Desactive = `auto` (lever / coucher du soleil).
+  Au debut d'une session, l'etat est envoye a `connected`, a `projecting` puis encore 1,5 s et 5 s apres (avec l'etat
+  de la voiture) : envoye une seule fois, trop tot, des phares deja allumes au demarrage etaient perdus et Android
+  Auto restait en jour jusqu'a les eteindre et rallumer.
 - **Reglages d'Open Headunit dans LibreHU-service** : `ACTION_GET_SETTINGS` (diffusion ordonnee, reponse JSON) puis
   edition par type (interrupteur, nombre, texte) et `ACTION_SET_SETTINGS` d'une seule cle (format
   `open-headunit-settings` version 1). Avec Open Headunit d'origine il faut activer « Autoriser la configuration
