@@ -129,3 +129,49 @@ fun LevelOverlayCard(
         Actions { Pill(stringResource(R.string.vol_overlay_preview)) { onPreview(overlay) } }
     }
 }
+
+/** Settings of the advanced sound menu ([org.librehu.service.overlay.SoundOsd]), off by default. */
+@Composable
+internal fun SoundOsdCard() {
+    val context = LocalContext.current
+    val osd = org.librehu.service.overlay.SoundOsd.get(context)
+    val s by osd.settings.collectAsStateWithLifecycle()
+    var resumed by remember { mutableIntStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        resumed++
+        onPauseOrDispose { }
+    }
+    Card(stringResource(R.string.sound_osd)) {
+        Hint(stringResource(R.string.sound_osd_hint))
+        SwitchRow(stringResource(R.string.sound_osd_enable), s.enabled) { on -> osd.update { it.copy(enabled = on) } }
+        if (resumed >= 0 && s.enabled && !Settings.canDrawOverlays(context)) {
+            Hint(stringResource(R.string.vol_overlay_permission))
+            Actions {
+                Pill(stringResource(R.string.vol_overlay_allow)) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
+            }
+        }
+        if (s.enabled) {
+            BodyText(stringResource(R.string.sound_osd_channels))
+            for (c in org.librehu.service.overlay.SoundChannel.entries) {
+                if (c == org.librehu.service.overlay.SoundChannel.UNIT) continue
+                SwitchRow(stringResource(c.label), c in s.channels) { on ->
+                    osd.update { it.copy(channels = if (on) it.channels + c else it.channels - c) }
+                }
+            }
+            SwitchRow(stringResource(R.string.sound_osd_back), s.backToUnit) { on -> osd.update { it.copy(backToUnit = on) } }
+            BodyText(stringResource(R.string.sound_osd_timeout))
+            Choices(
+                org.librehu.service.overlay.SoundOsdSettings.TIMEOUTS.map { it to "%.1f s".format(it / 1000f) },
+                s.timeoutMs,
+            ) { v -> osd.update { it.copy(timeoutMs = v) } }
+            Actions { Pill(stringResource(R.string.sound_osd_test)) { osd.open() } }
+        }
+    }
+}

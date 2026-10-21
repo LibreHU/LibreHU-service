@@ -164,6 +164,14 @@ class TouchKeys private constructor(
     ) {
         _lastAction.value = (zone?.name ?: "") + " → " + action.action.name
         if (action.action in SWITCHER_ACTIONS && toSwitcher(action.action)) return
+        // Advanced sound menu showing: the wheel chooses the volume, ▶‖ closes it
+        val osd = org.librehu.service.overlay.SoundOsd.get(app)
+        when (action.action) {
+            TouchAction.NEXT -> if (osd.navKey(1)) return
+            TouchAction.PREVIOUS -> if (osd.navKey(-1)) return
+            TouchAction.PLAY_PAUSE -> if (osd.closeKey()) return
+            else -> Unit
+        }
         when (action.action) {
             TouchAction.NONE -> {
                 Unit
@@ -277,6 +285,7 @@ class TouchKeys private constructor(
     }
 
     private fun volume(step: Int) {
+        if (org.librehu.service.overlay.SoundOsd.get(app).volumeKey(step)) return
         if (volumeHook?.invoke(step) == true) return
         val dir =
             when {

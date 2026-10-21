@@ -1075,4 +1075,18 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="backup_not_installed">pas installée ici</string>
     <string name="backup_restored">%1$d applis restaurées.</string>
     <string name="backup_restored_self">LibreHU-service redémarre dans quelques secondes avec ses réglages.</string>
+    <string name="sound_unit">Autoradio</string>
+    <string name="sound_media">Média</string>
+    <string name="sound_call">Appels</string>
+    <string name="sound_ring">Sonnerie</string>
+    <string name="sound_notification">Notifications</string>
+    <string name="sound_alarm">Alarme</string>
+    <string name="sound_system">Système</string>
+    <string name="sound_osd">Menu son avancé</string>
+    <string name="sound_osd_hint">Les touches de volume ouvrent un menu qui liste les volumes (autoradio, média, appels, sonnerie, notifications, alarme, système). Tant qu\'il est affiché, ▶▶ / ◀◀ (molette du volant, bouton rotatif) choisissent le volume, les touches de volume le changent, ▶‖ ferme. Au toucher : une ligne choisit, glisser sur sa barre règle. Désactivé, les touches de volume règlent l\'autoradio comme avant.</string>
+    <string name="sound_osd_enable">Menu son avancé</string>
+    <string name="sound_osd_channels">Volumes proposés</string>
+    <string name="sound_osd_back">Revenir au volume de l\'autoradio à chaque ouverture</string>
+    <string name="sound_osd_timeout">Fermeture après</string>
+    <string name="sound_osd_test">Ouvrir le menu</string>
 </resources>

@@ -89,4 +89,13 @@ interface ILibreHuService {
     /** Input of the sound processor: 0 = Android (default at each start), 1 = AUX jack. */
     void setAudioSource(int source);
     int getAudioSource();
+
+    // --- API 7 ---
+
+    /**
+     * Runs a key action as the service's own keys do (name of org.librehu.core.touch.TouchAction: VOLUME_UP,
+     * VOLUME_DOWN, MUTE, PLAY_PAUSE, NEXT, PREVIOUS, VOICE_ASSISTANT...): to Android Auto during a session, to
+     * EasySource's picker and the sound menu while they show, else the usual action. For button apps (BtnRemap).
+     */
+    void runKeyAction(String action);
 }

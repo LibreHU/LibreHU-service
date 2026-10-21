@@ -1075,4 +1075,18 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="backup_not_installed">not installed here</string>
     <string name="backup_restored">%1$d apps restored.</string>
     <string name="backup_restored_self">LibreHU-service restarts in a few seconds with its settings.</string>
+    <string name="sound_unit">Head unit</string>
+    <string name="sound_media">Media</string>
+    <string name="sound_call">Calls</string>
+    <string name="sound_ring">Ring</string>
+    <string name="sound_notification">Notifications</string>
+    <string name="sound_alarm">Alarm</string>
+    <string name="sound_system">System</string>
+    <string name="sound_osd">Advanced sound menu</string>
+    <string name="sound_osd_hint">The volume keys open a menu listing the volumes (head unit, media, calls, ring, notifications, alarm, system). While it shows, ▶▶ / ◀◀ (steering wheel, rotary knob) choose the volume, the volume keys change it, ▶‖ closes it. Touch: a row chooses, a drag on its bar sets it. Off, the volume keys set the head unit as before.</string>
+    <string name="sound_osd_enable">Advanced sound menu</string>
+    <string name="sound_osd_channels">Volumes offered</string>
+    <string name="sound_osd_back">Back to the head unit\'s volume each time it opens</string>
+    <string name="sound_osd_timeout">Closes after</string>
+    <string name="sound_osd_test">Open the menu</string>
 </resources>

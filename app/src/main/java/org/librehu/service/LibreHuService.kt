@@ -51,6 +51,8 @@ import org.librehu.service.overlay.LevelOverlay
 import org.librehu.service.root.RootShell
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
+import org.librehu.core.touch.ZoneAction
+import org.librehu.core.touch.TouchAction
 import org.librehu.service.touch.TouchPanel
 import java.io.IOException
 import java.time.LocalDateTime
@@ -156,6 +158,15 @@ class LibreHuService : Service() {
                 it.volumeHook = { step -> changeVolume(step) }
                 it.start()
             }
+        // Advanced sound menu (option): the audio chip's volume through it too
+        org.librehu.service.overlay.SoundOsd.get(this).apply {
+            unitStep = { step -> changeVolume(step) }
+            unitLevel = {
+                val s = unit?.settings ?: PrefsSettingsStore(this@LibreHuService).load()
+                Triple(s.volume, Bd37534.MAX_VOLUME, s.muted)
+            }
+            unitSet = { v -> unit?.changeSettings { it.copy(volume = v, muted = false) } }
+        }
         // Steering wheel keys of the CAN box (Hiworld 0x11) → the same actions as the touch keys.
         val wheelKeys = CanWheelKeys.get(this)
         CanMonitor.frameListener = wheelKeys::onFrame
@@ -655,6 +666,11 @@ class LibreHuService : Service() {
             }
 
             override fun getAudioSource(): Int = unit?.source ?: HeadUnit.SOURCE_ANDROID
+
+            override fun runKeyAction(action: String?) {
+                val a = TouchAction.entries.firstOrNull { it.name == action } ?: return
+                android.os.Handler(mainLooper).post { TouchKeys.get(this@LibreHuService).run(null, ZoneAction(a)) }
+            }
         }
 
     // --- Foreground ----------------------------------------------------------------------------------------------

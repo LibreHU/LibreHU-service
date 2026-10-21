@@ -385,6 +385,7 @@ fun AudioScreen(client: ServiceClient) {
         }
         MicrophoneCard()
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
+        SoundOsdCard()
         Card(stringResource(R.string.audio_tone)) {
             SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }
             SliderRow(stringResource(R.string.middle), a.middle, 0..20, ::db) { v -> client.call { it.setTone(a.bass, v, a.treble) } }
