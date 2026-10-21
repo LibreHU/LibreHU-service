@@ -12,6 +12,7 @@ coroutines = "1.11.0"
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 
+zxing-core = { group = "com.google.zxing", name = "core", version = "3.5.3" }
 usb-serial = { group = "com.github.mik3y", name = "usb-serial-for-android", version = "3.10.0" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }

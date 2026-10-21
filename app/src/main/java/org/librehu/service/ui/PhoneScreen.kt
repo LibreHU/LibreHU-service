@@ -23,6 +23,7 @@ fun PhoneScreen() {
     val iphone by PhoneInfo.iphone.collectAsStateWithLifecycle()
     val aaBattery by PhoneInfo.androidAutoBattery.collectAsStateWithLifecycle()
     Page(stringResource(R.string.tab_phone)) {
+        BridgeCard()
         Card(stringResource(R.string.phone_bt_title)) {
             if (bt.deviceAddress.isEmpty()) {
                 StatusLine(stringResource(R.string.phone_none), false)

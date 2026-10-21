@@ -97,4 +97,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.coroutines.android)
     implementation(libs.usb.serial)
+    // QR code of the phone app pairing (bridge/).
+    implementation(libs.zxing.core)
+    implementation(libs.serialization.json)
 }

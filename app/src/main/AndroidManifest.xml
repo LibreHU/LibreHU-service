@@ -41,6 +41,8 @@
          permissions; BLUETOOTH_PRIVILEGED needs the privileged install (install/privapp-permissions-org.librehu.service.xml).
          READ_CONTACTS, READ_CALL_LOG and ACCESS_FINE_LOCATION (discovery) are runtime permissions: grant them from the
          app or with `pm grant` (docs/bluetooth.md). -->
+    <!-- LibreHU bridge: the phone app connects over Wi-Fi (bridge/BridgeServer, port 47800, encrypted). -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -183,6 +185,11 @@
 
         <receiver
             android:name=".AccessReceiver"
+            android:exported="false" />
+
+        <!-- Allow / refuse of a phone pairing in Bluetooth (bridge/BridgeNotify). -->
+        <receiver
+            android:name=".bridge.BridgeAnswerReceiver"
             android:exported="false" />
 
         <!-- Front panel LEDs blinking on notifications (car/FrontLed). -->

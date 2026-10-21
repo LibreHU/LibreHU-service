@@ -128,6 +128,8 @@ class LibreHuService : Service() {
         obd = ObdManager.get(this).also { it.start() }
         // Engine sound made up from the OBD values (off by default).
         org.librehu.service.car.EngineSound.get(this).start()
+        // Phone app (LibreHU bridge): Wi-Fi / Bluetooth server, paired phones only.
+        org.librehu.service.bridge.BridgeServer.get(this).start()
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
             TimeController.get(this).also {
