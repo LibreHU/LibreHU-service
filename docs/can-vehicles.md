@@ -60,12 +60,24 @@ repérer les octets qui changent (en orange), écrire le profil, l'importer.
 ## Touches du volant
 
 Avec un profil dont le message `0x11` a un signal `wheel_key` (Clio 3 LNP002, profils Hiworld semblables), le
-service lit les touches du volant relayées par le boîtier : D1 bit 3 = événement touche, D2 & 0x1F = code, D3 = 1 à
+service lit les touches du volant relayées par le boîtier : D1 bit 3 = événement touche, D2 = code, D3 = 1 à
 l'appui (`core/.../can/HiworldWheelKeys.kt`). Chaque code reçoit une action comme les touches de façade (onglet CAN,
 carte Touches du volant). Codes par défaut, d'après `HdRenaultProtocolLNP002` de l'appli Hiworld : 1 volume +,
 2 volume −, 3 sourdine, 5 / 13 précédent, 6 / 14 suivant, 18 sourdine. Les codes 4 et 17 arrivent aussi d'une
 commande de Clio 3 sans sens connu : rien tant qu'aucune action n'est choisie. La carte affiche le code de la
-dernière touche pour identifier un bouton.
+dernière touche et la **trame brute** (D1 D2 D3) pour identifier un bouton.
+
+- **Octet D2 entier** : l'appli Hiworld (et ce service avant) ne gardait que D2 & 0x1F ; deux boutons dont les codes
+  ne diffèrent qu'au-dessus de 0x1F (SRC+ / SRC− signalés identiques sur Clio 3) donnaient le même code. Le code est
+  maintenant l'octet entier ; un code au-dessus de 0x1F sans action propre garde celle de ses 5 bits bas (réglages
+  d'avant).
+- **Appui long** : le boîtier répète l'appui toutes les ~380 ms tant que la touche est tenue. Une touche avec un appui
+  long choisi : appui court au relâchement, appui long après 2 répétitions (~0,8 s). Sans appui long : chaque
+  répétition refait l'appui court (volume tenu).
+- **Touches ignorées au démarrage** (5 s par défaut, 0 à 15 s) : au démarrage du service et au réveil de l'écran
+  (contact mis), les touches sont ignorées ; la commande de Clio 3 envoie seule un appui SRC à la mise du contact.
+- **Sélecteur de LibreHU EasySource affiché** : ▶▶ / ◀◀ / ▶‖ (touches média, qu'Android donne aux sessions média et
+  pas à la fenêtre) lui sont envoyés : la molette fait défiler les sources et valide.
 
 Actif par défaut quand ivi-services est désactivé (sinon `ivi-canbus` agit aussi et chaque appui compte double).
 Un bouton qui ne change pas « dernière touche » n'est pas transmis par le boîtier : rien à faire côté Android.

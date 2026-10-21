@@ -104,6 +104,8 @@ class LibreHuService : Service() {
         // MCU link first: the MCU cuts the SoC when PC_READY comes late (10 s after a warm start). The rest
         // (Bluetooth, OBD, touch keys, root calls) starts after it.
         display = DisplayController.get(this)
+        // Head unit starting with the ignition: wheel keys ignored for a few seconds (Clio 3 phantom SRC press)
+        org.librehu.service.can.CanWheelKeys.get(this).guard()
         startHardware()
         display.start()
         bluetoothModule = BluetoothModule(this).also { it.start() }
@@ -199,6 +201,10 @@ class LibreHuService : Service() {
             org.librehu.service.power.SafeShutdownActivity.ACTION_RESUME -> {
                 log("Safe shutdown cancelled: sound back")
                 unit?.setForcedMute(false)
+            }
+
+            ACTION_SOURCE_SWITCHER -> {
+                TouchKeys.get(this).switcherVisible(intent.getBooleanExtra("visible", false))
             }
 
             ACTION_AUDIO_SOURCE -> {
@@ -476,6 +482,8 @@ class LibreHuService : Service() {
             ) {
                 log("Screen on: PC_READY again")
                 unit?.wake()
+                // Ignition back on: the Clio 3 remote's phantom press at that moment is ignored
+                org.librehu.service.can.CanWheelKeys.get(context).guard()
             }
         }
 
@@ -766,6 +774,9 @@ class LibreHuService : Service() {
 
         /** Sound processor input: extra "source" = "aux", "android", or nothing to toggle (shortcuts, other apps). */
         const val ACTION_AUDIO_SOURCE = "org.librehu.service.AUDIO_SOURCE"
+
+        /** LibreHU EasySource's source picker shown / hidden (extra "visible"): wheel keys go to it meanwhile. */
+        const val ACTION_SOURCE_SWITCHER = "org.librehu.service.SOURCE_SWITCHER"
         const val EXTRA_SOURCE = "source"
         const val PREF_FORCE = "force_with_ivi"
         const val PREF_TURN_GPIO = "turn_gpio"

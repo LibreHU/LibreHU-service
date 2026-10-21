@@ -1055,4 +1055,11 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="phone_iphone_connected">iPhone connecté</string>
     <string name="phone_signal_short">signal %1$d/5</string>
     <string name="phone_bt_connected">Connecté en Bluetooth</string>
+    <string name="can_keys_raw">Trame du boîtier (D1 D2 D3) : %1$s</string>
+    <string name="can_keys_ignore">Ignorer les touches au démarrage</string>
+    <string name="can_keys_ignore_hint">Pendant ce temps après le démarrage ou le réveil de l\'autoradio (contact mis), les touches du volant sont ignorées : sur Clio 3, la commande envoie seule un appui (SRC) à la mise du contact, ce qui changeait de source.</string>
+    <string name="can_keys_click">Appui court</string>
+    <string name="can_keys_long">Appui long</string>
+    <string name="can_keys_long_hint">Touche tenue environ 0,8 s (le boîtier répète l\'appui toutes les 0,4 s). Avec un appui long choisi, l\'appui court part au relâchement ; sans (Aucune), tenir la touche répète l\'appui court (volume).</string>
+    <string name="can_keys_long_short">long : %1$s</string>
 </resources>

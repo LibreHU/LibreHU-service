@@ -132,12 +132,38 @@ class TouchKeys private constructor(
 
     fun nextId(): Int = (_zones.value.maxOfOrNull { it.id } ?: 0) + 1
 
+    /** Until when LibreHU EasySource's source picker shows (elapsedRealtime), see [switcherVisible]. */
+    @Volatile
+    private var switcherUntil = 0L
+
+    /** EasySource's picker shown / hidden; expires on its own in case "hidden" never comes. */
+    fun switcherVisible(visible: Boolean) {
+        switcherUntil = if (visible) android.os.SystemClock.elapsedRealtime() + SWITCHER_MAX_MS else 0L
+    }
+
+    /**
+     * While EasySource's picker shows, ▶▶ / ◀◀ / ▶‖ go to it (they are media keys, which Android gives to the media
+     * sessions, not to the picker's window): the wheel scrolls the sources and confirms.
+     */
+    private fun toSwitcher(a: TouchAction): Boolean {
+        if (android.os.SystemClock.elapsedRealtime() > switcherUntil) return false
+        val key =
+            when (a) {
+                TouchAction.NEXT -> "next"
+                TouchAction.PREVIOUS -> "previous"
+                else -> "ok"
+            }
+        app.sendBroadcast(Intent(EASYSOURCE_KEY).setPackage(EASYSOURCE).putExtra("key", key))
+        return true
+    }
+
     /** Runs [action] now (also used by the "test" button of a zone). */
     fun run(
         zone: TouchZone?,
         action: ZoneAction,
     ) {
         _lastAction.value = (zone?.name ?: "") + " → " + action.action.name
+        if (action.action in SWITCHER_ACTIONS && toSwitcher(action.action)) return
         when (action.action) {
             TouchAction.NONE -> {
                 Unit
@@ -292,6 +318,11 @@ class TouchKeys private constructor(
     }
 
     companion object {
+        private const val EASYSOURCE = "org.librehu.easysource"
+        private const val EASYSOURCE_KEY = "org.librehu.easysource.action.KEY"
+        private const val SWITCHER_MAX_MS = 30_000L
+        private val SWITCHER_ACTIONS = setOf(TouchAction.PLAY_PAUSE, TouchAction.NEXT, TouchAction.PREVIOUS)
+
         private const val KEY_ZONES = "zones"
         private const val KEY_ENABLED = "zones_enabled"
         private const val TICK_MS = 50L

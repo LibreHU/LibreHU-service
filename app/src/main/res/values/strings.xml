@@ -1055,4 +1055,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="phone_iphone_connected">iPhone connected</string>
     <string name="phone_signal_short">signal %1$d/5</string>
     <string name="phone_bt_connected">Connected in Bluetooth</string>
+    <string name="can_keys_raw">Box frame (D1 D2 D3): %1$s</string>
+    <string name="can_keys_ignore">Ignore keys at start</string>
+    <string name="can_keys_ignore_hint">For this long after the head unit starts or wakes up (ignition on), the steering wheel keys are ignored: on a Clio 3 the remote sends a press (SRC) by itself when the ignition comes on, which switched the source.</string>
+    <string name="can_keys_click">Short press</string>
+    <string name="can_keys_long">Long press</string>
+    <string name="can_keys_long_hint">Key held about 0.8 s (the box repeats the press every 0.4 s). With a long press set, the short press goes on release; without (None), holding the key repeats the short press (volume).</string>
+    <string name="can_keys_long_short">long: %1$s</string>
 </resources>

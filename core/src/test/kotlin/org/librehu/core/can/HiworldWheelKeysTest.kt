@@ -39,6 +39,18 @@ class HiworldWheelKeysTest {
     }
 
     @Test
+    fun wholeByteIsTheCode() {
+        val got = mutableListOf<Int>()
+        val raw = mutableListOf<Triple<Int, Int, Int>>()
+        val keys = HiworldWheelKeys({ a, b, c -> raw += Triple(a, b, c) }) { got += it }
+        // Two buttons whose codes only differ above 0x1F (were both 4 with the old mask)
+        listOf(state(8, 0x04, 1), state(8, 0x04, 0), state(0, 0, 0), state(8, 0x24, 1), state(8, 0x24, 0), state(0, 0, 0))
+            .forEach(keys::onFrame)
+        assertEquals(listOf(0x04, 0x24), got)
+        assertEquals(Triple(8, 0x24, 1), raw[3])
+    }
+
+    @Test
     fun ignoresOtherMessagesAndShortFrames() {
         val got = mutableListOf<Int>()
         val keys = HiworldWheelKeys { got += it }

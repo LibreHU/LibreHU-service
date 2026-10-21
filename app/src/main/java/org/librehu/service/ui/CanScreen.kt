@@ -196,6 +196,9 @@ fun CanWheelKeysCard() {
     val last by keys.lastKey.collectAsStateWithLifecycle()
     val seen by keys.seen.collectAsStateWithLifecycle()
     val claims by keys.claims.collectAsStateWithLifecycle()
+    val longs by keys.longMapping.collectAsStateWithLifecycle()
+    val raw by keys.lastRaw.collectAsStateWithLifecycle()
+    var ignoreS by remember { mutableStateOf(keys.ignoreAfterOnS()) }
     var editing by remember { mutableStateOf<Int?>(null) }
     Card(stringResource(R.string.can_keys)) {
         Hint(stringResource(R.string.can_keys_hint))
@@ -203,37 +206,51 @@ fun CanWheelKeysCard() {
         val claimed = claims.values.flatten().count { it.startsWith("can:") }
         if (claimed > 0) Hint(stringResource(R.string.can_keys_claimed, claimed))
         Hint(last?.let { stringResource(R.string.can_keys_last, it, keyName(it)) } ?: stringResource(R.string.can_keys_none))
+        raw?.let { Hint(stringResource(R.string.can_keys_raw, it)) }
+        SliderRow(stringResource(R.string.can_keys_ignore), ignoreS, 0..15, { if (it == 0) "—" else "$it s" }) {
+            ignoreS = it
+            keys.setIgnoreAfterOnS(it)
+        }
+        Hint(stringResource(R.string.can_keys_ignore_hint))
         for (code in (mapping.keys + seen).sorted()) {
             val a = mapping[code] ?: ZoneAction()
             val byOther = claims.values.any { "can:$code" in it }
+            val long = longs[code]
             ListRow(
                 stringResource(R.string.can_keys_code, code, keyName(code)),
-                if (byOther) stringResource(R.string.can_keys_by_btnremap) else actionLabel(a),
+                if (byOther) {
+                    stringResource(R.string.can_keys_by_btnremap)
+                } else {
+                    actionLabel(a) + (long?.let { " · " + stringResource(R.string.can_keys_long_short, actionLabel(it)) } ?: "")
+                },
                 onClick = { editing = code },
             ) { Pill(stringResource(R.string.can_keys_change), selected = code == last) { editing = code } }
         }
         Actions { Pill(stringResource(R.string.can_keys_defaults)) { keys.resetDefaults() } }
     }
     editing?.let { code ->
-        WheelKeyDialog(code, mapping[code] ?: ZoneAction(), onDismiss = { editing = null }) {
-            keys.set(code, it)
+        WheelKeyDialog(code, mapping[code] ?: ZoneAction(), longs[code] ?: ZoneAction(), onDismiss = { editing = null }) { click, long ->
+            keys.set(code, click)
+            keys.setLong(code, long)
             editing = null
         }
     }
 }
 
 @Composable
-private fun keyName(code: Int): String = HiworldWheelKeys.NAMES[code] ?: "?"
+private fun keyName(code: Int): String = HiworldWheelKeys.name(code) ?: "?"
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun WheelKeyDialog(
     code: Int,
     initial: ZoneAction,
+    initialLong: ZoneAction,
     onDismiss: () -> Unit,
-    onSave: (ZoneAction) -> Unit,
+    onSave: (ZoneAction, ZoneAction) -> Unit,
 ) {
     var a by remember(code) { mutableStateOf(initial) }
+    var l by remember(code) { mutableStateOf(initialLong) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.can_keys_code, code, keyName(code))) },
@@ -242,25 +259,39 @@ private fun WheelKeyDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    for (t in TouchAction.entries) Pill(actionName(t), selected = a.action == t) { a = a.copy(action = t) }
-                }
-                if (a.action == TouchAction.LAUNCH_APP || a.action == TouchAction.KEYCODE) {
-                    OutlinedTextField(
-                        value = a.arg,
-                        onValueChange = { a = a.copy(arg = it.trim()) },
-                        singleLine = true,
-                        label = {
-                            Text(stringResource(if (a.action == TouchAction.KEYCODE) R.string.touch_keycode else R.string.touch_package))
-                        },
-                    )
-                }
+                Text(stringResource(R.string.can_keys_click))
+                ActionChoice(a) { a = it }
+                Text(stringResource(R.string.can_keys_long))
+                Hint(stringResource(R.string.can_keys_long_hint))
+                ActionChoice(l) { l = it }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(a) }) { Text(stringResource(android.R.string.ok)) } },
+        confirmButton = { TextButton(onClick = { onSave(a, l) }) { Text(stringResource(android.R.string.ok)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
     )
+}
+
+/** One of the actions, and its argument (package, key code) when it takes one. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ActionChoice(
+    a: ZoneAction,
+    onChange: (ZoneAction) -> Unit,
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        for (t in TouchAction.entries) Pill(actionName(t), selected = a.action == t) { onChange(a.copy(action = t)) }
+    }
+    if (a.action == TouchAction.LAUNCH_APP || a.action == TouchAction.KEYCODE) {
+        OutlinedTextField(
+            value = a.arg,
+            onValueChange = { onChange(a.copy(arg = it.trim())) },
+            singleLine = true,
+            label = {
+                Text(stringResource(if (a.action == TouchAction.KEYCODE) R.string.touch_keycode else R.string.touch_package))
+            },
+        )
+    }
 }
