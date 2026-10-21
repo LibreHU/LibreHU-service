@@ -34,7 +34,7 @@ object ConfigBackup {
     private const val SELF = "org.librehu.service"
 
     /** Apps of LibreHU and its forks (and their upstream versions), besides every org.librehu.* package. */
-    private val OTHERS =
+    val OTHERS =
         listOf(
             VIPER,
             "com.andrerinas.headunitrevived",

@@ -1218,4 +1218,10 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="bp_turbo_off">Sans</string>
     <string name="bp_turbo_strong">Fort</string>
     <string name="bp_sound">Son</string>
+    <string name="aot_title">Fluidité des applis LibreHU</string>
+    <string name="aot_auto">Compiler les applis LibreHU en natif</string>
+    <string name="aot_hint">Android 9 installe les applis hors Play Store sans code natif et ne les compile que si l\'appareil est inactif et en charge, ce qui n\'arrive presque jamais sur un autoradio : elles restent lentes (ouverture, défilement). Le service les compile (root, cmd package compile -m speed) une fois par version, au démarrage et à chaque installation ou mise à jour.</string>
+    <string name="aot_now">Tout compiler maintenant</string>
+    <string name="aot_running">Compilation de %1$s…</string>
+    <string name="aot_done">Compilation terminée (%1$d appli(s) compilée(s))</string>
 </resources>

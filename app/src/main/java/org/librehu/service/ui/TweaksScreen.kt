@@ -48,6 +48,7 @@ fun TweaksScreen() {
     fun mhz(khz: Int) = if (khz <= 0) "—" else "${khz / 1000} MHz"
 
     Page(stringResource(R.string.tab_tweaks)) {
+        CompileCard()
         Card(stringResource(R.string.tw_title)) {
             if (loaded == false) StatusLine(noRoot, false)
             if (tweaks.skippedAtBoot) {
@@ -113,5 +114,22 @@ fun TweaksScreen() {
                 for ((type, c) in st.temps) ListRow(type, String.format(Locale.ROOT, "%.1f °C", c))
             }
         }
+    }
+}
+
+/** Native compilation of the LibreHU apps ([AppCompiler]): automatic, or now. */
+@Composable
+private fun CompileCard() {
+    val compiler = org.librehu.service.perf.AppCompiler.get(androidx.compose.ui.platform.LocalContext.current)
+    val auto by compiler.auto.collectAsStateWithLifecycle()
+    val status by compiler.status.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.aot_title)) {
+        SwitchRow(stringResource(R.string.aot_auto), auto, stringResource(R.string.aot_hint)) { compiler.setAuto(it) }
+        when {
+            status == "root" -> StatusLine(stringResource(R.string.atc_no_root), false)
+            status.startsWith("done:") -> StatusLine(stringResource(R.string.aot_done, status.removePrefix("done:").toIntOrNull() ?: 0), true)
+            status.isNotEmpty() -> StatusLine(stringResource(R.string.aot_running, status), null)
+        }
+        Actions { Pill(stringResource(R.string.aot_now)) { compiler.compileAll() } }
     }
 }

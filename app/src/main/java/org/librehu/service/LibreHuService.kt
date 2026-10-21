@@ -130,6 +130,8 @@ class LibreHuService : Service() {
         org.librehu.service.car.EngineSound.get(this).start()
         // Phone app (LibreHU bridge): Wi-Fi / Bluetooth server, paired phones only.
         org.librehu.service.bridge.BridgeServer.get(this).start()
+        // Native (AOT) compilation of the LibreHU apps: Android 9 leaves them interpreted on a head unit.
+        org.librehu.service.perf.AppCompiler.get(this).start()
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
         time =
             TimeController.get(this).also {
