@@ -474,7 +474,10 @@ class ObdManager private constructor(
         val extras =
             Bundle().apply {
                 values.forEach { (k, v) -> putDouble(k, v) }
-                _state.value.car.values.forEach { r -> r.number?.let { putDouble("car:" + r.key, it) } }
+                _state.value.car.values.forEach { r ->
+                    r.number?.let { putDouble("car:" + r.key, it) }
+                    putString("cartext:" + r.key, r.text)
+                }
                 battery.reading.value?.let { b ->
                     putInt(BATTERY_PERCENT, b.percent ?: -1)
                     putString(BATTERY_STATUS, b.status.name)

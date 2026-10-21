@@ -81,7 +81,8 @@ Carte **Voiture (valeurs constructeur)** de l'onglet OBD :
   fichier à la voiture choisie (même nom = remplacé). **Exporter** : fichier voiture LibreHU de la voiture.
 - **Valeurs de la voiture** : recherche par nom (calculateur ou valeur), un appui = lue / plus lue. Les valeurs
   choisies sont lues un tour sur deux, après les valeurs standard, et apparaissent en tuiles. Les nombres partent
-  aussi dans le broadcast `org.librehu.action.OBD` (extras `car:<calculateur>/<valeur>`).
+  aussi dans le broadcast `org.librehu.action.OBD` (extras `car:<calculateur>/<valeur>` → double, et
+  `cartext:<calculateur>/<valeur>` → texte affiché avec son unité).
 
 ### Sécurité : lecture seule
 
