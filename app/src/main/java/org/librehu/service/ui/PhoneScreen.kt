@@ -21,6 +21,7 @@ fun PhoneScreen() {
     val context = LocalContext.current
     val bt by PhoneInfo.bluetooth.collectAsStateWithLifecycle()
     val iphone by PhoneInfo.iphone.collectAsStateWithLifecycle()
+    val aaBattery by PhoneInfo.androidAutoBattery.collectAsStateWithLifecycle()
     Page(stringResource(R.string.tab_phone)) {
         Card(stringResource(R.string.phone_bt_title)) {
             if (bt.deviceAddress.isEmpty()) {
@@ -33,6 +34,7 @@ fun PhoneScreen() {
                 ) {
                     InfoRow(stringResource(R.string.phone_battery), stringResource(R.string.phone_battery_bt, bt.battery * 20))
                 }
+                aaBattery?.let { InfoRow(stringResource(R.string.phone_battery_aa), "$it %") }
                 if (bt.signal >= 0) InfoRow(stringResource(R.string.phone_signal), "${bt.signal} / 5")
                 if (bt.operator.isNotEmpty()) InfoRow(stringResource(R.string.phone_operator), bt.operator)
                 if (bt.roaming) InfoRow(stringResource(R.string.phone_roaming), stringResource(R.string.phone_yes))

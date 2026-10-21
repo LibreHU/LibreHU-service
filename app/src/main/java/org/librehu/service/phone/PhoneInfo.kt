@@ -107,6 +107,7 @@ data class IphoneDetails(
 object PhoneInfo {
     private const val TAG = "LibreHU-Phone"
     private const val ACTION_PHONE_INFO = "org.librehu.carplay.PHONE_INFO"
+    private const val ACTION_AA_BATTERY = "org.librehu.headunit.PHONE_BATTERY"
     private const val PREF_LAST_IPHONE = "last_iphone"
     private const val PREF_AUTO_PAIR = "iphone_auto_pair"
 
@@ -117,6 +118,12 @@ object PhoneInfo {
 
     /** Bluetooth status of the hands-free phone, as the Bluetooth module last reported it. */
     val bluetooth: StateFlow<BtStatus> = _bluetooth.asStateFlow()
+
+    /** Battery of the Android Auto phone (`org.librehu.headunit.PHONE_BATTERY` of the LibreHU Android Auto app), %. */
+    private val _aaBattery = MutableStateFlow<Int?>(null)
+    val androidAutoBattery: StateFlow<Int?> = _aaBattery.asStateFlow()
+
+    private var aaReceiver: BroadcastReceiver? = null
 
     private var receiver: BroadcastReceiver? = null
     private var app: Context? = null
@@ -160,6 +167,24 @@ object PhoneInfo {
         if (_iphone.value == null) {
             LibreHuService.prefs(a).getString(PREF_LAST_IPHONE, null)?.let { j ->
                 runCatching { IphoneDetails.fromJson(JSONObject(j)) }.getOrNull()?.let { _iphone.value = it }
+            }
+        }
+        if (aaReceiver == null) {
+            val aa =
+                object : BroadcastReceiver() {
+                    override fun onReceive(
+                        c: Context,
+                        intent: Intent,
+                    ) {
+                        _aaBattery.value = intent.getIntExtra("level", -1).takeIf { it in 0..100 }
+                        PhoneWidget.refresh(a)
+                    }
+                }
+            aaReceiver = aa
+            if (Build.VERSION.SDK_INT >= 33) {
+                a.registerReceiver(aa, IntentFilter(ACTION_AA_BATTERY), Context.RECEIVER_EXPORTED)
+            } else {
+                a.registerReceiver(aa, IntentFilter(ACTION_AA_BATTERY))
             }
         }
         if (receiver != null) return

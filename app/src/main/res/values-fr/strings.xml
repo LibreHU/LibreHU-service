@@ -1166,4 +1166,5 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="engine_pops_hint">Craquements quand l\'accélérateur est relâché à haut régime</string>
     <string name="engine_redline">Régime maximal joué</string>
     <string name="engine_test">Essai (montée en régime simulée)</string>
+    <string name="phone_battery_aa">Batterie (Android Auto)</string>
 </resources>
