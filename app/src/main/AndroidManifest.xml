@@ -43,6 +43,11 @@
          app or with `pm grant` (docs/bluetooth.md). -->
     <!-- LibreHU bridge: the phone app connects over Wi-Fi (bridge/BridgeServer, port 47800, encrypted). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Settings pages of the other LibreHU apps for the phone app (their ".bridge" providers, same signing key). -->
+    <permission
+        android:name="org.librehu.permission.BRIDGE"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="org.librehu.permission.BRIDGE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -107,6 +112,12 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Settings pages of the LibreHU apps for the phone app (bridge/BridgePages). -->
+        <provider android:authorities="org.librehu.launcher.bridge" />
+        <provider android:authorities="org.librehu.btnremap.bridge" />
+        <provider android:authorities="org.librehu.ota.bridge" />
+        <provider android:authorities="org.librehu.disc.bridge" />
+        <provider android:authorities="org.librehu.fm.bridge" />
     </queries>
 
     <application
