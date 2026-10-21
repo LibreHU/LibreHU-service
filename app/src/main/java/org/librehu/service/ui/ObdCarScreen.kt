@@ -46,6 +46,8 @@ fun ObdCarCards(
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     val car = cars.firstOrNull { it.id == selected }
 
+    Ddt4allCard(st)
+
     Card(stringResource(R.string.obd_car)) {
         Hint(stringResource(R.string.obd_car_hint))
         Choices(listOf("" to stringResource(R.string.obd_car_none)) + cars.map { it.id to it.name }, selected) { store.select(it) }

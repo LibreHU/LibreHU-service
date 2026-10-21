@@ -6,15 +6,19 @@ import android.provider.OpenableColumns
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.librehu.core.obd.Ddt4allDb
+import org.librehu.core.obd.DdtProject
 import org.librehu.core.obd.ObdCar
 import org.librehu.core.obd.ObdCarException
 import org.librehu.core.obd.ObdCars
 import org.librehu.core.obd.ObdPid
 import java.io.File
+import java.util.zip.ZipFile
 
 /**
  * Cars for the ELM327 adapter (manufacturer values read from their ECUs): imported from ddt4all ECU files or LibreHU
- * car files, kept in device-protected storage. The selected car and its chosen values are read by [ObdManager].
+ * car files, or made from ddt4all's whole ECU database (its `ecu.zip`, kept here: the car is picked from its list of
+ * vehicles, then one file per ECU, identified on the car or picked by hand), kept in device-protected storage. The selected car and its chosen values are read by [ObdManager].
  * Nothing is built in: the ECU descriptions come from the user's own files.
  */
 class ObdCarStore private constructor(
@@ -34,6 +38,103 @@ class ObdCarStore private constructor(
     /** Values chosen for the selected car ([ObdCars.key]). */
     private val _chosen = MutableStateFlow(chosenOf(_selected.value))
     val chosen: StateFlow<Set<String>> = _chosen.asStateFlow()
+
+    /** Out of the settings backup (no_backup): the database is big and comes back from its own file. */
+    private val dbFile = File(storage.noBackupFilesDir, "ddt4all-ecu.zip")
+
+    private val _projects = MutableStateFlow<List<DdtProject>?>(null)
+
+    /** Vehicles of the imported ddt4all database ([loadDatabase]), null = not read yet or none. */
+    val projects: StateFlow<List<DdtProject>?> = _projects.asStateFlow()
+
+    fun hasDatabase(): Boolean = dbFile.isFile
+
+    /** Reads the index of the kept database (a few megabytes: off the main thread). */
+    fun loadDatabase() {
+        if (_projects.value != null || !dbFile.isFile) return
+        _projects.value = runCatching { readIndex(dbFile) }.getOrNull()
+    }
+
+    /** Keeps ddt4all's `ecu.zip` (copied here, checked for its db.json) and lists its vehicles. */
+    fun importDatabase(uri: Uri): List<DdtProject> {
+        val tmp = File(storage.noBackupFilesDir, "ddt4all-ecu.zip.part")
+        try {
+            app.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 16) } }
+                ?: throw ObdCarException("Cannot read the file")
+            val projects = readIndex(tmp)
+            if (projects.isEmpty()) throw ObdCarException("No vehicle with CAN ECUs in this database")
+            if (!tmp.renameTo(dbFile)) throw ObdCarException("Cannot keep the database")
+            _projects.value = projects
+            return projects
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    fun deleteDatabase() {
+        dbFile.delete()
+        _projects.value = null
+    }
+
+    /**
+     * A car for [project] from the database: one ECU file per address of [files] (address → file of the database),
+     * converted as an imported ddt4all ECU file. Replaces the car made before for the same vehicle and selects it.
+     */
+    fun createFromDatabase(
+        project: DdtProject,
+        files: Map<String, String>,
+    ): ObdCar {
+        if (files.isEmpty()) throw ObdCarException("No ECU chosen")
+        val skipped = ArrayList<String>()
+        val ecus =
+            ZipFile(dbFile).use { zip ->
+                files.values.mapNotNull { file ->
+                    val entry = zip.getEntry(file) ?: throw ObdCarException("$file is not in the database")
+                    if (entry.size > MAX_SIZE) throw ObdCarException("$file: too big")
+                    val text = zip.getInputStream(entry).use { it.readBytes().toString(Charsets.UTF_8) }
+                    try {
+                        ObdCars.fromJson(text, file.removeSuffix(".json")).ecus.firstOrNull()
+                    } catch (e: ObdCarException) {
+                        skipped += "${file.removeSuffix(".json")}: ${e.message}"
+                        null
+                    }
+                }
+            }
+        if (ecus.isEmpty()) throw ObdCarException(skipped.joinToString("\n").ifEmpty { "No readable ECU" })
+        val car =
+            ObdCar(
+                id = ObdCars.slug("ddt4all-" + project.code),
+                name = project.name,
+                description = "ddt4all ${project.code}: " + files.values.joinToString(", ") { it.removeSuffix(".json") },
+                ecus = ecus.distinctBy { it.name },
+            )
+        File(dir, "${car.id}.json").writeText(ObdCars.toJson(car))
+        _cars.value = load()
+        select(car.id)
+        return car
+    }
+
+    /** Send / receive CAN ids of an ECU file of the database (its `obd` section), for the identification. */
+    fun canIds(file: String): Pair<String, String>? =
+        runCatching {
+            ZipFile(dbFile).use { zip ->
+                val entry = zip.getEntry(file) ?: return null
+                if (entry.size > MAX_SIZE) return null
+                val ecu = ObdCars.fromJson(zip.getInputStream(entry).use { it.readBytes().toString(Charsets.UTF_8) }, file).ecus.first()
+                ecu.sendId to ecu.recvId
+            }
+        }.getOrNull()
+
+    private fun readIndex(zipFile: File): List<DdtProject> =
+        try {
+            ZipFile(zipFile).use { zip ->
+                val entry = zip.getEntry(Ddt4allDb.INDEX) ?: throw ObdCarException("No db.json: not ddt4all's ecu.zip")
+                if (entry.size > MAX_SIZE) throw ObdCarException("db.json: too big")
+                Ddt4allDb.projects(Ddt4allDb.parse(zip.getInputStream(entry).use { it.readBytes().toString(Charsets.UTF_8) }))
+            }
+        } catch (e: java.util.zip.ZipException) {
+            throw ObdCarException("Not a zip file: ${e.message}")
+        }
 
     fun current(): ObdCar? = _cars.value.firstOrNull { it.id == _selected.value }
 

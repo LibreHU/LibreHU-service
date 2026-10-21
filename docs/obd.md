@@ -32,7 +32,26 @@ fichiers de calculateur de **ddt4all** (github.com/cedricp/ddt4all, GPL-3.0). Li
 
 **Rien n'est embarqué** : les descriptions viennent de vos propres fichiers. ddt4all lit la base de données XML
 DDT2000 et la convertit en JSON (`ecu.zip`, dossier `json/`) ; un fichier JSON = un calculateur. LibreHU ne fournit
-ni n'invente aucun identifiant.
+ni n'invente aucun identifiant. Seule la liste des **noms de véhicules** de ddt4all (code de projet → nom, p. ex.
+`X85` → Renault Clio III, de `resources/projects.json`) est reprise, pour afficher un nom au lieu d'un code
+(`core/.../Ddt4allProjects.kt`).
+
+### Base complète : `ecu.zip` de ddt4all (carte **Base ECU ddt4all**)
+
+1. **Importer ecu.zip** : le zip produit par ddt4all (`zipConvertXML`, `core/parameters/helpers.py`) est copié dans
+   le stockage du service (`no_backup`, hors de la sauvegarde des réglages : il est gros et revient de son propre
+   fichier) et son index `db.json` est lu : pour chaque fichier de calculateur, adresse, groupe (UCH, Injection…),
+   protocole, projets (véhicules) et identifications.
+2. **Chercher la voiture** par nom ou code ; seuls les véhicules ayant des calculateurs **CAN** sont listés.
+3. Pour chaque calculateur (adresse) du véhicule, **un fichier** à garder (ils diffèrent par version logicielle) ou
+   « Ignorer ». **Identifier sur la voiture** (adaptateur connecté) lit l'identification de chaque calculateur comme
+   le scanner de ddt4all (`ecu_scanner.py`) : requête `2180` (anciens calculateurs Renault : version diag, fournisseur,
+   logiciel, version), sinon `22F1A0` / `22F18A` / `22F194` / `22F195` (UDS) ; le fichier correspondant est choisi
+   (correspondance exacte `checkWith`, sinon version la plus proche à fournisseur et logiciel égaux,
+   `checkApproximate`). Ce sont des **requêtes de lecture** ; LibreHU n'ouvre **pas** de session (ddt4all envoie
+   `10C0` / `1003` avant) : un calculateur qui ne répond qu'en session est à choisir à la main.
+4. **Créer la voiture** : les fichiers choisis sont convertis comme un import de fichier de calculateur (mêmes règles
+   de sécurité) en une voiture `ddt4all-<code>`, sélectionnée ; on choisit ensuite ses valeurs comme d'habitude.
 
 Carte **Voiture (valeurs constructeur)** de l'onglet OBD :
 - **Importer une voiture** : un fichier de calculateur ddt4all (devient une voiture nommée d'après le calculateur)

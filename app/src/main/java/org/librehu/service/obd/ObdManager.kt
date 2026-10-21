@@ -13,6 +13,8 @@ import com.hoho.android.usbserial.driver.UsbSerialProber
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.librehu.core.obd.Ddt4allDb
+import org.librehu.core.obd.DdtIdent
 import org.librehu.core.obd.EcuAnswer
 import org.librehu.core.obd.Elm327
 import org.librehu.core.obd.ObdCarEcu
@@ -90,6 +92,22 @@ class ObdManager private constructor(
     val state: StateFlow<ObdState> = _state.asStateFlow()
 
     private val requests = LinkedBlockingQueue<String>()
+
+    /** ECUs to identify ([identify]): address → (send id, receive id). */
+    @Volatile
+    private var identifyTargets: Map<String, Pair<String, String>> = emptyMap()
+
+    private val _idents = MutableStateFlow<Map<String, DdtIdent?>>(emptyMap())
+
+    /** Identifications read by [identify]: address → identification, null = no answer (or refused outside a session). */
+    val idents: StateFlow<Map<String, DdtIdent?>> = _idents.asStateFlow()
+
+    private val _identifying = MutableStateFlow(false)
+    val identifying: StateFlow<Boolean> = _identifying.asStateFlow()
+
+    /** CAN protocol of the session (6..9), null while unknown or not CAN. */
+    @Volatile
+    private var sessionCan: Int? = null
     private val cars by lazy { ObdCarStore.get(app) }
 
     @Volatile
@@ -162,6 +180,18 @@ class ObdManager private constructor(
 
     fun clearDtcs() = requests.offer(REQ_CLEAR_DTC)
 
+    /**
+     * Reads the identification of [targets] (address → send / receive CAN ids) as ddt4all's scanner does, with read
+     * requests only (`2180`, else `22F1A0` / `F18A` / `F194` / `F195`): results in [idents]. Needs the adapter
+     * connected on a CAN protocol.
+     */
+    fun identify(targets: Map<String, Pair<String, String>>) {
+        if (_state.value.connection != ObdConnection.CONNECTED || targets.isEmpty()) return
+        identifyTargets = targets
+        _identifying.value = true
+        requests.offer(REQ_IDENTIFY)
+    }
+
     fun restart() {
         halt()
         if (_settings.value.enabled) launch()
@@ -185,6 +215,7 @@ class ObdManager private constructor(
         thread?.interrupt()
         thread?.join(2000)
         thread = null
+        _identifying.value = false
         setState { ObdState() }
         ObdWidget.refresh(app)
     }
@@ -253,6 +284,7 @@ class ObdManager private constructor(
         val protocol = Elm327.lines(link.ask(Elm327.DESCRIBE_PROTOCOL)).firstOrNull().orEmpty()
         // 6 / 8 = CAN 11-bit (500 / 250 kbit/s), 7 / 9 = 29-bit; "A6" = found automatically.
         val can = protocol.removePrefix("A").toIntOrNull()?.takeIf { it in 6..9 }
+        sessionCan = can
         setState {
             it.copy(
                 connection = ObdConnection.CONNECTED,
@@ -361,6 +393,26 @@ class ObdManager private constructor(
         }
     }
 
+    private fun identifyNow(link: ObdLink) {
+        val can = sessionCan ?: return
+        val out = HashMap<String, DdtIdent?>()
+        try {
+            for ((address, ids) in identifyTargets) {
+                address(link, ObdCarEcu(address, ids.first, ids.second, emptyList()))
+                fun read(send: String): IntArray? = (ObdCars.answer(link.ask(send, CAR_TIMEOUT_MS), send.take(2).toInt(16)) as? EcuAnswer.Positive)?.bytes
+                out[address] =
+                    read(Ddt4allDb.KWP_IDENT)?.let { Ddt4allDb.ident2180(it) }
+                        ?: read(Ddt4allDb.UDS_IDENT[0])?.let { diag ->
+                            Ddt4allDb.identUds(diag, read(Ddt4allDb.UDS_IDENT[1]), read(Ddt4allDb.UDS_IDENT[2]), read(Ddt4allDb.UDS_IDENT[3]))
+                        }
+                _idents.value = HashMap(out)
+                if (Thread.interrupted()) throw InterruptedException()
+            }
+        } finally {
+            standardAddress(link, can)
+        }
+    }
+
     private fun handleRequest(
         link: ObdLink,
         request: String,
@@ -374,6 +426,14 @@ class ObdManager private constructor(
             REQ_CLEAR_DTC -> {
                 link.ask(Elm327.CLEAR_DTC, 5_000)
                 setState { it.copy(dtcs = emptyList()) }
+            }
+
+            REQ_IDENTIFY -> {
+                try {
+                    identifyNow(link)
+                } finally {
+                    _identifying.value = false
+                }
             }
         }
     }
@@ -431,6 +491,7 @@ class ObdManager private constructor(
         private const val ACTION_USB_PERMISSION = "org.librehu.service.OBD_USB_PERMISSION"
         private const val REQ_READ_DTC = "dtc"
         private const val REQ_CLEAR_DTC = "clear"
+        private const val REQ_IDENTIFY = "identify"
         private const val RETRY_MS = 10_000L
         private const val PUBLISH_MS = 1_000L
         private const val SLOW_EVERY = 5
