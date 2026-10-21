@@ -342,7 +342,8 @@ class LibreHuService : Service() {
         // Front panel LEDs: Jancar MCU only (0F 04).
         org.librehu.service.car.FrontLed
             .get(this)
-            .sender = if (jancar) headUnit::sendToMcu else null
+            .also { it.sender = if (jancar) headUnit::sendToMcu else null }
+            .also { it.onHeadlights(DisplayController.get(this).headlights.value) }
         ServiceState.dsp = dsp
         setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
     }

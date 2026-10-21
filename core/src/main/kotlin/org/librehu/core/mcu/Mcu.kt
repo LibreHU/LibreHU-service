@@ -66,6 +66,15 @@ object Mcu {
         type: Int = 1,
     ) = McuFrame.of(CMD_CONFIG, 4, type, r.coerceIn(0, 99), g.coerceIn(0, 99), b.coerceIn(0, 99), mode)
 
+    /**
+     * Brightness of one of the two PWM outputs of TIM1 (`0F 02` PA8, `0F 03` PB14), 5..100 % (firmware defaults 60 and
+     * 50, kept in the MCU's flash): the white button backlight of the panels without colour LEDs.
+     */
+    fun pwmBrightness(
+        channel: Int,
+        percent: Int,
+    ) = McuFrame.of(CMD_CONFIG, if (channel == 2) 3 else 2, percent.coerceIn(5, 100))
+
     /** Radio antenna power (PF6). */
     fun antenna(on: Boolean) = McuFrame.of(CMD_ANTENNA, if (on) 1 else 0)
 

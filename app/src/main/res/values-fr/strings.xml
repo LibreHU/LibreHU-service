@@ -1089,4 +1089,10 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="sound_osd_back">Revenir au volume de l\'autoradio à chaque ouverture</string>
     <string name="sound_osd_timeout">Fermeture après</string>
     <string name="sound_osd_test">Ouvrir le menu</string>
+    <string name="led_backlight_title">Rétroéclairage des boutons</string>
+    <string name="led_backlight_hint">Les façades à LED blanches (sans LED de couleur) sont éclairées par les deux sorties de luminosité de la MCU (0F 02 et 0F 03, 5 à 100 %). Le service leur donne une luminosité feux éteints et une feux allumés, à chaque changement des feux et au démarrage. La couleur de la carte du dessus ne vaut que pour les façades à LED de couleur.</string>
+    <string name="led_backlight">Luminosité selon les feux</string>
+    <string name="led_backlight_day">Sortie %1$d, feux éteints</string>
+    <string name="led_backlight_night">Sortie %1$d, feux allumés</string>
+    <string name="led_backlight_test_hint">Chaque réglage est appliqué tout de suite, pour voir quelles LED suit chaque sortie. La MCU garde la valeur dans sa mémoire flash : seule une valeur nouvelle lui est envoyée.</string>
 </resources>

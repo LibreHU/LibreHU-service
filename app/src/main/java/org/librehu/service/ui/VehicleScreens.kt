@@ -247,6 +247,29 @@ fun LightsScreen(actions: AppActions) {
                 }
             }
         }
+        Card(stringResource(R.string.led_backlight_title)) {
+            Hint(stringResource(R.string.led_backlight_hint))
+            SwitchRow(stringResource(R.string.led_backlight), s.backlight) { on -> led.update { it.copy(backlight = on) } }
+            if (s.backlight) {
+                SliderRow(stringResource(R.string.led_backlight_day, 1), s.dayPwm1, 5..100, { "$it %" }) { v ->
+                    led.update { it.copy(dayPwm1 = v) }
+                    led.testPwm(1, v)
+                }
+                SliderRow(stringResource(R.string.led_backlight_night, 1), s.nightPwm1, 5..100, { "$it %" }) { v ->
+                    led.update { it.copy(nightPwm1 = v) }
+                    led.testPwm(1, v)
+                }
+                SliderRow(stringResource(R.string.led_backlight_day, 2), s.dayPwm2, 5..100, { "$it %" }) { v ->
+                    led.update { it.copy(dayPwm2 = v) }
+                    led.testPwm(2, v)
+                }
+                SliderRow(stringResource(R.string.led_backlight_night, 2), s.nightPwm2, 5..100, { "$it %" }) { v ->
+                    led.update { it.copy(nightPwm2 = v) }
+                    led.testPwm(2, v)
+                }
+                Hint(stringResource(R.string.led_backlight_test_hint))
+            }
+        }
         Card(stringResource(R.string.led_blink_title)) {
             SwitchRow(stringResource(R.string.led_blink), s.blinkOnNotification, stringResource(R.string.led_blink_hint)) { on ->
                 led.update { it.copy(blinkOnNotification = on) }

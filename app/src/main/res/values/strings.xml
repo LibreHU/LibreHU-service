@@ -1089,4 +1089,10 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="sound_osd_back">Back to the head unit\'s volume each time it opens</string>
     <string name="sound_osd_timeout">Closes after</string>
     <string name="sound_osd_test">Open the menu</string>
+    <string name="led_backlight_title">Button backlight</string>
+    <string name="led_backlight_hint">Panels with white LEDs (no colour LEDs) are lit by the two brightness outputs of the MCU (0F 02 and 0F 03, 5 to 100 %). The service gives them a brightness with the headlights off and one with them on, at each headlight change and at start. The colour of the card above only applies to panels with colour LEDs.</string>
+    <string name="led_backlight">Brightness from the headlights</string>
+    <string name="led_backlight_day">Output %1$d, headlights off</string>
+    <string name="led_backlight_night">Output %1$d, headlights on</string>
+    <string name="led_backlight_test_hint">Each setting is applied at once, to see which LEDs each output drives. The MCU keeps the value in its flash memory: only a new value is sent to it.</string>
 </resources>

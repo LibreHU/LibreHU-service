@@ -39,6 +39,15 @@ data class FrontLedSettings(
     val blinkGreen: Int = 99,
     val blinkBlue: Int = 99,
     val blinkCount: Int = 3,
+    /**
+     * Button backlight brightness following the headlights (on by default): the two PWM brightness outputs of the
+     * MCU (`0F 02`, `0F 03`), which light the white button LEDs of the panels without colour LEDs.
+     */
+    val backlight: Boolean = true,
+    val dayPwm1: Int = 100,
+    val nightPwm1: Int = 35,
+    val dayPwm2: Int = 100,
+    val nightPwm2: Int = 35,
 )
 
 /**
@@ -68,11 +77,51 @@ class FrontLed private constructor(
         apply()
     }
 
-    /** Sends the configured colour and mode (at each start of the link and after a change). */
+    /** Sends the configured colour and mode (at each start of the link and after a change), and the backlight. */
     fun apply() {
         val s = _settings.value
+        backlight(headlights, force = false)
         if (!s.managed || blinking) return
         sender?.invoke(Mcu.frontLed(s.red, s.green, s.blue, s.mode.code))
+    }
+
+    @Volatile
+    private var headlights: Boolean? = null
+
+    /** Headlights changed (DisplayController): the button backlight takes the night or day brightness. */
+    fun onHeadlights(on: Boolean?) {
+        headlights = on
+        backlight(on, force = false)
+    }
+
+    /**
+     * The brightness for [night] on both PWM outputs. The MCU writes them to its flash: only a value that differs
+     * from the last one sent goes out (unless [force]).
+     */
+    private fun backlight(
+        night: Boolean?,
+        force: Boolean,
+    ) {
+        val s = _settings.value
+        val send = sender ?: return
+        if (!s.backlight || night == null) return
+        val p1 = if (night) s.nightPwm1 else s.dayPwm1
+        val p2 = if (night) s.nightPwm2 else s.dayPwm2
+        val last = prefs.getString(PREF_PWM_SENT, null)
+        val now = "$p1,$p2"
+        if (!force && last == now) return
+        send(Mcu.pwmBrightness(1, p1))
+        main.postDelayed({ send(Mcu.pwmBrightness(2, p2)) }, PWM_GAP_MS)
+        prefs.edit().putString(PREF_PWM_SENT, now).apply()
+    }
+
+    /** Settings screen: the level of one output now, to see which LEDs it drives. */
+    fun testPwm(
+        channel: Int,
+        percent: Int,
+    ) {
+        sender?.invoke(Mcu.pwmBrightness(channel, percent))
+        prefs.edit().remove(PREF_PWM_SENT).apply()
     }
 
     /** Blinks [count] times in the blink colour, then puts the configured colour back. */
@@ -120,6 +169,11 @@ class FrontLed private constructor(
                     blinkGreen = o.optInt("bg", 99),
                     blinkBlue = o.optInt("bb", 99),
                     blinkCount = o.optInt("bn", 3),
+                    backlight = o.optBoolean("bl", true),
+                    dayPwm1 = o.optInt("d1", 100),
+                    nightPwm1 = o.optInt("n1", 35),
+                    dayPwm2 = o.optInt("d2", 100),
+                    nightPwm2 = o.optInt("n2", 35),
                 )
             }.getOrNull()
         } ?: FrontLedSettings()
@@ -136,10 +190,17 @@ class FrontLed private constructor(
             .put("bg", s.blinkGreen)
             .put("bb", s.blinkBlue)
             .put("bn", s.blinkCount)
+            .put("bl", s.backlight)
+            .put("d1", s.dayPwm1)
+            .put("n1", s.nightPwm1)
+            .put("d2", s.dayPwm2)
+            .put("n2", s.nightPwm2)
             .toString()
 
     companion object {
         private const val PREF = "front_led"
+        private const val PREF_PWM_SENT = "front_led_pwm_sent"
+        private const val PWM_GAP_MS = 150L
         private const val STEP_MS = 350L
 
         /** Colour presets (R, G, B on the MCU's 0..99 scale). */

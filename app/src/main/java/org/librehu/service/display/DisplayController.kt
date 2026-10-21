@@ -90,6 +90,8 @@ class DisplayController private constructor(
         if (_headlights.value == on) return
         _headlights.value = on
         apply()
+        // Button backlight brightness (MCU) day / night
+        org.librehu.service.car.FrontLed.get(app).onHeadlights(on)
     }
 
     fun update(transform: (DisplaySettings) -> DisplaySettings) {
