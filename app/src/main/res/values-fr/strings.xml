@@ -1149,4 +1149,21 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="rv_layout_split">Côte à côte</string>
     <string name="rv_layout_pip">Incrustée dans un coin</string>
     <string name="rv_layout_hint">Les lignes de guidage et l\'analyse de mouvement restent sur la caméra principale. « Une à la fois » : un toucher sur l\'image passe à la caméra suivante (une seule ouverte, comme d\'habitude).</string>
+    <string name="engine_title">Son moteur (simulé)</string>
+    <string name="engine_enable">Son moteur selon le régime</string>
+    <string name="engine_hint">Comme Potenza Drive : un son de moteur synthétisé (aucun enregistrement) suit le régime et l\'accélérateur lus par l\'adaptateur OBD, joué sur la sortie média par-dessus la musique. Demande le régime dans les valeurs OBD lues ; s\'arrête quand l\'adaptateur ne répond plus.</string>
+    <string name="engine_profile">Moteur</string>
+    <string name="engine_i4">4 cylindres</string>
+    <string name="engine_v6">6 en V</string>
+    <string name="engine_v8">8 en V</string>
+    <string name="engine_v12">12 cylindres</string>
+    <string name="engine_volume">Volume</string>
+    <string name="engine_turbo">Turbo</string>
+    <string name="engine_turbo_off">Sans</string>
+    <string name="engine_turbo_light">Léger</string>
+    <string name="engine_turbo_strong">Fort</string>
+    <string name="engine_pops">Pétarades au lever de pied</string>
+    <string name="engine_pops_hint">Craquements quand l\'accélérateur est relâché à haut régime</string>
+    <string name="engine_redline">Régime maximal joué</string>
+    <string name="engine_test">Essai (montée en régime simulée)</string>
 </resources>

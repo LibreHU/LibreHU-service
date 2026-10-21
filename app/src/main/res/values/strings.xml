@@ -1149,4 +1149,21 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="rv_layout_split">Side by side</string>
     <string name="rv_layout_pip">In a corner</string>
     <string name="rv_layout_hint">The guide lines and the movement analysis stay on the main camera. “One at a time”: a touch on the picture goes to the next camera (only one open, as usual).</string>
+    <string name="engine_title">Engine sound (made up)</string>
+    <string name="engine_enable">Engine sound following the RPM</string>
+    <string name="engine_hint">Like Potenza Drive: a synthesised engine sound (no recording) follows the RPM and throttle read by the OBD adapter, played on the media output over the music. Needs the RPM among the OBD values read; stops when the adapter no longer answers.</string>
+    <string name="engine_profile">Engine</string>
+    <string name="engine_i4">4 cylinders</string>
+    <string name="engine_v6">V6</string>
+    <string name="engine_v8">V8</string>
+    <string name="engine_v12">12 cylinders</string>
+    <string name="engine_volume">Volume</string>
+    <string name="engine_turbo">Turbo</string>
+    <string name="engine_turbo_off">None</string>
+    <string name="engine_turbo_light">Light</string>
+    <string name="engine_turbo_strong">Strong</string>
+    <string name="engine_pops">Pops on the overrun</string>
+    <string name="engine_pops_hint">Crackles when the throttle is released at high RPM</string>
+    <string name="engine_redline">Highest RPM played</string>
+    <string name="engine_test">Test (simulated rev up)</string>
 </resources>

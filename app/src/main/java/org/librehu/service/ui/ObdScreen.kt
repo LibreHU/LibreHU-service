@@ -18,6 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.librehu.core.obd.BatteryStatus
 import org.librehu.core.obd.ObdPid
 import org.librehu.service.R
+import org.librehu.service.car.EngineProfile
+import org.librehu.service.car.EngineSound
 import org.librehu.service.obd.BatteryWatch
 import org.librehu.service.obd.ObdConnection
 import org.librehu.service.obd.ObdLabels
@@ -101,6 +103,8 @@ fun ObdScreen(
         }
 
         BatteryCard()
+
+        EngineSoundCard()
 
         Card(stringResource(R.string.obd_values)) {
             Hint(stringResource(R.string.obd_values_hint))
@@ -216,5 +220,35 @@ private fun BatteryCard() {
         SliderRow(stringResource(R.string.bat_offset), (s.offset * 10).toInt(), -5..5, { "%+.1f V".format(java.util.Locale.ROOT, it / 10.0) }) { v ->
             watch.update { it.copy(offset = v / 10.0) }
         }
+    }
+}
+
+/** Engine sound made up from the RPM and throttle ([EngineSound]), like Potenza Drive. */
+@Composable
+private fun EngineSoundCard() {
+    val context = LocalContext.current
+    val engine = EngineSound.get(context)
+    val s by engine.settings.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.engine_title)) {
+        SwitchRow(stringResource(R.string.engine_enable), s.enabled, stringResource(R.string.engine_hint)) { on -> engine.update { it.copy(enabled = on) } }
+        BodyText(stringResource(R.string.engine_profile))
+        Choices(
+            listOf(
+                EngineProfile.I4 to stringResource(R.string.engine_i4),
+                EngineProfile.V6 to stringResource(R.string.engine_v6),
+                EngineProfile.V8 to stringResource(R.string.engine_v8),
+                EngineProfile.V12 to stringResource(R.string.engine_v12),
+            ),
+            s.profile,
+        ) { p -> engine.update { it.copy(profile = p) } }
+        SliderRow(stringResource(R.string.engine_volume), s.volume, 0..100, { "$it %" }) { v -> engine.update { it.copy(volume = v) } }
+        BodyText(stringResource(R.string.engine_turbo))
+        Choices(
+            listOf(0 to stringResource(R.string.engine_turbo_off), 1 to stringResource(R.string.engine_turbo_light), 2 to stringResource(R.string.engine_turbo_strong)),
+            s.turbo,
+        ) { t -> engine.update { it.copy(turbo = t) } }
+        SwitchRow(stringResource(R.string.engine_pops), s.pops, stringResource(R.string.engine_pops_hint)) { on -> engine.update { it.copy(pops = on) } }
+        SliderRow(stringResource(R.string.engine_redline), s.redline / 100, 40..90, { "${it * 100} tr/min" }) { r -> engine.update { it.copy(redline = r * 100) } }
+        Actions { Pill(stringResource(R.string.engine_test)) { engine.test() } }
     }
 }

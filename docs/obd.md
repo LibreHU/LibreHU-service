@@ -139,3 +139,17 @@ Python de ddt4all lancé sur les mêmes octets.
 - Les champs des valeurs reprennent ceux de ddt4all (`bits` = `bitscount`, `bytes` = `bytescount`, `ascii` =
   `bytesascii`, `endian` = `little` ou absent).
 - Les identifiants ci-dessus ne sont qu'un exemple de forme : prenez ceux de vos fichiers ddt4all.
+
+## Son moteur simulé (`car/EngineSound.kt`)
+
+Comme l'appli Potenza Drive (iPhone + ELM327) : un son de moteur **synthétisé** suit le régime et l'accélérateur
+(ou la charge) lus par l'adaptateur, sur la sortie média, mélangé à la musique (pas de demande de focus audio).
+Désactivé par défaut, carte **Son moteur (simulé)** de l'onglet OBD ; le régime doit être parmi les valeurs lues.
+
+- Une impulsion par allumage (fréquence = régime / 60 × cylindres / 2, moteur 4 temps), allumage irrégulier pour le
+  8 en V (glouglou), deux résonances d'échappement (filtres passe-bande) et un silencieux (passe-bas qui s'ouvre
+  avec la charge), bruit ; formules de filtres du « RBJ Audio EQ Cookbook ».
+- Moteurs : 4 cylindres, 6 en V, 8 en V, 12 cylindres ; volume ; turbo (sifflement selon la charge, soupape de
+  décharge quand l'accélérateur se ferme d'un coup) ; pétarades au lever de pied ; régime maximal joué.
+- L'OBD ne donne que quelques valeurs par seconde : le régime glisse vers la dernière valeur (≈ 80 ms). Fondu à
+  l'arrêt quand l'adaptateur ne répond plus. Bouton **Essai** : montée en régime simulée de 8 s, sans la voiture.
