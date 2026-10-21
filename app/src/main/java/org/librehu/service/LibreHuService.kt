@@ -668,6 +668,10 @@ class LibreHuService : Service() {
 
             override fun getAudioSource(): Int = unit?.source ?: HeadUnit.SOURCE_ANDROID
 
+            override fun getObdBattery(): Bundle = org.librehu.service.obd.BatteryWatch.get(this@LibreHuService).bundle()
+
+            override fun getObdCarValues(): Bundle = obd.carBundle()
+
             override fun runKeyAction(action: String?) {
                 val a = TouchAction.entries.firstOrNull { it.name == action } ?: return
                 android.os.Handler(mainLooper).post { TouchKeys.get(this@LibreHuService).run(null, ZoneAction(a)) }

@@ -19,7 +19,29 @@ Lecture du calculateur moteur par un adaptateur **ELM327** (prise OBD-II), en **
   carburant, charge). Couleur d'accent et clair / sombre du launcher ; s'adapte à la taille (4×2 conseillé).
   Image redessinée à chaque mise à jour OBD (environ 1 s) : pas d'animation fluide de l'aiguille.
 - Autres apps : `ILibreHuService.getObdValues()` (API 4) et le broadcast `org.librehu.action.OBD` (≈ 1 par
-  seconde, extras = nom de la valeur → double, ex. `RPM`, `SPEED`, `COOLANT_TEMP`, `BATTERY`).
+  seconde, extras = nom de la valeur → double, ex. `RPM`, `SPEED`, `COOLANT_TEMP`, `BATTERY` ; plus
+  `BATTERY_PERCENT` (int, −1 moteur tournant) et `BATTERY_STATUS`, voir ci-dessous). API 8 :
+  `getObdBattery()` (batterie) et `getObdCarValues()` (valeurs constructeur choisies : clé `<calculateur>/<valeur>`
+  → Bundle `name`, `ecu`, `text`, `unit`, `number`, `error`), utilisés par l'écran OBD plein écran du launcher.
+
+## Batterie de la voiture (`obd/BatteryWatch`, `core/.../CarBattery.kt`)
+
+Depuis la tension de la prise OBD (`ATRV`, tous les 5 tours) :
+- **Moteur arrêté** : charge estimée par la tension au repos, tableau de la Battery Council International
+  (12,6 V = 100 %, 12,4 V = 75 %, 12,2 V = 50 %, 12,0 V = 25 %, 11,7 V = 0 %, interpolé). Approximatif : autoradio
+  allumé la batterie débite un peu (lecture un peu basse), juste après avoir roulé elle garde une charge de surface
+  (lecture un peu haute).
+- **Moteur tournant** (régime > 300 tr/min s'il est lu, sinon tension ≥ seuil de charge) : **en charge**
+  (alternateur, d'ordinaire 13,5 à 14,7 V), **pas de charge** (sous le seuil, 13,0 V par défaut) ou **surtension**
+  (au-dessus de 15,0 V par défaut).
+- **Alarmes** (notification, avec ou sans son) : batterie faible moteur arrêté (sous 12,0 V pendant 30 s), défaut
+  de charge (60 s), surtension (10 s) ; chacune une fois, puis de nouveau seulement après être revenue à la normale
+  (0,2 V au-dessus du seuil pour la batterie faible). Seuils, son et **correction de la tension lue** (±0,5 V : un
+  ELM327 peut lire 0,1 à 0,3 V à côté) dans la carte **Batterie de la voiture** de l'onglet OBD. Les voitures à
+  alternateur piloté descendent parfois exprès vers 12,5 V moteur tournant : baisser le seuil ou couper l'alarme.
+- Charge et état : AIDL `getObdBattery()` (`voltage`, `percent`, `status` = `ENGINE_OFF`, `CHARGING`,
+  `NOT_CHARGING`, `OVERVOLTAGE`) et extras du broadcast ; affichés par le launcher (écran de verrouillage, horloge
+  de veille, écran OBD).
 
 Clio 3 : prise OBD sous le volant ; l'EOBD est obligatoire depuis 2001 (essence) et 2004 (diesel), le protocole est
 détecté automatiquement. Les valeurs non gérées par le calculateur apparaissent grisées.

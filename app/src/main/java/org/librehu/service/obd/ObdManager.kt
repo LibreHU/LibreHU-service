@@ -109,6 +109,7 @@ class ObdManager private constructor(
     @Volatile
     private var sessionCan: Int? = null
     private val cars by lazy { ObdCarStore.get(app) }
+    private val battery by lazy { BatteryWatch.get(app) }
 
     @Volatile
     private var thread: Thread? = null
@@ -197,6 +198,26 @@ class ObdManager private constructor(
         if (_settings.value.enabled) launch()
     }
 
+    /** Chosen manufacturer values: key → Bundle(name, ecu, text, unit, number when scaled, error). */
+    fun carBundle(): Bundle =
+        Bundle().apply {
+            val st = _state.value
+            if (st.connection != ObdConnection.CONNECTED) return@apply
+            for (r in st.car.values) {
+                putBundle(
+                    r.key,
+                    Bundle().apply {
+                        putString("name", r.name)
+                        putString("ecu", r.ecu)
+                        putString("text", r.text)
+                        putString("unit", r.unit)
+                        r.number?.let { putDouble("number", it) }
+                        putBoolean("error", r.error)
+                    },
+                )
+            }
+        }
+
     fun valuesBundle(): Bundle =
         Bundle().apply {
             val st = _state.value
@@ -239,6 +260,7 @@ class ObdManager private constructor(
                 setState { it.copy(connection = ObdConnection.ERROR, message = e.message ?: e.javaClass.simpleName) }
             } finally {
                 link?.close()
+                battery.onDisconnected()
                 ObdWidget.refresh(app)
             }
             try {
@@ -293,6 +315,7 @@ class ObdManager private constructor(
                 values = voltage?.let { v -> mapOf(BATTERY to v) }.orEmpty(),
             )
         }
+        voltage?.let { battery.onVoltage(it, null) }
         var round = 0
         while (running) {
             requests.poll()?.let { handleRequest(link, it) }
@@ -304,7 +327,12 @@ class ObdManager private constructor(
                 Elm327.decode(raw, pid)?.let { values[pid.name] = it }
                 if (Thread.interrupted()) throw InterruptedException()
             }
-            if (round % SLOW_EVERY == 0) Elm327.voltage(link.ask(Elm327.READ_VOLTAGE))?.let { values[BATTERY] = it }
+            if (round % SLOW_EVERY == 0) {
+                Elm327.voltage(link.ask(Elm327.READ_VOLTAGE))?.let {
+                    values[BATTERY] = it
+                    battery.onVoltage(it, values[ObdPid.RPM.name])
+                }
+            }
             if (round % CAR_EVERY == 0) readCar(link, can)
             setState { it.copy(values = values, updated = System.currentTimeMillis()) }
             publish(values)
@@ -447,6 +475,10 @@ class ObdManager private constructor(
             Bundle().apply {
                 values.forEach { (k, v) -> putDouble(k, v) }
                 _state.value.car.values.forEach { r -> r.number?.let { putDouble("car:" + r.key, it) } }
+                battery.reading.value?.let { b ->
+                    putInt(BATTERY_PERCENT, b.percent ?: -1)
+                    putString(BATTERY_STATUS, b.status.name)
+                }
             }
         app.sendBroadcast(Intent(LibreHu.ACTION_OBD).putExtras(extras))
         ObdWidget.refresh(app)
@@ -501,6 +533,10 @@ class ObdManager private constructor(
 
         /** Adapter supply voltage (`ATRV`): car battery, available even engine off. */
         const val BATTERY = "BATTERY"
+
+        /** Broadcast extras of [BatteryWatch]: charge (int, −1 engine running) and status name. */
+        const val BATTERY_PERCENT = "BATTERY_PERCENT"
+        const val BATTERY_STATUS = "BATTERY_STATUS"
 
         val BAUD_RATES = listOf(9600, 38400, 115200, 230400, 500000)
 

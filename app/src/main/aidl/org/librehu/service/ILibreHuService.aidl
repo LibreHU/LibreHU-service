@@ -98,4 +98,17 @@ interface ILibreHuService {
      * EasySource's picker and the sound menu while they show, else the usual action. For button apps (BtnRemap).
      */
     void runKeyAction(String action);
+
+    // --- API 8 ---
+
+    /**
+     * Car battery from the adapter's voltage: "voltage" (double, volts), "percent" (int, charge engine off, -1 engine
+     * running), "status" (ENGINE_OFF, CHARGING, NOT_CHARGING, OVERVOLTAGE). Empty when the adapter is not connected.
+     */
+    Bundle getObdBattery();
+    /**
+     * Manufacturer values chosen for the selected car: key "<ECU>/<value>" -> Bundle with "name", "ecu", "text" (as
+     * shown, with its unit), "unit", "number" (double, when scaled) and "error" (boolean). Empty when not connected.
+     */
+    Bundle getObdCarValues();
 }

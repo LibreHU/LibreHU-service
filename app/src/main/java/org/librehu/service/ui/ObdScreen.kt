@@ -15,8 +15,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.librehu.core.obd.BatteryStatus
 import org.librehu.core.obd.ObdPid
 import org.librehu.service.R
+import org.librehu.service.obd.BatteryWatch
 import org.librehu.service.obd.ObdConnection
 import org.librehu.service.obd.ObdLabels
 import org.librehu.service.obd.ObdManager
@@ -98,6 +100,8 @@ fun ObdScreen(
             }
         }
 
+        BatteryCard()
+
         Card(stringResource(R.string.obd_values)) {
             Hint(stringResource(R.string.obd_values_hint))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -164,5 +168,53 @@ fun ObdScreen(
             },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(android.R.string.cancel)) } },
         )
+    }
+}
+
+/** Car battery from the adapter's voltage: charge, charging, alarms and their thresholds ([BatteryWatch]). */
+@Composable
+private fun BatteryCard() {
+    val context = LocalContext.current
+    val watch = BatteryWatch.get(context)
+    val s by watch.settings.collectAsStateWithLifecycle()
+    val r by watch.reading.collectAsStateWithLifecycle()
+    fun volts(v: Double) = String.format(java.util.Locale.ROOT, "%.1f V", v)
+    Card(stringResource(R.string.bat_title)) {
+        val reading = r
+        if (reading == null) {
+            Hint(stringResource(R.string.bat_none))
+        } else {
+            StatusLine(
+                volts(reading.voltage) + "  ·  " +
+                    when (reading.status) {
+                        BatteryStatus.ENGINE_OFF -> stringResource(R.string.bat_engine_off, reading.percent ?: 0)
+                        BatteryStatus.CHARGING -> stringResource(R.string.bat_charging)
+                        BatteryStatus.NOT_CHARGING -> stringResource(R.string.bat_not_charging)
+                        BatteryStatus.OVERVOLTAGE -> stringResource(R.string.bat_overvoltage)
+                    },
+                reading.status == BatteryStatus.CHARGING || (reading.status == BatteryStatus.ENGINE_OFF && reading.voltage >= s.limits.low),
+            )
+        }
+        Hint(stringResource(R.string.bat_hint))
+        val l = s.limits
+        SwitchRow(stringResource(R.string.bat_alarm_low), l.alarmLow, stringResource(R.string.bat_alarm_low_hint, volts(l.low))) { on ->
+            watch.update { it.copy(limits = it.limits.copy(alarmLow = on)) }
+        }
+        SliderRow(stringResource(R.string.bat_low), (l.low * 10).toInt(), 115..125, { volts(it / 10.0) }) { v ->
+            watch.update { it.copy(limits = it.limits.copy(low = v / 10.0)) }
+        }
+        SwitchRow(stringResource(R.string.bat_alarm_charge), l.alarmCharge, stringResource(R.string.bat_alarm_charge_hint, volts(l.chargeMin))) { on ->
+            watch.update { it.copy(limits = it.limits.copy(alarmCharge = on)) }
+        }
+        SliderRow(stringResource(R.string.bat_charge_min), (l.chargeMin * 10).toInt(), 120..136, { volts(it / 10.0) }) { v ->
+            watch.update { it.copy(limits = it.limits.copy(chargeMin = v / 10.0)) }
+        }
+        SwitchRow(stringResource(R.string.bat_alarm_over), l.alarmOver, stringResource(R.string.bat_alarm_over_hint, volts(l.overMax))) { on ->
+            watch.update { it.copy(limits = it.limits.copy(alarmOver = on)) }
+        }
+        SwitchRow(stringResource(R.string.bat_sound), s.sound) { on -> watch.update { it.copy(sound = on) } }
+        SliderRow(stringResource(R.string.bat_offset), (s.offset * 10).toInt(), -5..5, { "%+.1f V".format(java.util.Locale.ROOT, it / 10.0) }) { v ->
+            watch.update { it.copy(offset = v / 10.0) }
+        }
     }
 }
