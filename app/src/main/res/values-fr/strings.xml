@@ -1138,4 +1138,15 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="led_backlight_day">Sortie %1$d, feux éteints</string>
     <string name="led_backlight_night">Sortie %1$d, feux allumés</string>
     <string name="led_backlight_test_hint">Chaque réglage est appliqué tout de suite, pour voir quelles LED suit chaque sortie. La MCU garde la valeur dans sa mémoire flash : seule une valeur nouvelle lui est envoyée.</string>
+    <string name="rv_uvc_label">USB · %1$s (port %2$s)</string>
+    <string name="rv_uvc_missing">caméra USB débranchée</string>
+    <string name="rv_extras_title">Caméras supplémentaires</string>
+    <string name="rv_extras_hint">D\'autres caméras avec la caméra principale à la marche arrière : caméras latérales, deuxième caméra arrière, caméra USB (UVC, lue directement par le noyau). Une caméra USB est repérée par son port USB : la garder sur le même port. Ouvrir plusieurs caméras en même temps dépend du service caméra de l\'autoradio : sinon, choisir « Une à la fois ».</string>
+    <string name="rv_extras_add">Ajouter une caméra</string>
+    <string name="rv_extras_remove">Retirer</string>
+    <string name="rv_layout">Affichage</string>
+    <string name="rv_layout_switch">Une à la fois (toucher l\'image)</string>
+    <string name="rv_layout_split">Côte à côte</string>
+    <string name="rv_layout_pip">Incrustée dans un coin</string>
+    <string name="rv_layout_hint">Les lignes de guidage et l\'analyse de mouvement restent sur la caméra principale. « Une à la fois » : un toucher sur l\'image passe à la caméra suivante (une seule ouverte, comme d\'habitude).</string>
 </resources>

@@ -11,6 +11,24 @@ enum class ReverseMode {
     APP,
 }
 
+/** How the extra cameras show next to the main one. */
+enum class CameraLayout {
+    /** One at a time, a touch on the picture goes to the next (works with a camera service taking one camera). */
+    SWITCH,
+
+    /** Side by side (two), or a grid. */
+    SPLIT,
+
+    /** The main one full screen, the others small in a corner. */
+    PIP,
+}
+
+/** One more camera of the rear view: Camera2 id or `uvc:<USB port>`. */
+data class ExtraCamera(
+    val id: String,
+    val mirror: Boolean = false,
+)
+
 /** Sound when the reverse gear is engaged. */
 enum class EngageSound { NONE, BEEP, DOUBLE, CHIME, CUSTOM }
 
@@ -105,6 +123,9 @@ data class ReverseViewSettings(
     val widgetLive: WidgetLive = WidgetLive.LAUNCHER,
     /** Pictures per second sent to the widget. */
     val widgetFps: Int = 10,
+    /** Other cameras shown with the main one (side cameras, USB camera…), at most [MAX_EXTRAS]. */
+    val extras: List<ExtraCamera> = emptyList(),
+    val layout: CameraLayout = CameraLayout.SWITCH,
 ) {
     fun toJson(): JSONObject =
         JSONObject()
@@ -134,6 +155,10 @@ data class ReverseViewSettings(
             .put("showInfo", showInfo)
             .put("widgetLive", widgetLive.name)
             .put("widgetFps", widgetFps)
+            .put(
+                "extras",
+                org.json.JSONArray(extras.map { JSONObject().put("id", it.id).put("mirror", it.mirror) }),
+            ).put("layout", layout.name)
 
     companion object {
         fun fromJson(o: JSONObject): ReverseViewSettings {
@@ -165,8 +190,17 @@ data class ReverseViewSettings(
                 showInfo = o.optBoolean("showInfo", d.showInfo),
                 widgetLive = WidgetLive.entries.firstOrNull { it.name == o.optString("widgetLive") } ?: d.widgetLive,
                 widgetFps = o.optInt("widgetFps", d.widgetFps),
+                extras =
+                    o.optJSONArray("extras")?.let { a ->
+                        (0 until a.length()).mapNotNull { i ->
+                            a.optJSONObject(i)?.let { e -> ExtraCamera(e.optString("id"), e.optBoolean("mirror")) }?.takeIf { it.id.isNotEmpty() }
+                        }
+                    } ?: d.extras,
+                layout = CameraLayout.entries.firstOrNull { it.name == o.optString("layout") } ?: d.layout,
             )
         }
+
+        const val MAX_EXTRAS = 3
     }
 }
 

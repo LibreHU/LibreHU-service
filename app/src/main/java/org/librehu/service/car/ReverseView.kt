@@ -89,6 +89,13 @@ class ReverseView private constructor(
     private var device: CameraDevice? = null
     private var session: CameraCaptureSession? = null
     private var reader: ImageReader? = null
+    private var uvc: UvcStream? = null
+
+    /** Extra cameras shown (split / corner layouts). */
+    private val feeds = ArrayList<CameraFeed>()
+
+    /** "One at a time" layout: index of the camera shown, 0 = the main one, 1.. = [ReverseViewSettings.extras]. */
+    private var shownIndex = 0
 
     @Volatile
     private var generation = 0
@@ -120,10 +127,11 @@ class ReverseView private constructor(
         prefs.edit().putString(PREF, s.toJson().toString()).apply()
         main.post {
             val g = guide ?: return@post
-            g.settings = s
+            if (shownIndex != 0 && s.extras != old.extras) shownIndex = 0
+            g.settings = if (shownIndex == 0) s else s.copy(lines = s.lines.copy(show = false))
             sounds.setVolume(s.soundVolume)
             applyTransform()
-            if (s.cameraId != old.cameraId || (s.motion || s.approach) != (old.motion || old.approach)) reopen()
+            if (s.cameraId != old.cameraId || s.extras != old.extras || (s.motion || s.approach) != (old.motion || old.approach)) reopen()
         }
         if (s.widgetLive != old.widgetLive) ReverseWidgetLive.get(app).evaluate()
     }
@@ -171,11 +179,16 @@ class ReverseView private constructor(
         frame.setBackgroundColor(android.graphics.Color.BLACK)
         val tv = TextureView(app)
         val g = ReverseGuideView(app)
+        shownIndex = 0
         g.settings = s
         g.preview = preview
         g.onClose = { detach() }
-        frame.addView(tv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(g, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        if (s.extras.isNotEmpty() && s.layout == CameraLayout.SWITCH) g.onTap = { nextCamera() }
+        // The main camera with its lines; the extra ones beside it (split) or in a corner (picture in picture).
+        val mainBox = FrameLayout(app)
+        mainBox.addView(tv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        mainBox.addView(g, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        layoutCameras(frame, mainBox, s)
         tv.surfaceTextureListener =
             object : TextureView.SurfaceTextureListener {
                 override fun onSurfaceTextureAvailable(
@@ -250,6 +263,8 @@ class ReverseView private constructor(
     private fun detach() {
         val frame = root ?: return
         closeCamera()
+        feeds.forEach { it.close() }
+        feeds.clear()
         scope?.cancel()
         scope = null
         sounds.stop()
@@ -308,6 +323,7 @@ class ReverseView private constructor(
         set(value) = prefs.edit().putInt(PREF_FORMAT, value).apply()
 
     internal fun cameraCandidates(s: ReverseViewSettings): List<String> {
+        if (shownIndex > 0) s.extras.getOrNull(shownIndex - 1)?.let { return listOf(it.id) }
         if (s.cameraId.isNotEmpty()) return listOf(s.cameraId)
         val listed = runCatching { cameras.cameraIdList.toList() }.getOrDefault(emptyList())
         val back =
@@ -335,6 +351,10 @@ class ReverseView private constructor(
             return
         }
         val id = ids[index]
+        if (id.startsWith(UvcCameras.PREFIX)) {
+            openUvc(id, st, gen) { error -> tryOpen(ids, index + 1, st, gen, "$id: $error") }
+            return
+        }
         val callback =
             object : CameraDevice.StateCallback() {
                 override fun onOpened(d: CameraDevice) {
@@ -453,6 +473,8 @@ class ReverseView private constructor(
 
     private fun closeCamera() {
         generation++
+        uvc?.let { u -> Thread { u.stop() }.start() }
+        uvc = null
         val handler = cam ?: return
         val thread = camThread
         cam = null
@@ -467,6 +489,98 @@ class ReverseView private constructor(
             thread?.quitSafely()
         }
         openedId = null
+    }
+
+    /** A USB camera (V4L2) drawn into the main view: no movement analysis (no second stream). */
+    private fun openUvc(
+        id: String,
+        st: SurfaceTexture,
+        gen: Int,
+        failed: (String) -> Unit,
+    ) {
+        val d = UvcCameras.resolve(id) ?: return failed(app.getString(R.string.rv_uvc_missing))
+        val stream =
+            UvcStream(
+                d,
+                st,
+                { w, h ->
+                    main.post {
+                        if (gen != generation) return@post
+                        openedId = id
+                        bufferW = w
+                        bufferH = h
+                        applyTransform()
+                        guide?.message = null
+                        _status.value = app.getString(R.string.rv_status, d.name, w, h)
+                    }
+                },
+                {},
+                { e -> if (gen == generation) message(app.getString(R.string.rv_camera_error_text, e)) },
+            )
+        uvc = stream
+        stream.start()
+    }
+
+    /** "One at a time": the next camera in the main view (the guide lines only on the main camera). */
+    private fun nextCamera() {
+        val s = _settings.value
+        if (s.extras.isEmpty()) return
+        shownIndex = (shownIndex + 1) % (s.extras.size + 1)
+        guide?.settings =
+            if (shownIndex == 0) {
+                s
+            } else {
+                s.copy(lines = s.lines.copy(show = false), mirror = s.extras[shownIndex - 1].mirror, rotation = 0, zoom = 100, offsetX = 0, offsetY = 0)
+            }
+        reopen()
+    }
+
+    private fun shownSettings(s: ReverseViewSettings): ReverseViewSettings =
+        if (shownIndex == 0) s else s.copy(mirror = s.extras.getOrNull(shownIndex - 1)?.mirror ?: false, rotation = 0, zoom = 100, offsetX = 0, offsetY = 0)
+
+    /** Places the main camera's box and the extra cameras ([CameraLayout]). */
+    private fun layoutCameras(
+        frame: FrameLayout,
+        mainBox: FrameLayout,
+        s: ReverseViewSettings,
+    ) {
+        val extras = if (s.layout == CameraLayout.SWITCH) emptyList() else s.extras.take(ReverseViewSettings.MAX_EXTRAS)
+        val list = cameraList()
+        fun label(id: String) = list.firstOrNull { it.id == id }?.label ?: id
+        val made = extras.map { CameraFeed(app, it, label(it.id)) }
+        feeds += made
+        val full = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        if (made.isEmpty()) {
+            frame.addView(mainBox, full)
+            return
+        }
+        if (s.layout == CameraLayout.PIP) {
+            frame.addView(mainBox, full)
+            val dm = app.resources.displayMetrics
+            val w = dm.widthPixels / 4
+            val h = w * 9 / 16
+            val margin = (12 * dm.density).toInt()
+            made.forEachIndexed { i, f ->
+                frame.addView(
+                    f.view,
+                    FrameLayout.LayoutParams(w, h, Gravity.BOTTOM or Gravity.START).apply {
+                        leftMargin = margin
+                        bottomMargin = margin + i * (h + margin)
+                    },
+                )
+            }
+            return
+        }
+        // Split: two side by side, three or four in a 2 × 2 grid (the main one top left).
+        val all = listOf<android.view.View>(mainBox) + made.map { it.view }
+        val grid = android.widget.LinearLayout(app).apply { orientation = android.widget.LinearLayout.VERTICAL }
+        val rows = if (all.size <= 2) listOf(all) else all.chunked(2)
+        for (r in rows) {
+            val row = android.widget.LinearLayout(app).apply { orientation = android.widget.LinearLayout.HORIZONTAL }
+            for (v in r) row.addView(v, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { setMargins(2, 2, 2, 2) })
+            grid.addView(row, android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        frame.addView(grid, full)
     }
 
     private fun message(text: String) {
@@ -486,7 +600,7 @@ class ReverseView private constructor(
     private fun applyTransform() {
         val tv = texture ?: return
         val g = guide ?: return
-        val s = _settings.value
+        val s = shownSettings(_settings.value)
         val w = tv.width.toFloat()
         val h = tv.height.toFloat()
         if (w <= 0 || h <= 0) return
@@ -656,7 +770,7 @@ class ReverseView private constructor(
                 val hidden = if (id in listed) "" else " · " + app.getString(R.string.rv_hidden)
                 val role = ROLES[id]?.let { app.getString(it) + " · " }.orEmpty()
                 RearCameraInfo(id, "$role$facing${best?.let { " · ${it.width}×${it.height}" }.orEmpty()}$hidden")
-            }
+            } + UvcCameras.list().map { RearCameraInfo(it.id, app.getString(R.string.rv_uvc_label, it.name, it.port)) }
     }
 
     /** Preview size of the first camera that answers (the one the view would open), without opening it. */

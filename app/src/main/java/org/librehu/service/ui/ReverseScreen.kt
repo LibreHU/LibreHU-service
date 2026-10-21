@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
 import org.librehu.service.ServiceState
+import org.librehu.service.car.CameraLayout
 import org.librehu.service.car.EngageSound
+import org.librehu.service.car.ExtraCamera
 import org.librehu.service.car.GuideLines
 import org.librehu.service.car.MediaDuring
 import org.librehu.service.car.RearCameraInfo
@@ -49,6 +51,7 @@ fun ReverseScreen(actions: AppActions) {
             val view = ReverseView.get(context)
             val v by view.settings.collectAsStateWithLifecycle()
             ReverseImageCard(view, v)
+            ReverseExtrasCard(view, v)
             ReverseWidgetCard(view, v)
             GuideLinesCard(view, v)
             ReverseSoundCard(view, v, actions)
@@ -277,6 +280,62 @@ private fun ReverseImageCard(
             },
             confirmButton = {},
             dismissButton = { TextButton(onClick = { picking = false }) { Text(stringResource(android.R.string.cancel)) } },
+        )
+    }
+}
+
+/** More cameras with the main one: which ones, mirrored or not, and how they show ([CameraLayout]). */
+@Composable
+private fun ReverseExtrasCard(
+    view: ReverseView,
+    v: ReverseViewSettings,
+) {
+    var list by remember { mutableStateOf<List<RearCameraInfo>?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { list = withContext(Dispatchers.IO) { view.cameraList() } }
+    Card(stringResource(R.string.rv_extras_title)) {
+        Hint(stringResource(R.string.rv_extras_hint))
+        for ((i, e) in v.extras.withIndex()) {
+            val label = list?.firstOrNull { it.id == e.id }?.label ?: e.id
+            SwitchRow("${i + 2}. $label", e.mirror, stringResource(R.string.rv_mirror)) { on ->
+                view.update { s -> s.copy(extras = s.extras.mapIndexed { j, x -> if (j == i) x.copy(mirror = on) else x }) }
+            }
+            Actions {
+                Pill(stringResource(R.string.rv_extras_remove)) { view.update { s -> s.copy(extras = s.extras.filterIndexed { j, _ -> j != i }) } }
+            }
+        }
+        if (v.extras.size < ReverseViewSettings.MAX_EXTRAS) {
+            Actions { Pill(stringResource(R.string.rv_extras_add)) { adding = true } }
+        }
+        if (v.extras.isNotEmpty()) {
+            BodyText(stringResource(R.string.rv_layout))
+            Choices(
+                listOf(
+                    CameraLayout.SWITCH to stringResource(R.string.rv_layout_switch),
+                    CameraLayout.SPLIT to stringResource(R.string.rv_layout_split),
+                    CameraLayout.PIP to stringResource(R.string.rv_layout_pip),
+                ),
+                v.layout,
+            ) { l -> view.update { it.copy(layout = l) } }
+            Hint(stringResource(R.string.rv_layout_hint))
+        }
+    }
+    if (adding) {
+        AlertDialog(
+            onDismissRequest = { adding = false },
+            title = { Text(stringResource(R.string.rv_extras_add)) },
+            text = {
+                LazyColumn(Modifier.fillMaxWidth()) {
+                    items(list.orEmpty().filter { c -> c.id != v.cameraId && v.extras.none { it.id == c.id } }, key = { it.id }) { c ->
+                        ListRow(stringResource(R.string.rv_camera_id, c.id), c.label, onClick = {
+                            adding = false
+                            view.update { s -> s.copy(extras = s.extras + ExtraCamera(c.id)) }
+                        })
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { adding = false }) { Text(stringResource(android.R.string.cancel)) } },
         )
     }
 }

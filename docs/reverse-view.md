@@ -31,6 +31,30 @@ Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par
 - Format de la caméra (CVBS, AHD 720p / 1080p, 25 / 30 i/s) : réglé sous Android, dans la metazone, lu au démarrage
   (Avancé → Autochips, [atc.md](atc.md#format-de-la-caméra)). La ligne d'info montre les images par seconde reçues.
 
+## Caméra USB (UVC)
+
+Une webcam / caméra de recul **USB** (classe vidéo UVC) peut être la caméra principale ou une caméra
+supplémentaire. Le pilote `uvcvideo` est intégré aux noyaux LibreHU et Jancar (`CONFIG_USB_VIDEO_CLASS=y`) : la
+caméra apparaît en `/dev/videoN`, lue directement en **V4L2** (`cpp/librehu_uvc.c` : tampons mmap, **MJPEG** décodé
+par `BitmapFactory`, sinon **YUYV** converti en ARGB) et dessinée dans la vue de recul (`car/UvcCameras.kt`). Elle est
+listée « USB · nom (port 1-1:1.0) » : elle est retrouvée par son **port USB**, la garder sur le même. Le nœud est
+rendu accessible par le root s'il le faut (`chmod 666`, puis une règle SELinux pour le domaine de l'appli avec
+`magiskpolicy`, `supolicy` ou `ksud sepolicy patch`). Pas d'analyse de mouvement sur une caméra USB (un seul flux).
+Demande l'autoradio en **USB hôte** (Avancé → Autochips).
+
+## Plusieurs caméras
+
+Carte **Caméras supplémentaires** : jusqu'à 3 caméras de plus (latérales, deuxième caméra arrière, USB, CVBS IN…),
+chacune en miroir ou non, et l'affichage :
+- **Une à la fois** (par défaut) : un toucher sur l'image passe à la caméra suivante ; une seule caméra ouverte,
+  comme d'habitude, donc toujours possible.
+- **Côte à côte** : deux moitiés, ou une grille 2 × 2 à partir de trois caméras (la principale en haut à gauche).
+- **Incrustée** : la principale en plein écran, les autres en petit en bas à gauche.
+
+Les lignes de guidage, la trajectoire et l'analyse de mouvement restent sur la caméra principale. Ouvrir plusieurs
+caméras en même temps dépend du service caméra (HAL) de l'autoradio : si une caméra supplémentaire ne s'ouvre pas,
+son erreur s'affiche dans sa case ; choisir alors « Une à la fois ».
+
 ## Lignes de guidage
 Un rectangle au sol derrière la voiture (largeur de la voiture × longueur choisie) dessiné en perspective : on place ses
 4 coins à l'écran (centre, hauteur et largeur du côté proche et du côté éloigné), ce qui donne l'homographie sol → écran

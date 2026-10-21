@@ -61,6 +61,9 @@ class ReverseGuideView(
     var preview = false
     var onClose: (() -> Unit)? = null
 
+    /** A touch on the picture (not on the close button): next camera in the "one at a time" layout. */
+    var onTap: (() -> Unit)? = null
+
     private val density = resources.displayMetrics.density
     private val line =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -111,8 +114,10 @@ class ReverseGuideView(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) return closeRect.contains(event.x, event.y)
-        if (event.action == MotionEvent.ACTION_UP && closeRect.contains(event.x, event.y)) onClose?.invoke()
+        if (event.action == MotionEvent.ACTION_DOWN) return closeRect.contains(event.x, event.y) || onTap != null
+        if (event.action == MotionEvent.ACTION_UP) {
+            if (closeRect.contains(event.x, event.y)) onClose?.invoke() else onTap?.invoke()
+        }
         return true
     }
 
