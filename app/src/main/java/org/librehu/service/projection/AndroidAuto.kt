@@ -132,6 +132,10 @@ object AndroidAuto {
     private const val KEY_TAKEN = 1
     private const val RAISE_DELAY_MS = 800L
 
+    /** When the day / night and the car's state are sent again after a session starts. */
+    private val SESSION_RESEND_MS = longArrayOf(0L, 1500L, 5000L)
+    private val main = Handler(Looper.getMainLooper())
+
     private val _session = MutableStateFlow(AaSession())
     val session: StateFlow<AaSession> = _session.asStateFlow()
 
@@ -175,11 +179,20 @@ object AndroidAuto {
                             SystemClock.elapsedRealtime(),
                         )
                     ProjectionWidgets.refresh(app)
-                    // A new session takes the current day / night, and the car's state.
-                    if (intent.getStringExtra("state") == "connected") {
-                        lastNight = null
-                        applyNight(app, DisplayController.get(app).headlights.value)
-                        lastCar?.let { sendCar(app, it) }
+                    // A new session takes the current day / night, and the car's state: at "connected", at
+                    // "projecting", and again a little later (sent too early, the phone missed headlights already on
+                    // and Android Auto stayed in day mode until they were switched off and on again).
+                    val st = intent.getStringExtra("state")
+                    if (st == "connected" || st == "projecting") {
+                        for (delay in SESSION_RESEND_MS) {
+                            main.postDelayed({
+                                if (_session.value.active) {
+                                    lastNight = null
+                                    applyNight(app, DisplayController.get(app).headlights.value)
+                                    lastCar?.let { sendCar(app, it) }
+                                }
+                            }, delay)
+                        }
                     }
                 }
             }
