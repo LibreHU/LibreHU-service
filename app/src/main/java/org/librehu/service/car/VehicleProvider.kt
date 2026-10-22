@@ -9,7 +9,7 @@ import android.net.Uri
 /**
  * `content://org.librehu.service.vehicle/info`: one row with the car's name and description and the head unit's
  * radio names and MAC addresses ([VehicleInfo]); `update` changes the description, and `name` renames the car
- * ([CarName]). Read and write need `org.librehu.permission.VEHICLE`, a signature permission: the LibreHU apps only.
+ * ([CarName]); `carplay_video_low_latency` (1 / 0) is the CarPlay page's decoder low-latency switch. Read and write need `org.librehu.permission.VEHICLE`, a signature permission: the LibreHU apps only.
  */
 class VehicleProvider : ContentProvider() {
     override fun onCreate() = true
@@ -39,6 +39,8 @@ class VehicleProvider : ContentProvider() {
                 COL_WIFI_MAC to r.wifiMac,
                 COL_HOTSPOT_SSID to r.hotspotSsid,
                 COL_WIFI_DIRECT_NAME to r.wifiDirectName,
+                COL_CARPLAY_LOW_LATENCY to
+                    if (org.librehu.service.LibreHuService.prefs(c).getBoolean(org.librehu.service.projection.CarPlay.PREF_VIDEO_LOW_LATENCY, true)) "1" else "0",
             )
         val cursor = MatrixCursor(row.keys.toTypedArray())
         cursor.addRow(row.values.toTypedArray())
@@ -102,5 +104,6 @@ class VehicleProvider : ContentProvider() {
         const val COL_WIFI_MAC = "wifi_mac"
         const val COL_HOTSPOT_SSID = "hotspot_ssid"
         const val COL_WIFI_DIRECT_NAME = "wifi_direct_name"
+        const val COL_CARPLAY_LOW_LATENCY = "carplay_video_low_latency"
     }
 }

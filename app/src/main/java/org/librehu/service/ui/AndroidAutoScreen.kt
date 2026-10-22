@@ -106,6 +106,7 @@ fun AndroidAutoScreen() {
                     settings.raiseAfterReverse,
                     stringResource(R.string.aa_raise_after_reverse_hint),
                 ) { on -> AndroidAuto.update(context) { it.copy(raiseAfterReverse = on) } }
+                VideoLowLatencyRow(scope)
                 Hint(stringResource(R.string.aa_integration_hint))
             }
             HeadunitSettingsCard(app == HeadunitApp.LIBREHU, scope)
@@ -242,3 +243,23 @@ private fun TextSetting(
         modifier = Modifier.fillMaxWidth(),
     )
 }
+
+/**
+ * Open Headunit's decoder low-latency request (`debug-video-low-latency`: "vdec-lowlatency" on MediaTek decoders below
+ * Android 11, dropped again by its decoder ladder when refused), read and written through its automation commands.
+ * Hidden when the app does not answer or has no such setting.
+ */
+@Composable
+private fun VideoLowLatencyRow(scope: kotlinx.coroutines.CoroutineScope) {
+    val context = LocalContext.current
+    var on by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        AndroidAuto.readSettings(context).onSuccess { if (it.has(AA_LOW_LATENCY)) on = it.optBoolean(AA_LOW_LATENCY) }
+    }
+    val value = on ?: return
+    SwitchRow(stringResource(R.string.video_low_latency), value, stringResource(R.string.video_low_latency_hint)) { v ->
+        scope.launch { AndroidAuto.writeSettings(context, JSONObject().put(AA_LOW_LATENCY, v)).onSuccess { on = v } }
+    }
+}
+
+private const val AA_LOW_LATENCY = "debug-video-low-latency"

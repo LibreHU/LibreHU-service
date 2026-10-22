@@ -1224,4 +1224,6 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="aot_now">Tout compiler maintenant</string>
     <string name="aot_running">Compilation de %1$s…</string>
     <string name="aot_done">Compilation terminée (%1$d appli(s) compilée(s))</string>
+    <string name="video_low_latency">Vidéo basse latence (décodeur MediaTek)</string>
+    <string name="video_low_latency_hint">Demande au décodeur vidéo matériel son mode basse latence (vdec-lowlatency : Android 9 n\'a pas la clé officielle d\'Android 11), comme Moonlight : moins d\'images en attente, donc moins de retard entre le téléphone et l\'écran. Refusé par le décodeur, l\'appli le reconfigure sans. À couper si l\'image reste noire ou saccade.</string>
 </resources>

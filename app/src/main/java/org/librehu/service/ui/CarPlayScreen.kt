@@ -67,6 +67,11 @@ fun CarPlayScreen() {
                     settings.openOnIphone,
                     stringResource(R.string.cp_open_on_iphone_hint),
                 ) { on -> CarPlay.update(context) { it.copy(openOnIphone = on) } }
+                SwitchRow(
+                    stringResource(R.string.video_low_latency),
+                    settings.videoLowLatency,
+                    stringResource(R.string.video_low_latency_hint),
+                ) { on -> CarPlay.update(context) { it.copy(videoLowLatency = on) } }
                 Hint(stringResource(R.string.cp_integration_hint))
             }
         }

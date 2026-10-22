@@ -39,6 +39,11 @@ data class CarPlaySettings(
      * open, and its own USB filter only lists its CH341 MFi adapter.
      */
     val openOnIphone: Boolean = true,
+    /**
+     * MediaTek decoder low-latency mode ("vdec-lowlatency", Android 9 has no KEY_LOW_LATENCY), read by the fork from
+     * `content://org.librehu.service.vehicle/info`; refused by the decoder, CarPlay configures it again without.
+     */
+    val videoLowLatency: Boolean = true,
 )
 
 /**
@@ -56,6 +61,7 @@ object CarPlay {
     private const val SET_NIGHT_MODE = "org.librehu.carplay.action.SET_NIGHT_MODE"
     private const val PREF_NIGHT = "cp_night_headlights"
     private const val PREF_OPEN_ON_IPHONE = "cp_open_on_iphone"
+    const val PREF_VIDEO_LOW_LATENCY = "cp_video_low_latency"
     private const val APPLE_VENDOR_ID = 0x05ac
 
     /** The iPhone re-enumerates during the CarPlay handshake: one opening per plug. */
@@ -86,7 +92,8 @@ object CarPlay {
     fun start(context: Context) {
         val app = context.applicationContext
         val p = LibreHuService.prefs(app)
-        _settings.value = CarPlaySettings(p.getBoolean(PREF_NIGHT, true), p.getBoolean(PREF_OPEN_ON_IPHONE, true))
+        _settings.value =
+            CarPlaySettings(p.getBoolean(PREF_NIGHT, true), p.getBoolean(PREF_OPEN_ON_IPHONE, true), p.getBoolean(PREF_VIDEO_LOW_LATENCY, true))
         if (receiver != null) return
         usbReceiver =
             object : BroadcastReceiver() {
@@ -162,7 +169,10 @@ object CarPlay {
             .edit()
             .putBoolean(PREF_NIGHT, s.nightFromHeadlights)
             .putBoolean(PREF_OPEN_ON_IPHONE, s.openOnIphone)
+            .putBoolean(PREF_VIDEO_LOW_LATENCY, s.videoLowLatency)
             .apply()
+        // The fork reads it from the vehicle provider: tell its observer.
+        context.contentResolver.notifyChange(org.librehu.service.car.VehicleInfo.URI, null)
         applyNight(context)
     }
 
