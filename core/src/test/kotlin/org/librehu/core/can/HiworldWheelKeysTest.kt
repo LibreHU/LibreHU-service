@@ -58,4 +58,12 @@ class HiworldWheelKeysTest {
         keys.onFrame(CanboxFrame(0x11, byteArrayOf(0, 8), true))
         assertEquals(emptyList<Int>(), got)
     }
+
+    @Test
+    fun releaseFollowsEachPress() {
+        val events = mutableListOf<String>()
+        val keys = HiworldWheelKeys(null, { events += "up$it" }) { events += "down$it" }
+        listOf(state(8, 1, 1), state(8, 1, 0), state(8, 0, 0), state(8, 2, 1), state(8, 3, 1), state(0, 0, 0)).forEach(keys::onFrame)
+        assertEquals(listOf("down1", "up1", "down2", "up2", "down3", "up3"), events)
+    }
 }

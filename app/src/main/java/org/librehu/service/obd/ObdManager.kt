@@ -333,7 +333,7 @@ class ObdManager private constructor(
                     battery.onVoltage(it, values[ObdPid.RPM.name])
                 }
             }
-            if (round % CAR_EVERY == 0) readCar(link, can)
+            if (round % CAR_EVERY == 0) carSafely { readCar(link, can) }
             setState { it.copy(values = values, updated = System.currentTimeMillis()) }
             publish(values)
             round++
@@ -342,6 +342,24 @@ class ObdManager private constructor(
     }
 
     /** The chosen values of the selected car: each ECU addressed in turn, then the adapter back to standard OBD. */
+    /**
+     * Manufacturer values and ECU identification are extras: a car file or an ECU answering oddly must not end the
+     * standard session (it did: an exception there dropped the connection, Bluetooth and USB alike, and it came back
+     * in a loop). Only the link failing (IOException) or a stop goes on up.
+     */
+    private fun carSafely(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: InterruptedException) {
+            throw e
+        } catch (e: IOException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "OBD manufacturer values: $e")
+            setState { it.copy(carMessage = "${e.javaClass.simpleName}: ${e.message.orEmpty()}") }
+        }
+    }
+
     private fun readCar(
         link: ObdLink,
         can: Int?,
@@ -370,7 +388,9 @@ class ObdManager private constructor(
                         if (key !in wanted) continue
                         out[key] =
                             if (answer is EcuAnswer.Positive && answer.bytes.size >= r.minBytes) {
-                                ObdCars.decode(key, ecu.name, item, answer.bytes)
+                                // One value the car file cannot decode stays an error, the others are still read
+                                runCatching { ObdCars.decode(key, ecu.name, item, answer.bytes) }
+                                    .getOrElse { e -> ObdCarReading(key, ecu.name, item.name, "—", error = true).also { Log.w(TAG, "$key: $e") } }
                             } else {
                                 ObdCarReading(key, ecu.name, item.name, "—", error = true)
                             }
@@ -458,7 +478,7 @@ class ObdManager private constructor(
 
             REQ_IDENTIFY -> {
                 try {
-                    identifyNow(link)
+                    carSafely { identifyNow(link) }
                 } finally {
                     _identifying.value = false
                 }

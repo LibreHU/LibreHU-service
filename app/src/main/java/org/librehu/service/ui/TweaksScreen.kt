@@ -1,5 +1,8 @@
 package org.librehu.service.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +52,7 @@ fun TweaksScreen() {
 
     Page(stringResource(R.string.tab_tweaks)) {
         CompileCard()
+        ZygoteCard()
         Card(stringResource(R.string.tw_title)) {
             if (loaded == false) StatusLine(noRoot, false)
             if (tweaks.skippedAtBoot) {
@@ -117,19 +121,137 @@ fun TweaksScreen() {
     }
 }
 
-/** Native compilation of the LibreHU apps ([AppCompiler]): automatic, or now. */
+/** Native compilation ([AppCompiler]): the list of apps with their compiler filter, automatic, one or all now. */
 @Composable
 private fun CompileCard() {
-    val compiler = org.librehu.service.perf.AppCompiler.get(androidx.compose.ui.platform.LocalContext.current)
+    val context = LocalContext.current
+    val compiler = org.librehu.service.perf.AppCompiler.get(context)
     val auto by compiler.auto.collectAsStateWithLifecycle()
-    val status by compiler.status.collectAsStateWithLifecycle()
+    val apps by compiler.apps.collectAsStateWithLifecycle()
+    val noRoot by compiler.rootMissing.collectAsStateWithLifecycle()
+    var adding by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { compiler.refresh() }
     Card(stringResource(R.string.aot_title)) {
         SwitchRow(stringResource(R.string.aot_auto), auto, stringResource(R.string.aot_hint)) { compiler.setAuto(it) }
-        when {
-            status == "root" -> StatusLine(stringResource(R.string.atc_no_root), false)
-            status.startsWith("done:") -> StatusLine(stringResource(R.string.aot_done, status.removePrefix("done:").toIntOrNull() ?: 0), true)
-            status.isNotEmpty() -> StatusLine(stringResource(R.string.aot_running, status), null)
+        if (noRoot) StatusLine(stringResource(R.string.atc_no_root), false)
+        val native = apps.count { it.filter == "speed" || it.filter == "everything" }
+        if (apps.isNotEmpty()) StatusLine(stringResource(R.string.aot_count, native, apps.size), native == apps.size)
+        for (a in apps) {
+            val state =
+                when {
+                    a.compiling -> stringResource(R.string.aot_compiling)
+                    a.error != null -> stringResource(R.string.aot_failed, a.error)
+                    a.filter == null -> stringResource(R.string.aot_unknown)
+                    a.filter == "speed" || a.filter == "everything" -> stringResource(R.string.aot_native, a.filter)
+                    else -> stringResource(R.string.aot_not_native, a.filter)
+                }
+            ListRow(a.label, "${a.pkg} · $state") {
+                Pill(stringResource(R.string.aot_one), enabled = !a.compiling) { compiler.compileOne(a.pkg) }
+                if (a.librehu) {
+                    androidx.compose.material3.Switch(a.enabled, { compiler.setEnabled(a.pkg, it) })
+                } else {
+                    Pill(stringResource(R.string.aot_remove)) { compiler.removeExtra(a.pkg) }
+                }
+            }
         }
-        Actions { Pill(stringResource(R.string.aot_now)) { compiler.compileAll() } }
+        Hint(stringResource(R.string.aot_list_hint))
+        Actions {
+            Pill(stringResource(R.string.aot_now)) { compiler.compileAll() }
+            Pill(stringResource(R.string.aot_add)) { adding = true }
+            Pill(stringResource(R.string.aot_refresh)) { compiler.refresh() }
+        }
+    }
+    if (adding) AddAppDialog(compiler) { adding = false }
+}
+
+/** Installed apps not in the list yet, with a search field: the one chosen is added (and compiled). */
+@Composable
+private fun AddAppDialog(
+    compiler: org.librehu.service.perf.AppCompiler,
+    onDismiss: () -> Unit,
+) {
+    var all by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
+    var filter by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) { all = withContext(Dispatchers.IO) { compiler.candidates() } }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { androidx.compose.material3.Text(stringResource(R.string.aot_add)) },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                androidx.compose.material3.OutlinedTextField(
+                    value = filter,
+                    onValueChange = { filter = it },
+                    singleLine = true,
+                    label = { androidx.compose.material3.Text(stringResource(R.string.aot_search)) },
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                )
+                val list =
+                    all.orEmpty().filter { (pkg, label) ->
+                        filter.isBlank() || label.contains(filter.trim(), true) || pkg.contains(filter.trim(), true)
+                    }
+                androidx.compose.foundation.lazy.LazyColumn(androidx.compose.ui.Modifier.heightIn(max = 420.dp)) {
+                    items(list.size) { i ->
+                        val (pkg, label) = list[i]
+                        ListRow(label, pkg, onClick = {
+                            compiler.addExtra(pkg)
+                            onDismiss()
+                        })
+                    }
+                }
+                if (all == null) Hint(stringResource(R.string.aot_loading))
+            }
+        },
+        confirmButton = {},
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text(stringResource(android.R.string.cancel)) } },
+    )
+}
+
+/** Zygote's class preload of the Jancar ROM ([org.librehu.service.perf.ZygotePreload]), for the next start. */
+@Composable
+private fun ZygoteCard() {
+    val zp = org.librehu.service.perf.ZygotePreload
+    val scope = rememberCoroutineScope()
+    var now by remember { mutableStateOf("") }
+    var next by remember { mutableStateOf<String?>(null) }
+    var modules by remember { mutableStateOf<Boolean?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    suspend fun load() =
+        withContext(Dispatchers.IO) {
+            now = zp.current()
+            next = zp.next()
+            modules = zp.modulesAvailable()
+        }
+    LaunchedEffect(Unit) { load() }
+    Card(stringResource(R.string.zyg_title)) {
+        Hint(stringResource(R.string.zyg_hint))
+        StatusLine(stringResource(R.string.zyg_now, now.ifEmpty { "—" }), null)
+        StatusLine(
+            next?.let { stringResource(R.string.zyg_next, it) } ?: stringResource(R.string.zyg_next_rom),
+            null,
+        )
+        when (modules) {
+            false -> StatusLine(stringResource(R.string.zyg_no_modules), false)
+            true -> {
+                val on = (next ?: now) == "1"
+                SwitchRow(stringResource(R.string.zyg_switch), on, stringResource(R.string.zyg_switch_hint)) { v ->
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { zp.set(if (v) "1" else "0") }
+                        message = if (ok) null else "root"
+                        load()
+                    }
+                }
+                Actions {
+                    Pill(stringResource(R.string.zyg_rom)) {
+                        scope.launch {
+                            withContext(Dispatchers.IO) { zp.set(null) }
+                            load()
+                        }
+                    }
+                }
+            }
+            null -> {}
+        }
+        message?.let { StatusLine(stringResource(R.string.atc_no_root), false) }
+        Hint(stringResource(R.string.zyg_reboot))
     }
 }

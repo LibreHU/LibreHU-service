@@ -34,7 +34,8 @@ import org.librehu.service.R
 import org.librehu.service.ServiceState
 import org.librehu.service.car.CarName
 import org.librehu.service.car.FrontLed
-import org.librehu.service.car.LedMode
+import org.librehu.service.car.LedWhen
+import org.librehu.service.car.PanelType
 import org.librehu.service.root.RootShell
 
 // --- Vehicle -----------------------------------------------------------------------------------------------------
@@ -215,68 +216,116 @@ fun LightsScreen(actions: AppActions) {
     val context = LocalContext.current
     val led = FrontLed.get(context)
     val s by led.settings.collectAsStateWithLifecycle()
+    val night by led.night.collectAsStateWithLifecycle()
     val link by ServiceState.link.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var access by remember { mutableStateOf(led.hasNotificationAccess()) }
+    val online = link.jancar && link.state == LibreHuService.Link.RUNNING
     Page(stringResource(R.string.tab_lights)) {
-        if (!link.jancar || link.state != LibreHuService.Link.RUNNING) Card { Hint(stringResource(R.string.led_offline)) }
-        Card(stringResource(R.string.led_title)) {
-            SwitchRow(stringResource(R.string.led_managed), s.managed, stringResource(R.string.led_managed_hint)) { on ->
-                led.update { it.copy(managed = on) }
+        if (!online) Card { StatusLine(stringResource(R.string.led_offline), false) }
+        // 1. Which LEDs: the user looks at the panel during the two tests
+        Card(stringResource(R.string.led_panel_title)) {
+            Hint(stringResource(R.string.led_panel_hint))
+            Actions {
+                Pill(stringResource(R.string.led_test_colour), enabled = online) { led.testColour() }
+                Pill(stringResource(R.string.led_test_white), enabled = online) { led.testWhite() }
             }
-            if (s.managed) {
+            Choices(
+                listOf(
+                    PanelType.COLOUR to stringResource(R.string.led_panel_colour),
+                    PanelType.WHITE to stringResource(R.string.led_panel_white),
+                    PanelType.UNKNOWN to stringResource(R.string.led_panel_unknown),
+                ),
+                s.panel,
+            ) { p -> led.update { it.copy(panel = p) } }
+        }
+        // 2. Colour LEDs
+        if (s.panel != PanelType.WHITE) {
+            Card(stringResource(R.string.led_colour_title)) {
                 Choices(
                     listOf(
-                        LedMode.MANUAL to stringResource(R.string.led_mode_manual),
-                        LedMode.AUTO to stringResource(R.string.led_mode_auto),
-                        LedMode.SEMI_AUTO to stringResource(R.string.led_mode_semi),
+                        LedWhen.LIGHTS_FIXED to stringResource(R.string.led_when_fixed),
+                        LedWhen.ALWAYS_CYCLE to stringResource(R.string.led_when_cycle_always),
+                        LedWhen.LIGHTS_CYCLE to stringResource(R.string.led_when_cycle_lights),
+                        LedWhen.MCU to stringResource(R.string.led_when_mcu),
                     ),
-                    s.mode,
-                ) { m -> led.update { it.copy(mode = m) } }
+                    s.ledWhen,
+                ) { w -> led.update { it.copy(ledWhen = w) } }
                 Hint(
                     stringResource(
-                        when (s.mode) {
-                            LedMode.MANUAL -> R.string.led_mode_manual_hint
-                            LedMode.AUTO -> R.string.led_mode_auto_hint
-                            LedMode.SEMI_AUTO -> R.string.led_mode_semi_hint
+                        when (s.ledWhen) {
+                            LedWhen.LIGHTS_FIXED -> R.string.led_when_fixed_hint
+                            LedWhen.ALWAYS_CYCLE -> R.string.led_when_cycle_always_hint
+                            LedWhen.LIGHTS_CYCLE -> R.string.led_when_cycle_lights_hint
+                            LedWhen.MCU -> R.string.led_when_mcu_hint
                         },
                     ),
                 )
-                if (s.mode == LedMode.MANUAL) {
+                if (s.ledWhen == LedWhen.LIGHTS_FIXED) {
                     ColourChoices(Triple(s.red, s.green, s.blue)) { (r, g, b) -> led.update { it.copy(red = r, green = g, blue = b) } }
+                    SliderRow(stringResource(R.string.led_intensity), s.ledBrightness, 10..100, { "$it %" }) { v ->
+                        led.update { it.copy(ledBrightness = v) }
+                    }
                 }
             }
         }
-        Card(stringResource(R.string.led_backlight_title)) {
-            Hint(stringResource(R.string.led_backlight_hint))
-            SwitchRow(stringResource(R.string.led_backlight), s.backlight) { on -> led.update { it.copy(backlight = on) } }
-            if (s.backlight) {
-                SliderRow(stringResource(R.string.led_backlight_day, 1), s.dayPwm1, 5..100, { "$it %" }) { v ->
-                    led.update { it.copy(dayPwm1 = v) }
-                    led.testPwm(1, v)
+        // 3. White backlight
+        if (s.panel != PanelType.COLOUR) {
+            Card(stringResource(R.string.led_backlight_title)) {
+                SwitchRow(stringResource(R.string.led_backlight), s.backlight, stringResource(R.string.led_backlight_hint)) { on ->
+                    led.update { it.copy(backlight = on) }
                 }
-                SliderRow(stringResource(R.string.led_backlight_night, 1), s.nightPwm1, 5..100, { "$it %" }) { v ->
-                    led.update { it.copy(nightPwm1 = v) }
-                    led.testPwm(1, v)
+                if (s.backlight) {
+                    val nowLevel = if (night == true) s.nightPwm1 else s.dayPwm1
+                    StatusLine(
+                        stringResource(
+                            when (night) {
+                                true -> R.string.led_now_night
+                                false -> R.string.led_now_day
+                                null -> R.string.led_now_unknown
+                            },
+                            nowLevel,
+                        ),
+                        null,
+                    )
+                    val out1 = if (s.separateOutputs) 1 else null
+                    SliderRow(stringResource(if (s.separateOutputs) R.string.led_day_n else R.string.led_day, 1), s.dayPwm1, 5..100, { "$it %" }) { v ->
+                        led.update { it.copy(dayPwm1 = v) }
+                        led.preview(out1, v)
+                    }
+                    SliderRow(stringResource(if (s.separateOutputs) R.string.led_night_n else R.string.led_night, 1), s.nightPwm1, 5..100, { "$it %" }) { v ->
+                        led.update { it.copy(nightPwm1 = v) }
+                        led.preview(out1, v)
+                    }
+                    if (s.separateOutputs) {
+                        SliderRow(stringResource(R.string.led_day_n, 2), s.dayPwm2, 5..100, { "$it %" }) { v ->
+                            led.update { it.copy(dayPwm2 = v) }
+                            led.preview(2, v)
+                        }
+                        SliderRow(stringResource(R.string.led_night_n, 2), s.nightPwm2, 5..100, { "$it %" }) { v ->
+                            led.update { it.copy(nightPwm2 = v) }
+                            led.preview(2, v)
+                        }
+                    }
+                    SwitchRow(stringResource(R.string.led_separate), s.separateOutputs, stringResource(R.string.led_separate_hint)) { on ->
+                        led.update { it.copy(separateOutputs = on, dayPwm2 = it.dayPwm1, nightPwm2 = it.nightPwm1) }
+                    }
+                    Hint(stringResource(R.string.led_preview_hint))
                 }
-                SliderRow(stringResource(R.string.led_backlight_day, 2), s.dayPwm2, 5..100, { "$it %" }) { v ->
-                    led.update { it.copy(dayPwm2 = v) }
-                    led.testPwm(2, v)
-                }
-                SliderRow(stringResource(R.string.led_backlight_night, 2), s.nightPwm2, 5..100, { "$it %" }) { v ->
-                    led.update { it.copy(nightPwm2 = v) }
-                    led.testPwm(2, v)
-                }
-                Hint(stringResource(R.string.led_backlight_test_hint))
             }
         }
+        // 4. Notifications
         Card(stringResource(R.string.led_blink_title)) {
-            SwitchRow(stringResource(R.string.led_blink), s.blinkOnNotification, stringResource(R.string.led_blink_hint)) { on ->
-                led.update { it.copy(blinkOnNotification = on) }
-            }
+            SwitchRow(
+                stringResource(R.string.led_blink),
+                s.blinkOnNotification,
+                stringResource(if (s.panel == PanelType.WHITE) R.string.led_blink_hint_white else R.string.led_blink_hint),
+            ) { on -> led.update { it.copy(blinkOnNotification = on) } }
             if (s.blinkOnNotification) {
-                ColourChoices(Triple(s.blinkRed, s.blinkGreen, s.blinkBlue)) { (r, g, b) ->
-                    led.update { it.copy(blinkRed = r, blinkGreen = g, blinkBlue = b) }
+                if (s.panel != PanelType.WHITE) {
+                    ColourChoices(Triple(s.blinkRed, s.blinkGreen, s.blinkBlue)) { (r, g, b) ->
+                        led.update { it.copy(blinkRed = r, blinkGreen = g, blinkBlue = b) }
+                    }
                 }
                 SliderRow(stringResource(R.string.led_blink_count), s.blinkCount, 1..10) { n -> led.update { it.copy(blinkCount = n) } }
                 StatusLine(stringResource(if (access) R.string.led_access_ok else R.string.led_access_missing), access)
@@ -290,7 +339,7 @@ fun LightsScreen(actions: AppActions) {
                             }
                         }
                     }
-                    Pill(stringResource(R.string.led_blink_test)) { led.blink() }
+                    Pill(stringResource(R.string.led_blink_test), enabled = online) { led.blink() }
                 }
             }
         }

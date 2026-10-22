@@ -198,7 +198,9 @@ fun CanWheelKeysCard() {
     val claims by keys.claims.collectAsStateWithLifecycle()
     val longs by keys.longMapping.collectAsStateWithLifecycle()
     val raw by keys.lastRaw.collectAsStateWithLifecycle()
+    val timeline by keys.lastTimeline.collectAsStateWithLifecycle()
     var ignoreS by remember { mutableStateOf(keys.ignoreAfterOnS()) }
+    var longMs by remember { mutableStateOf(keys.longMs()) }
     var editing by remember { mutableStateOf<Int?>(null) }
     Card(stringResource(R.string.can_keys)) {
         Hint(stringResource(R.string.can_keys_hint))
@@ -212,6 +214,17 @@ fun CanWheelKeysCard() {
             keys.setIgnoreAfterOnS(it)
         }
         Hint(stringResource(R.string.can_keys_ignore_hint))
+        SliderRow(
+            stringResource(R.string.can_keys_long_ms),
+            longMs / 100,
+            CanWheelKeys.MIN_LONG_MS / 100..CanWheelKeys.MAX_LONG_MS / 100,
+            { "${it * 100} ms" },
+        ) {
+            longMs = it * 100
+            keys.setLongMs(it * 100)
+        }
+        Hint(stringResource(R.string.can_keys_long_ms_hint))
+        timeline?.let { Hint(stringResource(R.string.can_keys_timeline, it)) }
         for (code in (mapping.keys + seen).sorted()) {
             val a = mapping[code] ?: ZoneAction()
             val byOther = claims.values.any { "can:$code" in it }

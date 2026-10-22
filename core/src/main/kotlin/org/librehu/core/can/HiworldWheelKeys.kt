@@ -8,10 +8,12 @@ package org.librehu.core.can
  *
  * The whole D2 byte is the code: Hiworld's decoder keeps only D2 & 0x1F, so two buttons whose codes differ in the
  * upper bits (as SRC+ / SRC- of a Clio 3 remote may) came out as the same key. Codes under 32 are unchanged.
- * [onRaw] gets D1 D2 D3 of every key frame (key test, finding what a button sends).
+ * [onRaw] gets D1 D2 D3 of every key frame (key test, finding what a button sends). [onRelease] gets the code when its
+ * press frame is followed by a frame without it (D3 back to 0, another key, or no key).
  */
 class HiworldWheelKeys(
     private val onRaw: ((Int, Int, Int) -> Unit)? = null,
+    private val onRelease: (Int) -> Unit = {},
     private val onPress: (Int) -> Unit,
 ) {
     private var pressed = 0
@@ -27,6 +29,7 @@ class HiworldWheelKeys(
         lastRaw = raw
         val event = d1 and 0x08 != 0
         val down = event && key != 0 && d3 == 1
+        if (pressed != 0 && (!down || pressed != key)) onRelease(pressed)
         if (down && pressed != key) onPress(key)
         pressed = if (down) key else 0
     }

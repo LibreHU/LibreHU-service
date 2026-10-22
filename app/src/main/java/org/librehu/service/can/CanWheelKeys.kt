@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import org.librehu.core.can.CanboxFrame
 import org.librehu.core.can.HiworldWheelKeys
+import org.librehu.core.can.WheelHold
 import org.librehu.core.touch.TouchAction
 import org.librehu.core.touch.ZoneAction
 import org.librehu.service.LibreHuService
@@ -52,15 +53,20 @@ class CanWheelKeys private constructor(
     /** D1 D2 D3 of the last key frame of the box, in hexadecimal (key test). */
     val lastRaw: StateFlow<String?> = _raw.asStateFlow()
 
-    private val detector =
-        HiworldWheelKeys({ d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) }) { code -> main.post { onPress(code) } }
+    private val _timeline = MutableStateFlow<String?>(null)
 
-    /** Key held: its code, first press and last repeat (elapsedRealtime), repeats seen, long press done. */
-    private var holdCode = 0
-    private var holdLast = 0L
-    private var holdRepeats = 0
-    private var holdLongDone = false
-    private val release = Runnable { onRelease() }
+    /** Last press of a key with a long press: its frames (↓ press, ↑ release, ms from the first) and what it gave. */
+    val lastTimeline: StateFlow<String?> = _timeline.asStateFlow()
+
+    private val detector =
+        HiworldWheelKeys(
+            { d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) },
+            { code -> main.post { onUp(code) } },
+        ) { code -> main.post { onPress(code) } }
+
+    /** Short / long press of the keys that have a long action, on the frames' timing ([WheelHold]). */
+    private var hold = WheelHold(longMs().toLong(), GAP_MS)
+    private val tick = Runnable { onTick() }
 
     /** Until when the keys are ignored after the head unit starts or wakes (elapsedRealtime), see [guard]. */
     @Volatile
@@ -134,40 +140,43 @@ class CanWheelKeys private constructor(
             android.util.Log.i("LibreHU-CAN", "wheel key $code ignored (car just started)")
             return
         }
-        val repeat = code == holdCode && now - holdLast < HiworldWheelKeys.REPEAT_MS
-        val long = longOf(code)
-        if (long == null) {
-            // No long press: every press and repeat is a click (volume held goes on)
-            holdCode = code
-            holdLast = now
+        if (longOf(code) == null) {
+            // No long action: each press frame is a click (a held volume key goes on, as the box repeats it)
+            hold.end()?.let(::done)
             run(click(code))
             return
         }
-        // Long press set: the click waits for the release (no repeat any more), the long press fires once held
-        main.removeCallbacks(release)
-        if (repeat) {
-            holdRepeats++
-            if (!holdLongDone && holdRepeats >= LONG_REPEATS) {
-                holdLongDone = true
-                run(long)
-            }
-        } else {
-            if (holdCode != 0 && holdCode != code) onRelease()
-            holdCode = code
-            holdRepeats = 0
-            holdLongDone = false
-        }
-        holdLast = now
-        main.postDelayed(release, HiworldWheelKeys.REPEAT_MS)
+        hold.down(code, now)?.let(::done)
+        schedule()
     }
 
-    private fun onRelease() {
-        main.removeCallbacks(release)
-        val code = holdCode
-        if (code != 0 && longOf(code) != null && !holdLongDone) run(click(code))
-        holdCode = 0
-        holdRepeats = 0
-        holdLongDone = false
+    private fun onUp(code: Int) {
+        hold.up(code, SystemClock.elapsedRealtime())
+        schedule()
+    }
+
+    private fun onTick() {
+        hold.tick(SystemClock.elapsedRealtime())?.let(::done)
+        schedule()
+    }
+
+    private fun schedule() {
+        main.removeCallbacks(tick)
+        val at = hold.deadline ?: return
+        main.postDelayed(tick, (at - SystemClock.elapsedRealtime()).coerceAtLeast(0))
+    }
+
+    private fun done(p: WheelHold.Press) {
+        _timeline.value = "${HiworldWheelKeys.name(p.code) ?: p.code} : ${p.frames}"
+        run(if (p.result == WheelHold.Result.LONG) longOf(p.code) else click(p.code))
+    }
+
+    /** Hold time before a long press, in ms (setting). */
+    fun longMs(): Int = prefs.getInt(KEY_LONG_MS, DEFAULT_LONG_MS)
+
+    fun setLongMs(ms: Int) {
+        prefs.edit().putInt(KEY_LONG_MS, ms.coerceIn(MIN_LONG_MS, MAX_LONG_MS)).apply()
+        if (!hold.active) hold = WheelHold(longMs().toLong(), GAP_MS)
     }
 
     private fun run(action: ZoneAction?) {
@@ -241,8 +250,18 @@ class CanWheelKeys private constructor(
         private const val KEY_IGNORE_S = "ignore_after_on_s"
         private const val DEFAULT_IGNORE_S = 5
 
-        /** Repeats of a held key (~380 ms apart) before its long press: held about 0.8 s. */
-        private const val LONG_REPEATS = 2
+        private const val KEY_LONG_MS = "long_ms"
+
+        /**
+         * Default hold time before a long press. Above a tap plus [GAP_MS] even when the box sends a tap as a few
+         * presses over ~300 ms, so that a tap is never taken for a long press.
+         */
+        const val DEFAULT_LONG_MS = 900
+        const val MIN_LONG_MS = 600
+        const val MAX_LONG_MS = 2000
+
+        /** No press frame for this long after a release: the key was let go (a held key pulses every ~380 ms). */
+        private const val GAP_MS = 450L
 
         /**
          * Hiworld's meaning of the codes (HdRenaultProtocolLNP002). Codes 4 and 0x11 also come from a Clio 3 remote

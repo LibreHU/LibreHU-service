@@ -78,10 +78,19 @@ class Standby private constructor(
 
     private var acc: Boolean? = null
     private var wasPlaying = false
-    private var airplaneSet = false
-    private var gpsSet = false
 
     private val prepare = Runnable { enter() }
+
+    init {
+        // Radios cut by a standby the head unit did not wake up from (the MCU cut the SoC, a reboot, the service
+        // restarted): airplane mode stayed on and GPS off. Put back once the service runs again.
+        if (prefs.getBoolean(KEY_AIRPLANE_SET, false) || prefs.getBoolean(KEY_GPS_SET, false)) {
+            Thread({
+                Thread.sleep(START_RESTORE_DELAY_MS)
+                if (acc != false && !_asleep.value) restoreRadios("service start")
+            }, "standby-restore").start()
+        }
+    }
 
     fun update(change: (StandbySettings) -> StandbySettings) {
         val s =
@@ -110,6 +119,8 @@ class Standby private constructor(
         main.removeCallbacks(prepare)
         if (on) {
             if (old != null) exit("ignition on")
+            // Also when this run of the service did not put the head unit to sleep itself (see init)
+            if (!_asleep.value && hasCutRadios()) Thread({ restoreRadios("ignition on") }, "standby-restore").start()
         } else if (old == true && _settings.value.mode != StandbyMode.OFF) {
             main.postDelayed(prepare, PREPARE_DELAY_MS)
         }
@@ -143,14 +154,9 @@ class Standby private constructor(
         log("Wake up ($why)")
         handshake()
         val play = wasPlaying
-        val airplane = airplaneSet
-        val gps = gpsSet
-        airplaneSet = false
-        gpsSet = false
         Thread({
             screen(true)
-            if (airplane) setAirplane(false)
-            if (gps) RootShell.run("settings put secure location_providers_allowed +gps")
+            restoreRadios(why)
             if (play) {
                 // The Bluetooth phone reconnects first (airplane mode off).
                 Thread.sleep(RESUME_MEDIA_DELAY_MS)
@@ -188,12 +194,35 @@ class Standby private constructor(
         main.postDelayed(resumeWatch, RESUME_WATCH_MS)
     }
 
+    /**
+     * Airplane mode on and GPS off for the night, only when the user had them otherwise, and written down
+     * ([KEY_AIRPLANE_SET], [KEY_GPS_SET], committed before anything else: the SoC may be cut any time) so that
+     * [restoreRadios] puts them back even after a reboot.
+     */
     private fun radiosOff() {
         val airplaneOn = Settings.Global.getInt(app.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
-        if (!airplaneOn) airplaneSet = setAirplane(true)
         @Suppress("DEPRECATION")
         val providers = Settings.Secure.getString(app.contentResolver, Settings.Secure.LOCATION_PROVIDERS_ALLOWED).orEmpty()
-        if ("gps" in providers) gpsSet = RootShell.run("settings put secure location_providers_allowed -gps") != null
+        val gpsOn = "gps" in providers
+        prefs.edit().putBoolean(KEY_AIRPLANE_SET, !airplaneOn).putBoolean(KEY_GPS_SET, gpsOn).commit()
+        val airplaneDone = airplaneOn || setAirplane(true)
+        val gpsDone = !gpsOn || RootShell.run("settings put secure location_providers_allowed -gps") != null
+        if (!airplaneDone || !gpsDone) {
+            prefs.edit().putBoolean(KEY_AIRPLANE_SET, !airplaneOn && airplaneDone).putBoolean(KEY_GPS_SET, gpsOn && gpsDone).commit()
+        }
+    }
+
+    private fun hasCutRadios() = prefs.getBoolean(KEY_AIRPLANE_SET, false) || prefs.getBoolean(KEY_GPS_SET, false)
+
+    /** Airplane mode off and GPS on again if a standby changed them; the marks are cleared once done. */
+    private fun restoreRadios(why: String) {
+        val airplane = prefs.getBoolean(KEY_AIRPLANE_SET, false)
+        val gps = prefs.getBoolean(KEY_GPS_SET, false)
+        if (!airplane && !gps) return
+        log("Radios back ($why):${if (airplane) " airplane mode off" else ""}${if (gps) " GPS on" else ""}")
+        val airplaneDone = !airplane || setAirplane(false)
+        val gpsDone = !gps || RootShell.run("settings put secure location_providers_allowed +gps") != null
+        prefs.edit().putBoolean(KEY_AIRPLANE_SET, !airplaneDone).putBoolean(KEY_GPS_SET, !gpsDone).apply()
     }
 
     /** Android 9: the setting plus the broadcast the system sends itself (both need root here). */
@@ -243,6 +272,9 @@ class Standby private constructor(
         private const val KEY_HOURS = "max_hours"
         private const val KEY_RADIOS = "radios_off"
         private const val KEY_MEDIA = "resume_media"
+        private const val KEY_AIRPLANE_SET = "airplane_set_by_standby"
+        private const val KEY_GPS_SET = "gps_cut_by_standby"
+        private const val START_RESTORE_DELAY_MS = 4000L
 
         /** After the ACC is reported off: the MCU cuts the SoC 15 s after the ignition (engine delay included). */
         const val PREPARE_DELAY_MS = 1500L
