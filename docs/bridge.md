@@ -55,7 +55,7 @@ Requêtes `{"id":n,"m":"<méthode>","p":{…}}`, réponses `{"id":n,"r":…}` ou
 | `launch` | `pkg` | appli ouverte sur l'autoradio |
 | `reboot` | `mode` : `normal`, `recovery`, `bootloader` (fastboot) | root, 0,5 s après la réponse |
 | `system` | — | zones thermiques (`/sys/class/thermal`, SoC et sondes, °C), fréquence de chaque cœur, charge, mémoire, durée de fonctionnement, stockage `/data` et `/sdcard` |
-| `gps` | — | satellites visibles et utilisés, C/N0, constellations, fix (âge, précision, vitesse, altitude, temps du premier fix). **Jamais la position** |
+| `gps` | — | satellites visibles et utilisés, C/N0, constellations, signal de chaque satellite (`sats` : `c`, `svid`, `cn0`, `used`), fix (âge, précision, vitesse, altitude, temps du premier fix). **Jamais la position** |
 | `gps.watch` | `on` | écoute le GPS tant que le téléphone l'affiche (relâché à la déconnexion) |
 | `fs.roots` | — | stockage interne, clés USB / cartes SD ; `/` si les fichiers root sont autorisés |
 | `fs.list` | `path` | entrées : `name`, `dir`, `size`, `mtime` |

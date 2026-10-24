@@ -156,6 +156,15 @@ object BridgeTools {
             .put("used", used.size)
             .put("cn0", if (used.isEmpty()) 0 else Math.round(used.map { it.cn0 }.average()))
             .put("constellations", by)
+            // Each satellite's signal (strongest first, 40 at most), as the GPS test screen shows it.
+            .put(
+                "sats",
+                JSONArray(
+                    g.satellites.take(40).map {
+                        JSONObject().put("c", CONSTELLATIONS[it.constellation] ?: "?").put("svid", it.svid).put("cn0", Math.round(it.cn0)).put("used", it.usedInFix)
+                    },
+                ),
+            )
             .apply {
                 if (fix != null) {
                     val age = (System.currentTimeMillis() - fix.time) / 1000
