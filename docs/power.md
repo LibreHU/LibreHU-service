@@ -27,6 +27,10 @@ Deux états sont exposés aux applis :
 |---|---|---|
 | contact (`acc`) | `FLAG_ACC`, extra `acc`, `org.librehu.action.ACC` | le fil ACC tel que la MCU l'annonce, tout de suite |
 | alimenté (`powered`) | `FLAG_POWERED` (bit 7), extra `powered` | le contact, mais ne passe à « non » qu'après le délai : écran, son, ampli et veille suivent celui-ci |
+
+Les broadcasts (`org.librehu.action.VEHICLE_STATE`, `ACC`) partent sous la permission de signature
+`org.librehu.permission.VEHICLE` : seules les applis signées avec la clé LibreHU les reçoivent.
+
 10 s au plus : la préparation de la veille doit tenir avant la coupure du SoC par la MCU (15 s).
 
 ## Modes

@@ -98,11 +98,11 @@ object ConfigBackup {
                     val a = "$STAGE/apps/$p"
                     append("mkdir -p $a/data $a/de $a/ext\n")
                     for (d in DIRS) {
-                        append("[ -d /data/data/$p/$d ] && cp -a /data/data/$p/$d $a/data/ || true\n")
-                        append("[ -d /data/user_de/0/$p/$d ] && cp -a /data/user_de/0/$p/$d $a/de/ || true\n")
+                        append("[ -d /data/data/$p/$d ] && cp -RLp /data/data/$p/$d $a/data/ || true\n")
+                        append("[ -d /data/user_de/0/$p/$d ] && cp -RLp /data/user_de/0/$p/$d $a/de/ || true\n")
                     }
-                    append("[ -d /sdcard/Android/data/$p/files ] && cp -a /sdcard/Android/data/$p/files $a/ext/ || true\n")
-                    if (p == VIPER) append("[ -d $VIPER_PRESETS ] && mkdir -p $a/viper && cp -a $VIPER_PRESETS/. $a/viper/ || true\n")
+                    append("[ -d /sdcard/Android/data/$p/files ] && cp -RLp /sdcard/Android/data/$p/files $a/ext/ || true\n")
+                    if (p == VIPER) append("[ -d $VIPER_PRESETS ] && mkdir -p $a/viper && cp -RLp $VIPER_PRESETS/. $a/viper/ || true\n")
                 }
                 append("cat > $STAGE/manifest.json\n")
                 append("mkdir -p /sdcard/Download/LibreHU\n")
@@ -118,8 +118,27 @@ object ConfigBackup {
         }
     }
 
+    /**
+     * Why an archive must not be extracted by root, null when it can: only plain files and folders with relative paths
+     * inside the archive (no absolute path, no `..`, no symbolic or hard link, no device): an archive from elsewhere
+     * could otherwise write anywhere on the system.
+     */
+    private fun unsafe(file: File): String? {
+        val long = RootShell.run("tar -tvf '${file.path}'", timeoutS = 60) ?: return "tar"
+        for (line in long.lineSequence().map { it.trimEnd() }.filter { it.isNotEmpty() }) {
+            if (line[0] != '-' && line[0] != 'd') return "entry type ${line[0]}: $line"
+            if (line.contains(" -> ") || line.contains(" link to ")) return "link: $line"
+        }
+        val names = RootShell.run("tar -tf '${file.path}'", timeoutS = 60) ?: return "tar"
+        for (n in names.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }) {
+            if (n.startsWith("/") || n.split('/').any { it == ".." }) return "path outside the archive: $n"
+        }
+        return null
+    }
+
     /** Manifest of an archive copied to [file] (readable by root), or an error. */
     fun inspect(file: File): Result<JSONObject> {
+        unsafe(file)?.let { return Result.failure(Exception("unsafe archive ($it)")) }
         val text = RootShell.run("tar -xOf '${file.path}' manifest.json", timeoutS = 60) ?: return Result.failure(Exception("tar"))
         val o = runCatching { JSONObject(text) }.getOrNull() ?: return Result.failure(Exception("manifest"))
         if (o.optString("format") != FORMAT) return Result.failure(Exception("format"))
@@ -151,6 +170,7 @@ object ConfigBackup {
         pkgs: List<String>,
     ): Result<List<String>> {
         if (!RootShell.isAvailable()) return Result.failure(Exception("root"))
+        unsafe(file)?.let { return Result.failure(Exception("unsafe archive ($it)")) }
         val pm = context.packageManager
         val list = pkgs.filter { safe(it) && runCatching { pm.getPackageInfo(it, 0) }.isSuccess }
         val stage = "$STAGE-restore"

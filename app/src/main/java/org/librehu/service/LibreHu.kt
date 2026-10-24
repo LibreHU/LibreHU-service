@@ -23,6 +23,12 @@ object LibreHu {
      */
     const val FLAG_POWERED = 1 shl 7
 
+    /**
+     * Permission of the receivers of the vehicle broadcasts below (signature: the apps signed with the LibreHU key),
+     * held by the service: a receiver that requires it from the sender gets no faked values.
+     */
+    const val PERMISSION_VEHICLE = "org.librehu.permission.VEHICLE"
+
     /** Sent on every vehicle state change, with [EXTRA_FLAGS] and one boolean extra per flag. */
     const val ACTION_VEHICLE_STATE = "org.librehu.action.VEHICLE_STATE"
 

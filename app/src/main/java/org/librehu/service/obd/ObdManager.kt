@@ -521,7 +521,7 @@ class ObdManager private constructor(
                     putString(BATTERY_STATUS, b.status.name)
                 }
             }
-        app.sendBroadcast(Intent(LibreHu.ACTION_OBD).putExtras(extras))
+        app.sendBroadcast(Intent(LibreHu.ACTION_OBD).putExtras(extras), LibreHu.PERMISSION_VEHICLE)
         ObdWidget.refresh(app)
     }
 

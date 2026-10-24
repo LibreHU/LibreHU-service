@@ -519,10 +519,11 @@ class LibreHuService : Service() {
                 .putExtra(LibreHu.EXTRA_HANDBRAKE, s.handbrake)
                 .putExtra(LibreHu.EXTRA_HEADLIGHT, s.headlight)
                 .putExtra(LibreHu.EXTRA_POWERED, s.powered),
+            LibreHu.PERMISSION_VEHICLE,
         )
-        if (old.acc != s.acc) sendBroadcast(Intent(LibreHu.ACTION_ACC).putExtra(LibreHu.EXTRA_ACC, s.acc))
+        if (old.acc != s.acc) sendBroadcast(Intent(LibreHu.ACTION_ACC).putExtra(LibreHu.EXTRA_ACC, s.acc), LibreHu.PERMISSION_VEHICLE)
         if (old.reverse != s.reverse) {
-            sendBroadcast(Intent(LibreHu.ACTION_REVERSE).putExtra(LibreHu.EXTRA_REVERSE, s.reverse))
+            sendBroadcast(Intent(LibreHu.ACTION_REVERSE).putExtra(LibreHu.EXTRA_REVERSE, s.reverse), LibreHu.PERMISSION_VEHICLE)
         }
     }
 

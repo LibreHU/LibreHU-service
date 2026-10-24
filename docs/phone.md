@@ -16,7 +16,9 @@ batterie demande le **filaire** : Lockdown passe par l'USB. En sans fil arrivent
 ligne « Liaison » de la page dit lequel est en cours.
 
 En filaire, l'appli `org.librehu.carplay` lit l'iPhone pendant qu'il est branché et envoie `org.librehu.carplay.PHONE_INFO` au
-seul paquet `org.librehu.service` (nom et adresse Bluetooth sont personnels) :
+seul paquet `org.librehu.service` (nom et adresse Bluetooth sont personnels) ; le service ne le prend que d'une appli
+qui a la permission de signature `org.librehu.permission.VEHICLE` (aucune autre appli ne peut lui faire croire à un
+autre téléphone) :
 - **Lockdown** (la session déjà appairée pour CarPlay filaire, comme libimobiledevice) : `GetValue` → nom
   (`DeviceName`), modèle (`ProductType`, ex. `iPhone15,2`), iOS (`ProductVersion`, `BuildVersion`), adresse Bluetooth ;
   domaine `com.apple.mobile.battery` → niveau, en charge, alimentation externe ;

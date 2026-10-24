@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Clients declare <uses-permission android:name="org.librehu.permission.HEADUNIT" />.
-         TODO: move to signature|privileged once the LibreHU apps share a signing key. -->
     <!-- The car's description and the head unit's radio names and MAC addresses (car/VehicleProvider): the apps
          signed with the LibreHU key only (launcher, Open Headunit LibreHU, CarPlay LibreHU). -->
     <permission
@@ -11,12 +9,23 @@
         android:label="@string/permission_vehicle_label"
         android:description="@string/permission_vehicle_description"
         android:protectionLevel="signature" />
+    <!-- Held to send the vehicle broadcasts (VEHICLE_STATE, ACC, REVERSE, OBD) under VEHICLE: only the apps signed
+         with the LibreHU key receive them, and the LibreHU apps take them from a holder of VEHICLE only. -->
+    <uses-permission android:name="org.librehu.permission.VEHICLE" />
 
+    <!-- Key claims of LibreHU Touches (CLAIM_KEYS): apps signed with the LibreHU key only. -->
     <permission
         android:name="org.librehu.permission.HEADUNIT"
         android:description="@string/permission_description"
         android:label="@string/permission_label"
-        android:protectionLevel="normal" />
+        android:protectionLevel="signature" />
+
+    <!-- Root asked for every LibreHU app at once (LibreHU Launcher): requests and answers between apps signed with
+         the LibreHU key only. Defined by every LibreHU app, so that it exists whatever the install order. -->
+    <permission
+        android:name="org.librehu.permission.ROOT_REQUEST"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="org.librehu.permission.ROOT_REQUEST" />
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Volume panel over the apps (overlay/VolumeOverlay), granted by the user or with
@@ -342,7 +351,8 @@
         <!-- LibreHU Launcher's first start: root asked for every LibreHU app at once (RootRequestReceiver). -->
         <receiver
             android:name=".RootRequestReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="org.librehu.permission.ROOT_REQUEST">
             <intent-filter>
                 <action android:name="org.librehu.action.REQUEST_ROOT" />
             </intent-filter>

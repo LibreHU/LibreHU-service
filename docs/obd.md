@@ -18,7 +18,8 @@ Lecture du calculateur moteur par un adaptateur **ELM327** (prise OBD-II), en **
   Les valeurs secondaires reprennent celles choisies pour le widget « OBD » (sinon température d'eau, batterie,
   carburant, charge). Couleur d'accent et clair / sombre du launcher ; s'adapte à la taille (4×2 conseillé).
   Image redessinée à chaque mise à jour OBD (environ 1 s) : pas d'animation fluide de l'aiguille.
-- Autres apps : `ILibreHuService.getObdValues()` (API 4) et le broadcast `org.librehu.action.OBD` (≈ 1 par
+- Autres apps : `ILibreHuService.getObdValues()` (API 4) et le broadcast `org.librehu.action.OBD` (envoyé sous la permission de signature `org.librehu.permission.VEHICLE` :
+  applis signées avec la clé LibreHU seulement ; ≈ 1 par
   seconde, extras = nom de la valeur → double, ex. `RPM`, `SPEED`, `COOLANT_TEMP`, `BATTERY` ; plus
   `BATTERY_PERCENT` (int, −1 moteur tournant) et `BATTERY_STATUS`, voir ci-dessous). API 8 :
   `getObdBattery()` (batterie) et `getObdCarValues()` (valeurs constructeur choisies : clé `<calculateur>/<valeur>`

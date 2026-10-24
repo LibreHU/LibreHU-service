@@ -179,9 +179,19 @@ class BridgeServer private constructor(
                 tcp = server
                 while (running) {
                     val s = server.accept()
+                    if (!admit()) {
+                        runCatching { s.close() }
+                        continue
+                    }
                     s.soTimeout = IDLE_TIMEOUT_MS
                     s.tcpNoDelay = true
-                    Thread({ serve(s.getInputStream(), s.getOutputStream(), "wifi", { s.close() }) }, "bridge-client").start()
+                    Thread({
+                        try {
+                            serve(s.getInputStream(), s.getOutputStream(), "wifi", { s.close() })
+                        } finally {
+                            clients.decrementAndGet()
+                        }
+                    }, "bridge-client").start()
                 }
             } catch (e: Exception) {
                 if (running) Log.w(TAG, "tcp: ${e.message}")
@@ -205,8 +215,18 @@ class BridgeServer private constructor(
                 rfcomm = server
                 while (running) {
                     val s = server.accept()
+                    if (!admit()) {
+                        runCatching { s.close() }
+                        continue
+                    }
                     val name = runCatching { s.remoteDevice.name }.getOrNull() ?: s.remoteDevice.address
-                    Thread({ serve(s.inputStream, s.outputStream, "bt:$name", { s.close() }) }, "bridge-client-bt").start()
+                    Thread({
+                        try {
+                            serve(s.inputStream, s.outputStream, "bt:$name", { s.close() })
+                        } finally {
+                            clients.decrementAndGet()
+                        }
+                    }, "bridge-client-bt").start()
                 }
             } catch (e: Exception) {
                 if (running) Log.w(TAG, "rfcomm: ${e.message}")
@@ -215,6 +235,16 @@ class BridgeServer private constructor(
             }
             if (running) Thread.sleep(5_000)
         }
+    }
+
+    /** Connections open now (Wi-Fi and Bluetooth), at most [MAX_CLIENTS]: each one costs a thread and a key exchange. */
+    private val clients = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun admit(): Boolean {
+        if (clients.incrementAndGet() <= MAX_CLIENTS) return true
+        clients.decrementAndGet()
+        Log.w(TAG, "connection refused: $MAX_CLIENTS already open")
+        return false
     }
 
     // --- One phone -----------------------------------------------------------------------------------------------
@@ -227,9 +257,25 @@ class BridgeServer private constructor(
     ) {
         var device: BridgeDevice? = null
         var events: Thread? = null
+        // A connection that does not finish the key exchange and pairing in time is closed: it would keep its place.
+        val handshake =
+            Thread({
+                try {
+                    Thread.sleep(HANDSHAKE_MS)
+                    if (device == null) {
+                        Log.i(TAG, "$link: no authentication in ${HANDSHAKE_MS / 1000} s")
+                        runCatching { close() }
+                    }
+                } catch (_: InterruptedException) {
+                }
+            }, "bridge-handshake").apply {
+                isDaemon = true
+                start()
+            }
         try {
             val ch = BridgeChannel.accept(input, output, identity)
             device = authenticate(ch, link)
+            handshake.interrupt()
             _connected.value = _connected.value + device.name
             touch(device.id)
             while (running) {
@@ -465,6 +511,10 @@ class BridgeServer private constructor(
         private const val TOKEN_MS = 5 * 60_000L
         private const val CONFIRM_S = 60L
         private const val IDLE_TIMEOUT_MS = 0
+        private const val MAX_CLIENTS = 4
+
+        /** Key exchange and pairing, a Bluetooth confirmation on the head unit included. */
+        private const val HANDSHAKE_MS = (CONFIRM_S + 20) * 1000L
 
         @Volatile
         private var instance: BridgeServer? = null

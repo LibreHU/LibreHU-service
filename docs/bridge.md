@@ -7,6 +7,8 @@ un nouveau réglage n'a pas besoin d'une mise à jour du téléphone.
 
 ## Liaison
 
+- **Connexions** : 4 au plus en même temps (Wi-Fi et Bluetooth) ; une connexion qui n'a pas fini l'échange de clés
+  et l'association en 80 s (confirmation Bluetooth comprise) est fermée, pour qu'aucune ne garde une place.
 - **Wi-Fi** : TCP port **47800**, quand le téléphone et l'autoradio sont sur le même réseau (point d'accès du
   téléphone, ou celui de l'autoradio).
 - **Bluetooth** : RFCOMM, UUID `6c1b2e6a-8f0e-4b8c-9a51-1ebd2d4c0b01` (téléphone appairé en Bluetooth).

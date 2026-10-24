@@ -196,10 +196,11 @@ object PhoneInfo {
                 ) = onPhoneInfo(a, intent)
             }
         receiver = r
+        // Only from an app holding the signature permission VEHICLE (CarPlay LibreHU): no faked phone.
         if (Build.VERSION.SDK_INT >= 33) {
-            a.registerReceiver(r, IntentFilter(ACTION_PHONE_INFO), Context.RECEIVER_EXPORTED)
+            a.registerReceiver(r, IntentFilter(ACTION_PHONE_INFO), org.librehu.service.LibreHu.PERMISSION_VEHICLE, null, Context.RECEIVER_EXPORTED)
         } else {
-            a.registerReceiver(r, IntentFilter(ACTION_PHONE_INFO))
+            a.registerReceiver(r, IntentFilter(ACTION_PHONE_INFO), org.librehu.service.LibreHu.PERMISSION_VEHICLE, null)
         }
     }
 
