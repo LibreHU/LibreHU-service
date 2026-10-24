@@ -81,6 +81,19 @@ première requête de fichiers.
 écran toujours allumé, taille du texte, animations ; heure et fuseau automatiques, format 24 h ; Wi-Fi, Bluetooth,
 localisation, mode avion ; débogage USB ; redémarrage normal, recovery, fastboot), Son LibreHU (menu son, son moteur), Lumières (rétroéclairage), OBD et batterie (alarmes).
 
+**Association depuis le launcher** : `content://org.librehu.service.bridgepair` (`bridge/BridgePairProvider.kt`),
+`call()` seulement, réservé aux applis qui ont la permission de signature `org.librehu.permission.BRIDGE`. Le
+fournisseur la vérifie lui-même, car Android 9 ne contrôle pas les permissions d'un fournisseur pour `call()`
+(`ContentProvider.Transport.call`). Méthodes :
+- `pair` : texte du QR code, empreinte et fin de validité ; allume le serveur ;
+- `cancel` : ferme le QR code ;
+- `answer` : demande Bluetooth (`arg` = id, extra `allow`) ;
+- `enable` : extra `on` ;
+- `state` : `enabled`, `connected`, `devices`, `requests`, `request_names`, `until`.
+
+L'assistant de premier démarrage de LibreHU Launcher s'en sert pour son QR code d'association et les demandes
+Bluetooth.
+
 **Pages des autres applis LibreHU** : un fournisseur de contenu `<paquet>.bridge`, protégé par la permission de
 signature `org.librehu.permission.BRIDGE`, répond à `call("pages")` (Bundle `json` = tableau de pages, même format),
 `call("set", "<page>/<élément>", {value})` et `call("action", …)` (`bridge/BridgePages.kt`).

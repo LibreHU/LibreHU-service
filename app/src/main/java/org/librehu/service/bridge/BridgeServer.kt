@@ -167,7 +167,11 @@ class BridgeServer private constructor(
 
     fun cancelPairing() {
         token = null
+        tokenUntil = 0
     }
+
+    /** End of the current QR code's validity (ms since the epoch), 0 without one. */
+    val pairingUntil: Long get() = if (token != null && System.currentTimeMillis() < tokenUntil) tokenUntil else 0
 
     fun answer(
         id: String,
