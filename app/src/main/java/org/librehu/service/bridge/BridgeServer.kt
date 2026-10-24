@@ -427,11 +427,17 @@ class BridgeServer private constructor(
                         .put("root", RootShell.isAvailable())
                         .put("rootFiles", _rootFiles.value),
                 )
-            "pages" -> json(JSONArray(allPages().map { (pkg, o) -> JSONObject().put("id", key(pkg, o.getString("id"))).put("title", o.optString("title")).put("icon", o.optString("icon")) }))
+            "pages" -> json(JSONArray(pageList().map { (pkg, o) -> JSONObject().put("id", key(pkg, o.getString("id"))).put("title", o.optString("title")).put("icon", o.optString("icon")) }))
             "page" -> {
-                val id = p.s("id")
-                val (pkg, o) = allPages().firstOrNull { (pkg, o) -> key(pkg, o.getString("id")) == id } ?: throw BridgeException("no page $id")
-                json(o.put("id", key(pkg, o.getString("id"))))
+                val (pkg, pageId) = split(p.s("id"))
+                val o =
+                    if (pkg == SELF) {
+                        val pg = BridgePages.builtIn(app).firstOrNull { it.id == pageId } ?: throw BridgeException("no page")
+                        JSONObject().put("id", pg.id).put("title", pg.title).put("icon", pg.icon).put("items", JSONArray(pg.items.map { it.toJson() }))
+                    } else {
+                        BridgePages.external(app).firstOrNull { (k, o) -> k == pkg && o.getString("id") == pageId }?.second ?: throw BridgeException("no page")
+                    }
+                json(o.put("id", key(pkg, pageId)))
             }
             "set", "action" -> {
                 val (pkg, pageId) = split(p.s("page"))
@@ -525,10 +531,9 @@ class BridgeServer private constructor(
         }
     }
 
-    private fun allPages(): List<Pair<String, JSONObject>> =
-        BridgePages.builtIn(app).map { pg ->
-            SELF to JSONObject().put("id", pg.id).put("title", pg.title).put("icon", pg.icon).put("items", JSONArray(pg.items.map { it.toJson() }))
-        } + BridgePages.external(app)
+    /** Every page without its items (built only when the page is asked). */
+    private fun pageList(): List<Pair<String, JSONObject>> =
+        BridgePages.builtIn(app).map { pg -> SELF to JSONObject().put("id", pg.id).put("title", pg.title).put("icon", pg.icon) } + BridgePages.external(app)
 
     private fun key(
         pkg: String,

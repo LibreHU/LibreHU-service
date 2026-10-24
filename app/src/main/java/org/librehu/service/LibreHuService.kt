@@ -111,6 +111,8 @@ class LibreHuService : Service() {
         startHardware()
         display.start()
         bluetoothModule = BluetoothModule(this).also { it.start() }
+        api = binder
+        btApi = bluetoothModule.binder
         Microphone.applyAtStart(this) // microphone gain of the factory settings, forgotten by the audio HAL at each start
         org.librehu.service.power.AppDataRepair
             .runAtStart(this) // data directories left to an old uid (ViPER crashing at boot): given back, boot resent
@@ -243,6 +245,8 @@ class LibreHuService : Service() {
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
+        api = null
+        btApi = null
         runCatching { unregisterReceiver(wakeReceiver) }
         runCatching { unregisterReceiver(usbReceiver) }
         runCatching { contentResolver.unregisterContentObserver(brightnessObserver) }
@@ -782,6 +786,18 @@ class LibreHuService : Service() {
     }
 
     companion object {
+        /**
+         * The API and Bluetooth API of the running service, for this process only (the phone app's bridge reads and
+         * changes the same settings as the screens): a direct call does not go through [ServiceAccess].
+         */
+        @Volatile
+        var api: ILibreHuService? = null
+            private set
+
+        @Volatile
+        var btApi: org.librehu.service.bt.ILibreHuBluetooth? = null
+            private set
+
         private const val TAG = "LibreHU"
         private const val CHANNEL_ID = "service"
         private const val NOTIFICATION_ID = 1

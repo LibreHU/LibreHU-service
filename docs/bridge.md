@@ -76,10 +76,34 @@ L'événement `values` contient aussi `system` et `gps`.
 aucune requête ne peut le changer. Les permissions de stockage d'Android 9 sont accordées en root (`pm grant`) à la
 première requête de fichiers.
 
-Éléments : `section`, `info` (lecture), `switch`, `slider` (`min`, `max`, `step`, `unit`), `choice` (`options` :
-`{v, l}`), `button` (`confirm`). Pages du service : Autoradio (volume média ; luminosité, extinction de l'écran,
-écran toujours allumé, taille du texte, animations ; heure et fuseau automatiques, format 24 h ; Wi-Fi, Bluetooth,
-localisation, mode avion ; débogage USB ; redémarrage normal, recovery, fastboot), Son LibreHU (menu son, son moteur), Lumières (rétroéclairage), OBD et batterie (alarmes).
+Éléments : `section`, `info` (lecture), `switch`, `slider` (`min`, `max`, `step`, `unit`, `display` = la valeur
+écrite comme sur l'autoradio : « +4 dB », « 2.5 s »), `choice` (`options` : `{v, l}`), `text` (`max` caractères),
+`button` (`confirm`, `hint` = le texte de la confirmation). Une page est construite à la demande (la liste `pages`
+ne contient que `id`, `title`, `icon`) ; l'appli la redemande entière après chaque changement, pour que les options
+qui dépendent d'une autre (mode, interrupteur) apparaissent ou disparaissent.
+
+**Pages du service** (`bridge/BridgeSettings.kt`) : mêmes libellés (mêmes chaînes, donc mêmes langues) et mêmes
+réglages que les écrans de l'autoradio : chaque élément lit et modifie ce que l'écran lit et modifie.
+
+| Page | Contenu |
+|---|---|
+| Autoradio | volume média ; luminosité, extinction, écran toujours allumé, taille du texte, animations ; heure, fuseau, 24 h ; Wi-Fi, Bluetooth, localisation, mode avion ; adb ; redémarrages |
+| Audio | volume, muet, source (Android / AUX), mixage AUX, micro (gain, ECNR), graves / médiums / aigus, loudness, balance / fader, caisson et niveau, ampli externe, panneau de volume (style, bord, décalage, marge, taille, opacité, durée, chiffre, toucher), menu son (canaux, retour, durée, test) |
+| Véhicule | nom de la voiture, fiche (marque, modèle, année, couleur, plaque, énergie, côté conducteur), entrées inversées, clignotants GPIO, touches volant du boîtier CAN (activation, ignorer après contact, appui long), touches tactiles |
+| Recul | activation, mode, sortie, délai, test ; caméra, miroir, retournement, rotation, remplissage, zoom, décalages, DVR, délai de fermeture, infos ; caméras en plus (miroir, disposition) ; widget ; lignes de guidage (toutes) ; son d'enclenchement, volume, médias ; radar, détection de mouvement, approche |
+| Vidéo | positions CVBS IN 1 / 2, frein à main, caméra, commutation au recul, sortie vidéo |
+| OBD | activation, état, adaptateur (Bluetooth / USB, appareil, débit), reconnexion, valeurs lues, widget (emplacements), codes défaut (lire, effacer), voiture ; batterie (alarmes, seuils, son, correction) ; son moteur |
+| Bluetooth | activation, reconnexion, réponse auto, nom, visible ; appairage iPhone ; partage de connexion iPhone |
+| Android Auto / CarPlay | intégration (nuit aux phares, données voiture, touches, retour après recul) et **tous les réglages d'Open Headunit** (lus et écrits par ses commandes d'automatisation, chacun selon son type) ; CarPlay (nuit, ouverture sur l'iPhone, basse latence) |
+| Écran | mode sombre, luminosité jour / nuit et aux phares, voyants à l'écran, panneau de luminosité |
+| Lumières | rétroéclairage des boutons (PWM jour / nuit, sorties séparées) |
+| Système | veille (délai, mode, durée, radios, médias), applis au démarrage, démarrage anticipé, watchdog, redémarrage du SoC, extinction sûre, démarrage forcé de la MCU, relance du lien |
+| GPS et heure | heure depuis le GPS (intervalle, synchro), depuis / vers la MCU |
+| Tweaks | compilation native (auto, tout compiler), préchargement Zygote, réglages noyau (au démarrage, usine, gouverneur et fréquences par cluster, GPU, E/S, swappiness, TCP) |
+
+Restent sur l'autoradio seulement : le format de la caméra (écrit dans la metazone), les couleurs des LED de façade
+(sujet en attente), la MCU et ses profils, les diagnostics (outils MCU, diag audio, Autochips, trafic), les
+sauvegardes, les fichiers DDT4ALL et les zones tactiles (dessinées sur l'écran).
 
 **Association depuis le launcher** : `content://org.librehu.service.bridgepair` (`bridge/BridgePairProvider.kt`),
 `call()` seulement, réservé aux applis qui ont la permission de signature `org.librehu.permission.BRIDGE`. Le

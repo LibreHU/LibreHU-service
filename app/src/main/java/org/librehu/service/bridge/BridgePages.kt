@@ -6,20 +6,14 @@ import android.os.Bundle
 import android.provider.Settings
 import org.json.JSONArray
 import org.json.JSONObject
-import org.librehu.core.obd.BatteryLimits
-import org.librehu.service.car.EngineProfile
-import org.librehu.service.car.EngineSound
-import org.librehu.service.car.FrontLed
-import org.librehu.service.obd.BatteryWatch
-import org.librehu.service.obd.ObdManager
-import org.librehu.service.overlay.SoundOsd
 import org.librehu.service.R
 import org.librehu.service.root.RootShell
 
 /**
  * One setting shown by the phone app. The phone draws the pages it is sent ([BridgePages]) without knowing them:
  * new settings need no phone update. Types: `section`, `info` (read only), `switch` (boolean), `slider` (int,
- * [min]..[max] by [step], [unit]), `choice` ([options]), `button` (an action, [confirm] asks first).
+ * [min]..[max] by [step], [unit], `display` = the value written as the head unit shows it), `choice` ([options]),
+ * `text` (a string, [max] characters at most), `button` (an action, [confirm] asks first).
  */
 class BridgeItem(
     val id: String,
@@ -32,6 +26,7 @@ class BridgeItem(
     val unit: String = "",
     val options: List<Pair<String, String>> = emptyList(),
     val confirm: Boolean = false,
+    val display: ((Int) -> String)? = null,
     val get: () -> Any? = { null },
     val set: (Any?) -> Unit = {},
 ) {
@@ -43,19 +38,25 @@ class BridgeItem(
             .apply {
                 if (hint.isNotEmpty()) put("hint", hint)
                 if (type == "slider") put("min", min).put("max", max).put("step", step)
+                if (type == "text") put("max", max)
                 if (unit.isNotEmpty()) put("unit", unit)
                 if (options.isNotEmpty()) put("options", JSONArray(options.map { JSONObject().put("v", it.first).put("l", it.second) }))
                 if (confirm) put("confirm", true)
-                runCatching { get() }.getOrNull()?.let { put("value", it) }
+                val v = runCatching { get() }.getOrNull()
+                v?.let { put("value", it) }
+                if (display != null && v is Int) put("display", display.invoke(v))
             }
 }
 
+/** A page; its items are built when asked (reading them may need root or another app), each time afresh. */
 class BridgePage(
     val id: String,
     val title: String,
     val icon: String,
-    val items: List<BridgeItem>,
-)
+    private val build: PageBuilder.() -> Unit,
+) {
+    val items: List<BridgeItem> get() = PageBuilder().apply(build).items
+}
 
 /** Builds a page's items. */
 class PageBuilder {
@@ -71,6 +72,38 @@ class PageBuilder {
         value: () -> String,
     ) {
         items += BridgeItem(id, "info", label, get = value)
+    }
+
+    fun text(
+        id: String,
+        label: String,
+        hint: String = "",
+        max: Int = 64,
+        get: () -> String,
+        set: (String) -> Unit,
+    ) {
+        items += BridgeItem(id, "text", label, hint, max = max, get = get, set = { v -> v?.toString()?.take(max)?.let(set) })
+    }
+
+    /** A choice among values of any type, sent by their text (`toString()`: enum name, number…). */
+    fun <T> pick(
+        id: String,
+        label: String,
+        options: List<Pair<T, String>>,
+        hint: String = "",
+        get: () -> T,
+        set: (T) -> Unit,
+    ) {
+        items +=
+            BridgeItem(
+                id,
+                "choice",
+                label,
+                hint,
+                options = options.map { it.first.toString() to it.second },
+                get = { get().toString() },
+                set = { v -> options.firstOrNull { it.first.toString() == v?.toString() }?.let { set(it.first) } },
+            )
     }
 
     fun switch(
@@ -89,11 +122,13 @@ class PageBuilder {
         range: IntRange,
         step: Int = 1,
         unit: String = "",
+        hint: String = "",
+        display: ((Int) -> String)? = null,
         get: () -> Int,
         set: (Int) -> Unit,
     ) {
         items +=
-            BridgeItem(id, "slider", label, min = range.first, max = range.last, step = step, unit = unit, get = get, set = { v ->
+            BridgeItem(id, "slider", label, hint, min = range.first, max = range.last, step = step, unit = unit, display = display, get = get, set = { v ->
                 val n = (v as? Number)?.toInt() ?: v.toString().toIntOrNull() ?: return@BridgeItem
                 set(n.coerceIn(range))
             })
@@ -113,9 +148,10 @@ class PageBuilder {
         id: String,
         label: String,
         confirm: Boolean = false,
+        hint: String = "",
         run: () -> Unit,
     ) {
-        items += BridgeItem(id, "button", label, confirm = confirm, set = { run() })
+        items += BridgeItem(id, "button", label, hint, confirm = confirm, set = { run() })
     }
 }
 
@@ -124,7 +160,7 @@ fun page(
     title: String,
     icon: String,
     build: PageBuilder.() -> Unit,
-) = BridgePage(id, title, icon, PageBuilder().apply(build).items)
+) = BridgePage(id, title, icon, build)
 
 /**
  * The settings LibreHU-service shows to the phone app, and those of the other LibreHU apps: a LibreHU app adds its
@@ -139,11 +175,6 @@ object BridgePages {
     fun builtIn(context: Context): List<BridgePage> {
         val app = context.applicationContext
         val audio = app.getSystemService(AudioManager::class.java)
-        val osd = SoundOsd.get(app)
-        val engine = EngineSound.get(app)
-        val led = FrontLed.get(app)
-        val obd = ObdManager.get(app)
-        val battery = BatteryWatch.get(app)
         val r: (Int) -> String = app::getString
         return listOf(
             page("android", r(R.string.bp_unit), "settings") {
@@ -208,47 +239,7 @@ object BridgePages {
                 button("reboot_recovery", r(R.string.bp_reboot_recovery), confirm = true) { BridgeTools.reboot("recovery") }
                 button("reboot_bootloader", r(R.string.bp_reboot_bootloader), confirm = true) { BridgeTools.reboot("bootloader") }
             },
-            page("sound", r(R.string.bp_sound_librehu), "volume") {
-                switch("osd", r(R.string.bp_osd), r(R.string.bp_osd_hint), get = { osd.settings.value.enabled }) { on ->
-                    osd.update { it.copy(enabled = on) }
-                }
-                section(r(R.string.bp_engine_title))
-                switch("engine", r(R.string.bp_engine), get = { engine.settings.value.enabled }) { on -> engine.update { it.copy(enabled = on) } }
-                choice("engine_profile", r(R.string.bp_engine_profile), EngineProfile.entries.map { it.name to it.name }, get = { engine.settings.value.profile.name }) { v ->
-                    engine.update { it.copy(profile = EngineProfile.valueOf(v)) }
-                }
-                slider("engine_volume", r(R.string.bp_volume), 0..100, 5, "%", get = { engine.settings.value.volume }) { v -> engine.update { it.copy(volume = v) } }
-                choice("engine_turbo", r(R.string.bp_turbo), listOf("0" to r(R.string.bp_turbo_off), "1" to r(R.string.bp_turbo_light), "2" to r(R.string.bp_turbo_strong)), get = { engine.settings.value.turbo.toString() }) { v ->
-                    engine.update { it.copy(turbo = v.toInt()) }
-                }
-                switch("engine_pops", r(R.string.bp_pops), get = { engine.settings.value.pops }) { on -> engine.update { it.copy(pops = on) } }
-                button("engine_test", r(R.string.bp_test)) { engine.test() }
-            },
-            page("lights", r(R.string.bp_lights), "light") {
-                switch("backlight", r(R.string.bp_backlight), get = { led.settings.value.backlight }) { on ->
-                    led.update { it.copy(backlight = on) }
-                }
-                slider("day1", r(R.string.bp_day1), 5..100, 5, "%", get = { led.settings.value.dayPwm1 }) { v -> led.update { it.copy(dayPwm1 = v) } }
-                slider("night1", r(R.string.bp_night1), 5..100, 5, "%", get = { led.settings.value.nightPwm1 }) { v -> led.update { it.copy(nightPwm1 = v) } }
-                slider("day2", r(R.string.bp_day2), 5..100, 5, "%", get = { led.settings.value.dayPwm2 }) { v -> led.update { it.copy(dayPwm2 = v) } }
-                slider("night2", r(R.string.bp_night2), 5..100, 5, "%", get = { led.settings.value.nightPwm2 }) { v -> led.update { it.copy(nightPwm2 = v) } }
-            },
-            page("obd", r(R.string.bp_obd), "car") {
-                switch("enabled", r(R.string.bp_obd_enable), get = { obd.settings.value.enabled }) { on -> obd.update { it.copy(enabled = on) } }
-                info("battery", r(R.string.bp_battery)) {
-                    battery.reading.value?.let { r -> "%.1f V".format(r.voltage) + (r.percent?.let { " · $it %" } ?: " · ${r.status}") } ?: "—"
-                }
-                section(r(R.string.bp_battery_alarms))
-                fun limits(t: (BatteryLimits) -> BatteryLimits) = battery.update { it.copy(limits = t(it.limits)) }
-                switch("alarm_low", r(R.string.bp_low), get = { battery.settings.value.limits.alarmLow }) { on -> limits { it.copy(alarmLow = on) } }
-                slider("low", r(R.string.bp_low_threshold), 115..125, get = { (battery.settings.value.limits.low * 10).toInt() }) { v ->
-                    limits { it.copy(low = v / 10.0) }
-                }
-                switch("alarm_charge", r(R.string.bp_charge), get = { battery.settings.value.limits.alarmCharge }) { on -> limits { it.copy(alarmCharge = on) } }
-                switch("alarm_over", r(R.string.bp_over), get = { battery.settings.value.limits.alarmOver }) { on -> limits { it.copy(alarmOver = on) } }
-                switch("sound", r(R.string.bp_alarm_sound), get = { battery.settings.value.sound }) { on -> battery.update { it.copy(sound = on) } }
-            },
-        )
+        ) + BridgeSettings.pages(app)
     }
 
     /** Screen timeouts offered (ms) and their names. */
