@@ -78,7 +78,10 @@ object RootShell {
         return if (su.any { File(it).exists() }) "su" else null
     }
 
-    /** Runs [command] as root; returns its output, or null on failure / timeout. */
+    /**
+     * Runs [command] as root; returns its output, or null on failure / timeout. The output is read and [stdin] written
+     * on their own threads: the timeout holds even when the command never ends nor closes its output.
+     */
     fun run(
         command: String,
         stdin: ByteArray? = null,
@@ -86,16 +89,41 @@ object RootShell {
     ): String? =
         try {
             val p = ProcessBuilder("su", "-c", command).redirectErrorStream(true).start()
-            if (stdin != null) p.outputStream.use { it.write(stdin) } else p.outputStream.close()
-            val out = p.inputStream.bufferedReader().readText()
+            val out = StringBuilder()
+            val reader =
+                Thread({
+                    try {
+                        val text = p.inputStream.bufferedReader().readText()
+                        synchronized(out) { out.append(text) }
+                    } catch (_: Exception) {
+                    }
+                }, "root-out").apply {
+                    isDaemon = true
+                    start()
+                }
+            Thread({
+                try {
+                    p.outputStream.use { if (stdin != null) it.write(stdin) }
+                } catch (_: Exception) {
+                }
+            }, "root-in").apply {
+                isDaemon = true
+                start()
+            }
             if (!p.waitFor(timeoutS, TimeUnit.SECONDS)) {
                 p.destroy()
+                reader.join(500)
+                Log.w(TAG, "$command: timeout ${timeoutS}s")
                 null
-            } else if (p.exitValue() == 0) {
-                out
             } else {
-                Log.w(TAG, "$command: exit ${p.exitValue()} $out")
-                null
+                reader.join(2_000)
+                val text = synchronized(out) { out.toString() }
+                if (p.exitValue() == 0) {
+                    text
+                } else {
+                    Log.w(TAG, "$command: exit ${p.exitValue()} $text")
+                    null
+                }
             }
         } catch (e: Exception) {
             Log.w(TAG, "$command: ${e.message}")
