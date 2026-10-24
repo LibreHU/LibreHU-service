@@ -121,3 +121,24 @@ Bluetooth.
 **Pages des autres applis LibreHU** : un fournisseur de contenu `<paquet>.bridge`, protégé par la permission de
 signature `org.librehu.permission.BRIDGE`, répond à `call("pages")` (Bundle `json` = tableau de pages, même format),
 `call("set", "<page>/<élément>", {value})` et `call("action", …)` (`bridge/BridgePages.kt`).
+Chaque appli le construit avec le même petit kit (`bridge/BridgeKit.kt`, copié dans chaque appli : pages,
+interrupteurs, curseurs, choix, textes, boutons, et la vérification de la permission dans `call()`, qu'Android 9 ne
+fait pas). Mêmes libellés et mêmes réglages que les écrans de chaque appli :
+
+| Appli | Pages |
+|---|---|
+| Launcher | Apparence (thème, style moderne / rétro, police, couleur dont RGB, icônes), Fond d'écran (animations, spectre, internet), Accueil (pages, taille et disposition des widgets, conduite à droite, barre et ses éléments), Tiroir d'applis, Horloge de veille, Verrouillage, SOS, Conduite (météo, limites de vitesse), Pneus (TPMS) |
+| Radio FM | la radio (marche, fréquence, stations, recherche, balayage) ; RDS, chemin audio, logos (serveur, pays, bibliothèque) |
+| Téléphone (Dialer) | appels (ouverture, fenêtre d'appel entrant, bulle), apparence, widgets |
+| Widgets | chaque place des widgets Voyants et Infos, noms, temps de trajet, thème, démo |
+| BtnRemap | chaque bouton appris : nom, appui court et long (et l'appli à ouvrir), boutons ignorés au démarrage |
+| EasySource | source jouée, sources (marche, ordre), délai, ouverture de l'appli, reprise au démarrage |
+| Disc | lecture, pistes ; lecture auto, anti-saut, MusicBrainz, extraction (format, mode sûr, essais, noms, dossiers, tags) |
+| LibreHU Apps (OTA) | les applis (version installée et disponible, vérifier, installer, mettre à jour, tout mettre à jour) ; édition, vérifications, installations, /system |
+| Helper | sections du rapport, anonymisation, root, rapport écrit dans le dossier de l'appli |
+| ViPER4Android | interrupteur général, puis une page par effet avec **tous** ses paramètres, tirés de la liste des effets de l'appli (chaque paramètre avec sa plage ; un nouveau paramètre apparaît de lui-même) ; l'état est enregistré comme par l'appli et le service ViPER le réapplique |
+| CarPlay | image (échelle, i/s, HEVC, taille d'écran, barres, conduite à droite), son (tampon, micro, canaux), CarPlay sans fil et point d'accès, puce MFi, identité de la voiture, démarrage, journaux |
+
+Restent sur l'autoradio : les fichiers choisis sur place (images et vidéos du fond d'écran, préréglages et fichiers DDC
+/ convolution de ViPER, dossier d'extraction du Disc), les secrets (jeton GitHub, jeton MFi distant, mot de passe du
+point d'accès CarPlay) et ce qui se dessine à l'écran (zone sûre de CarPlay).

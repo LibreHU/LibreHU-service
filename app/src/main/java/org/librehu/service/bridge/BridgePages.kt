@@ -170,7 +170,20 @@ fun page(
  */
 object BridgePages {
     /** LibreHU apps asked for their pages (those installed). */
-    val PROVIDERS = listOf("org.librehu.launcher", "org.librehu.btnremap", "org.librehu.ota", "org.librehu.disc", "org.librehu.fm")
+    val PROVIDERS =
+        listOf(
+            "org.librehu.launcher",
+            "org.librehu.fm",
+            "org.librehu.dialer",
+            "org.librehu.widgets",
+            "org.librehu.btnremap",
+            "org.librehu.easysource",
+            "org.librehu.disc",
+            "org.librehu.ota",
+            "org.librehu.helper",
+            "com.llsl.viper4android",
+            "org.librehu.carplay",
+        )
 
     fun builtIn(context: Context): List<BridgePage> {
         val app = context.applicationContext

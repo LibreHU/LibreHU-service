@@ -131,6 +131,12 @@
         <provider android:authorities="org.librehu.ota.bridge" />
         <provider android:authorities="org.librehu.disc.bridge" />
         <provider android:authorities="org.librehu.fm.bridge" />
+        <provider android:authorities="org.librehu.dialer.bridge" />
+        <provider android:authorities="org.librehu.widgets.bridge" />
+        <provider android:authorities="org.librehu.easysource.bridge" />
+        <provider android:authorities="org.librehu.helper.bridge" />
+        <provider android:authorities="com.llsl.viper4android.bridge" />
+        <provider android:authorities="org.librehu.carplay.bridge" />
     </queries>
 
     <application
