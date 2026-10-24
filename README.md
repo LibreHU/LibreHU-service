@@ -222,3 +222,10 @@ rend Jetpack Compose nettement plus fluide ([Compose performance](https://develo
 règles gardent aussi ce qui n'est appelé que par son nom (méthodes natives, helpers root lancés par `app_process`). Si
 une fonction plante avec « class / method not found », regarder `usage.txt` dans l'artefact *R8 reports* de la CI (ce
 que R8 a retiré) et ajouter une règle `-keep`.
+
+**Style rétro de LibreHU Launcher** : quand le launcher est en style rétro (VFD ambre, LCD vert, cassette), cette appli
+prend sa palette (jour ou nuit) et sa police d'afficheur à segments, en majuscules sans accents (« LibreHU Seg14 »,
+tirée de DSEG14 © keshikan, SIL Open Font License 1.1, voir `third_party/DSEG-LICENSE.txt`). Le launcher publie le
+style et la palette par `content://org.librehu.launcher.theme/theme` (colonnes `style`, `background`, `surface`,
+`surface_high`, `on_accent`, `text`, `text_dim`) et par la diffusion `org.librehu.action.THEME_CHANGED` (mêmes noms
+en extras).
