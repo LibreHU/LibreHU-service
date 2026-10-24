@@ -60,6 +60,9 @@ fun TweaksScreen() {
                 Actions { Pill(stringResource(R.string.tw_skipped_ok)) { tweaks.clearSkipped() } }
             }
             SwitchRow(stringResource(R.string.tw_boot), s.applyAtBoot, stringResource(R.string.tw_boot_hint)) { on -> set { it.copy(applyAtBoot = on) } }
+            val boost = remember { org.librehu.service.tweaks.TouchBoost.get(context) }
+            val boostOn by boost.enabled.collectAsStateWithLifecycle()
+            SwitchRow(stringResource(R.string.tw_touch_boost), boostOn, stringResource(R.string.tw_touch_boost_hint)) { boost.setEnabled(it) }
             status?.let { Hint(it) }
             Actions {
                 Pill(stringResource(R.string.tw_factory)) {

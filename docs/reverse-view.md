@@ -5,8 +5,14 @@
 
 ## Principe
 Quand la marche arrière est engagée (entrée MCU / GPIO, après l'option « inverser »), `ReverseCamera` montre une fenêtre
-`TYPE_APPLICATION_OVERLAY` plein écran (permission « afficher par-dessus les autres applis ») avec un `TextureView`
-alimenté par Camera2. Ni ivi-services ni l'appli DVR de Jancar (`com.jancar.hd2cam`) ne sont nécessaires. Le recul rapide
+`TYPE_APPLICATION_OVERLAY` plein écran (permission « afficher par-dessus les autres applis ») avec une `SurfaceView`
+alimentée par Camera2 (`car/CameraSurfaceView.kt`) : la caméra dessine dans une `SurfaceTexture` que la vue recopie en
+GLES 2 sur son propre fil, avec la même matrice qu'une `TextureView` (proportions, rotation, miroir, retournement, zoom,
+décalage), dans une couche à part composée par SurfaceFlinger. Avec une `TextureView`, toute la fenêtre (lignes de
+guidage comprises) était recomposée à chaque image de la caméra
+([TextureView](https://developer.android.com/reference/android/view/TextureView),
+[SurfaceView et GLSurfaceView](https://source.android.com/docs/core/graphics/arch-sv-glsv)). Les caméras en plus ont
+chacune la leur, au-dessus de la principale (`setZOrderMediaOverlay`) pour l'incrustation. Ni ivi-services ni l'appli DVR de Jancar (`com.jancar.hd2cam`) ne sont nécessaires. Le recul rapide
 de l'ARM2 (avant le démarrage d'Android) reste celui d'Autochips.
 
 Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par-dessus les autres applis**.

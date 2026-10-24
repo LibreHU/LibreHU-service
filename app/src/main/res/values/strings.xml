@@ -975,6 +975,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="tab_tweaks">Tweaks</string>
     <string name="tw_title">Kernel tweaks</string>
     <string name="tw_boot">Apply at start-up</string>
+    <string name="tw_touch_boost">CPU boost on touch</string>
+    <string name="tw_touch_boost_hint">As soon as a finger touches the screen, every core runs at its maximum frequency; back to the minimum above 1.5 s after the last touch. Smoother scrolling and animations, a little more heat. Root.</string>
     <string name="tw_boot_hint">Your choices again after each start, 90 s guarded: if the head unit restarts before, the next start skips them.</string>
     <string name="tw_skipped">The last start died right after the tweaks: they were not applied this time. Check the values, then switch the option back on.</string>
     <string name="tw_skipped_ok">Understood</string>

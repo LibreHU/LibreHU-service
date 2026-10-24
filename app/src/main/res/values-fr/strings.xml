@@ -975,6 +975,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="tab_tweaks">Tweaks</string>
     <string name="tw_title">Réglages du noyau</string>
     <string name="tw_boot">Appliquer au démarrage</string>
+    <string name="tw_touch_boost">Accélérer le processeur au toucher</string>
+    <string name="tw_touch_boost_hint">Dès qu\'un doigt touche l\'écran, tous les cœurs passent à leur fréquence maximale ; retour au minimum ci-dessus 1,5 s après le dernier toucher. Défilement et animations plus fluides, un peu plus de chaleur. Root.</string>
     <string name="tw_boot_hint">Tes choix à nouveau après chaque démarrage, sous surveillance pendant 90 s : si l\'autoradio redémarre avant, le démarrage suivant les saute.</string>
     <string name="tw_skipped">Le dernier démarrage s\'est arrêté juste après les réglages : ils n\'ont pas été appliqués cette fois. Vérifier les valeurs, puis réactiver l\'option.</string>
     <string name="tw_skipped_ok">Compris</string>

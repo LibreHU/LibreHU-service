@@ -76,7 +76,7 @@ class ReverseView private constructor(
 
     private val sounds = ReverseSounds(app)
     private var root: FrameLayout? = null
-    private var texture: TextureView? = null
+    private var texture: CameraSurfaceView? = null
     private var guide: ReverseGuideView? = null
     private var scope: CoroutineScope? = null
     private var openedId: String? = null
@@ -177,7 +177,7 @@ class ReverseView private constructor(
         }
         val frame = FrameLayout(app)
         frame.setBackgroundColor(android.graphics.Color.BLACK)
-        val tv = TextureView(app)
+        val tv = CameraSurfaceView(app)
         val g = ReverseGuideView(app)
         shownIndex = 0
         g.settings = s
@@ -594,8 +594,8 @@ class ReverseView private constructor(
     // --- Picture placement ---------------------------------------------------------------------------------------
 
     /**
-     * TextureView stretches the camera picture over the view: the matrix brings it back to its proportions (filling
-     * the screen or whole), then rotation, mirror, flip, zoom and shift.
+     * The camera picture is stretched over the view (as a TextureView does): the matrix brings it back to its
+     * proportions (filling the screen or whole), then rotation, mirror, flip, zoom and shift.
      */
     private fun applyTransform() {
         val tv = texture ?: return

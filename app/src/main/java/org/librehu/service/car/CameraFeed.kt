@@ -21,8 +21,9 @@ import android.widget.TextView
 import kotlin.math.max
 
 /**
- * One more camera of the rear view (side camera, second rear camera, USB camera…) in its own TextureView: Camera2, or
- * a USB camera ([UvcStream]) for a `uvc:` id. Picture filling its box, mirrored when asked; its name in a corner.
+ * One more camera of the rear view (side camera, second rear camera, USB camera…) in its own [CameraSurfaceView]
+ * (above the main camera, for the picture in picture): Camera2, or a USB camera ([UvcStream]) for a `uvc:` id.
+ * Picture filling its box, mirrored when asked; its name in a corner.
  * The head unit's camera service must accept several cameras open at once (else this one shows its error).
  */
 class CameraFeed(
@@ -34,7 +35,7 @@ class CameraFeed(
     private val cameras = app.getSystemService(CameraManager::class.java)
     private val main = Handler(Looper.getMainLooper())
     val view = FrameLayout(app)
-    private val texture = TextureView(app)
+    private val texture = CameraSurfaceView(app).apply { setZOrderMediaOverlay(true) }
     private val caption = TextView(app)
     private var thread: HandlerThread? = null
     private var handler: Handler? = null

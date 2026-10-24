@@ -127,6 +127,9 @@ class LibreHuService : Service() {
         org.librehu.service.tweaks.Tweaks
             .get(this)
             .applyAtStart() // kernel tweaks kept by the user (skipped after a start that died right after them)
+        org.librehu.service.tweaks.TouchBoost
+            .get(this)
+            .start() // CPU at its maximum while a finger is on the screen (off by default)
         obd = ObdManager.get(this).also { it.start() }
         // Engine sound made up from the OBD values (off by default).
         org.librehu.service.car.EngineSound.get(this).start()

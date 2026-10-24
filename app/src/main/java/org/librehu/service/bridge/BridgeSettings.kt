@@ -764,6 +764,8 @@ object BridgeSettings {
         val st = tweaks.refresh() ?: tweaks.state.value
         section(r(R.string.tw_title))
         switch("tw_boot", r(R.string.tw_boot), r(R.string.tw_boot_hint), get = { tweaks.settings.value.applyAtBoot }) { on -> tweaks.update { it.copy(applyAtBoot = on) } }
+        val boost = org.librehu.service.tweaks.TouchBoost.get(app)
+        switch("tw_touch_boost", r(R.string.tw_touch_boost), r(R.string.tw_touch_boost_hint), get = { boost.enabled.value }) { on -> boost.setEnabled(on) }
         button("tw_factory", r(R.string.tw_factory), confirm = true) { tweaks.restoreFactory() }
         fun mhz(khz: Int) = if (khz <= 0) "—" else "${khz / 1000} MHz"
         for (p in st.cpu) {
