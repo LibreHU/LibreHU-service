@@ -116,6 +116,17 @@ class ObdManager private constructor(
 
     @Volatile
     private var running = false
+
+    /** Link of the session now: closed by [halt], so that a session waiting for an answer stops at once. */
+    @Volatile
+    private var link: ObdLink? = null
+
+    /**
+     * True only in the session thread of now. A stopped session could go on for up to 15 s (waiting for an answer)
+     * while the next one opened the same adapter: both then took the USB / Bluetooth link from each other in a loop
+     * ("Error writing 5 bytes … rc=-1", Bluetooth failing too) after a reconnect or a change of the settings.
+     */
+    private val active: Boolean get() = running && thread === Thread.currentThread()
     private var lastPublish = 0L
 
     private val usbReceiver =
@@ -233,34 +244,41 @@ class ObdManager private constructor(
 
     private fun halt() {
         running = false
-        thread?.interrupt()
-        thread?.join(2000)
+        val t = thread
         thread = null
+        t?.interrupt()
+        runCatching { link?.close() }
+        t?.join(5000)
         _identifying.value = false
         setState { ObdState() }
         ObdWidget.refresh(app)
     }
 
     private fun loop() {
-        while (running) {
+        while (active) {
             var link: ObdLink? = null
             try {
                 setState { it.copy(connection = ObdConnection.CONNECTING, message = "", values = emptyMap()) }
                 link = open()
+                this.link = link
+                if (!active) return
                 setState { it.copy(connection = ObdConnection.INITIALISING, adapter = link.description) }
                 session(link)
             } catch (e: UsbPermissionNeeded) {
                 askUsbPermission(e.deviceName)
-                setState { it.copy(connection = ObdConnection.ERROR, message = "USB permission") }
+                if (active) setState { it.copy(connection = ObdConnection.ERROR, message = "USB permission") }
                 return
             } catch (_: InterruptedException) {
                 return
             } catch (e: Exception) {
+                // A session stopped meanwhile says nothing: its error is the link closed by halt()
+                if (!active) return
                 Log.w(TAG, "OBD: ${e.message}")
                 setState { it.copy(connection = ObdConnection.ERROR, message = e.message ?: e.javaClass.simpleName) }
             } finally {
                 link?.close()
-                battery.onDisconnected()
+                if (this.link === link) this.link = null
+                if (thread == null || thread === Thread.currentThread()) battery.onDisconnected()
                 ObdWidget.refresh(app)
             }
             try {
@@ -317,7 +335,7 @@ class ObdManager private constructor(
         }
         voltage?.let { battery.onVoltage(it, null) }
         var round = 0
-        while (running) {
+        while (active) {
             requests.poll()?.let { handleRequest(link, it) }
             val wanted = _settings.value.pids.filter { supported.isEmpty() || it.pid in supported }
             val values = HashMap(_state.value.values)

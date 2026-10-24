@@ -1280,4 +1280,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="led_separate_hint">Le MCU a deux sorties de luminosité ; selon la façade, elles éclairent les mêmes boutons ou des groupes différents.</string>
     <string name="led_preview_hint">En lâchant un curseur, le niveau s\'affiche 3 s sur les boutons, puis celui des feux actuels revient. Le MCU garde la valeur en mémoire : seule une valeur nouvelle lui est envoyée.</string>
     <string name="led_blink_hint_white">Le rétroéclairage blanc clignote en intensité, visible aussi de jour.</string>
+    <string name="ddt_url">Adresse de ecu.zip</string>
+    <string name="ddt_download">Télécharger</string>
+    <string name="ddt_download_again">Télécharger la dernière version</string>
+    <string name="ddt_url_hint">Lien direct vers le fichier ecu.zip (https). Les releases GitHub de ddt4all ne contiennent pas la base, seulement le programme : la base (issue de DDT2000) circule par des liens de la communauté qui changent. L\'adresse est mémorisée pour retélécharger plus tard ; le fichier est vérifié (db.json) avant de remplacer la base actuelle.</string>
+    <string name="ddt_downloading">Téléchargement : %1$s Mo…</string>
 </resources>

@@ -61,14 +61,84 @@ class ObdCarStore private constructor(
         try {
             app.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 16) } }
                 ?: throw ObdCarException("Cannot read the file")
-            val projects = readIndex(tmp)
-            if (projects.isEmpty()) throw ObdCarException("No vehicle with CAN ECUs in this database")
-            if (!tmp.renameTo(dbFile)) throw ObdCarException("Cannot keep the database")
-            _projects.value = projects
-            return projects
+            return keep(tmp)
         } finally {
             tmp.delete()
         }
+    }
+
+    /** Address the database was last downloaded from (setting), empty = none. */
+    fun downloadUrl(): String = prefs.getString(PREF_DB_URL, "").orEmpty()
+
+    /**
+     * Downloads an `ecu.zip` from [url] and keeps it as [importDatabase] does (checked for its db.json first, the
+     * database kept until then). ddt4all's releases do not carry the database (only its program), so the address is
+     * the user's: a direct link to the file (https, redirects followed). [progress]: bytes received, total (−1 unknown).
+     */
+    fun downloadDatabase(
+        url: String,
+        progress: (Long, Long) -> Unit,
+    ): List<DdtProject> {
+        val u = url.trim()
+        if (!u.startsWith("https://") && !u.startsWith("http://")) throw ObdCarException("Not a web address")
+        prefs.edit().putString(PREF_DB_URL, u).apply()
+        val tmp = File(storage.noBackupFilesDir, "ddt4all-ecu.zip.part")
+        try {
+            var target = java.net.URL(u)
+            var conn: java.net.HttpURLConnection
+            var hops = 0
+            while (true) {
+                conn = target.openConnection() as java.net.HttpURLConnection
+                conn.instanceFollowRedirects = false
+                conn.connectTimeout = 15_000
+                conn.readTimeout = 30_000
+                conn.setRequestProperty("User-Agent", "LibreHU-service")
+                val code = conn.responseCode
+                if (code in 300..399 && hops < 8) {
+                    // Followed by hand: HttpURLConnection does not follow a redirect to another host / protocol
+                    val next = conn.getHeaderField("Location") ?: throw ObdCarException("Redirect without an address")
+                    conn.disconnect()
+                    target = java.net.URL(target, next)
+                    hops++
+                    continue
+                }
+                if (code != 200) throw ObdCarException("HTTP $code")
+                break
+            }
+            val total = conn.contentLengthLong
+            if (total > MAX_DB_BYTES) throw ObdCarException("File too big (${total / 1_000_000} MB)")
+            conn.inputStream.use { input ->
+                tmp.outputStream().use { out ->
+                    val buf = ByteArray(1 shl 16)
+                    var done = 0L
+                    var shown = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        done += n
+                        if (done > MAX_DB_BYTES) throw ObdCarException("File too big")
+                        if (done - shown > 1_000_000) {
+                            shown = done
+                            progress(done, total)
+                        }
+                    }
+                    progress(done, total)
+                }
+            }
+            conn.disconnect()
+            return keep(tmp)
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    private fun keep(tmp: File): List<DdtProject> {
+        val projects = readIndex(tmp)
+        if (projects.isEmpty()) throw ObdCarException("No vehicle with CAN ECUs in this database")
+        if (!tmp.renameTo(dbFile)) throw ObdCarException("Cannot keep the database")
+        _projects.value = projects
+        return projects
     }
 
     fun deleteDatabase() {
@@ -237,6 +307,9 @@ class ObdCarStore private constructor(
             }.sortedBy { it.name.lowercase() }
 
     companion object {
+        private const val PREF_DB_URL = "ddt_db_url"
+        private const val MAX_DB_BYTES = 1_500_000_000L
+
         private const val KEY_SELECTED = "selected"
         private const val KEY_ITEMS = "items_"
 

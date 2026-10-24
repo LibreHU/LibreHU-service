@@ -1280,4 +1280,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="led_separate_hint">The MCU has two brightness outputs; depending on the panel they light the same buttons or different groups.</string>
     <string name="led_preview_hint">Letting go of a slider shows its level on the buttons for 3 s, then the one for the current headlights comes back. The MCU keeps the value in memory: only a new value is sent to it.</string>
     <string name="led_blink_hint_white">The white backlight blinks its brightness, visible in the daytime too.</string>
+    <string name="ddt_url">Address of ecu.zip</string>
+    <string name="ddt_download">Download</string>
+    <string name="ddt_download_again">Download the latest version</string>
+    <string name="ddt_url_hint">Direct link to the ecu.zip file (https). ddt4all\'s GitHub releases do not carry the database, only the program: the database (from DDT2000) goes around through community links that change. The address is kept to download again later; the file is checked (db.json) before it replaces the current database.</string>
+    <string name="ddt_downloading">Downloading: %1$s MB…</string>
 </resources>

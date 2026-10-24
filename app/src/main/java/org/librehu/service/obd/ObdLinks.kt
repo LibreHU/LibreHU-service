@@ -115,6 +115,7 @@ internal class UsbObdLink private constructor(
         val deadline = System.currentTimeMillis() + timeoutMs
         val buf = ByteArray(256)
         while (System.currentTimeMillis() < deadline) {
+            if (Thread.interrupted()) throw InterruptedException()
             val n = port.read(buf, 50)
             if (n > 0) {
                 sb.append(String(buf, 0, n, Charsets.US_ASCII))

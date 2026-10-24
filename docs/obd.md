@@ -64,6 +64,11 @@ ni n'invente aucun identifiant. Seule la liste des **noms de véhicules** de ddt
    le stockage du service (`no_backup`, hors de la sauvegarde des réglages : il est gros et revient de son propre
    fichier) et son index `db.json` est lu : pour chaque fichier de calculateur, adresse, groupe (UCH, Injection…),
    protocole, projets (véhicules) et identifications.
+   **Ou le télécharger** : champ « Adresse de ecu.zip » + **Télécharger** (redirections suivies, taille affichée,
+   adresse mémorisée pour « Télécharger la dernière version »). Les releases GitHub de ddt4all ne contiennent pas la
+   base (seulement l'AppImage et les installeurs Windows) et son code n'a pas d'adresse de téléchargement : la base,
+   issue de DDT2000, circule par des liens de la communauté, d'où une adresse à saisir. Le fichier est vérifié
+   (`db.json`) avant de remplacer la base gardée.
 2. **Chercher la voiture** par nom ou code ; seuls les véhicules ayant des calculateurs **CAN** sont listés.
 3. Pour chaque calculateur (adresse) du véhicule, **un fichier** à garder (ils diffèrent par version logicielle) ou
    « Ignorer ». **Identifier sur la voiture** (adaptateur connecté) lit l'identification de chaque calculateur comme
@@ -153,3 +158,14 @@ Désactivé par défaut, carte **Son moteur (simulé)** de l'onglet OBD ; le ré
   décharge quand l'accélérateur se ferme d'un coup) ; pétarades au lever de pied ; régime maximal joué.
 - L'OBD ne donne que quelques valeurs par seconde : le régime glisse vers la dernière valeur (≈ 80 ms). Fondu à
   l'arrêt quand l'adaptateur ne répond plus. Bouton **Essai** : montée en régime simulée de 8 s, sans la voiture.
+
+### Session OBD : une seule à la fois
+
+Avant, `running` était commun à toutes les sessions : après « Reconnecter », un changement de réglage ou l'accord de
+la permission USB, l'ancienne session pouvait continuer jusqu'à 15 s (attente d'une réponse, `join` abandonné au bout
+de 2 s) pendant que la nouvelle ouvrait le même adaptateur. Les deux se prenaient la liaison en boucle : en USB
+« Error writing 5 bytes at offset 0 of total 5 after 0msec, rc=-1 » (usb-serial-for-android), en Bluetooth des
+connexions qui tombent. Maintenant chaque session vérifie qu'elle est celle en cours (`active`), `halt()` ferme la
+liaison (une attente s'arrête tout de suite) et la lecture USB s'arrête à l'interruption ; une session arrêtée
+n'affiche plus d'erreur.
+

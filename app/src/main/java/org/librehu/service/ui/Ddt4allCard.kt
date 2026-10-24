@@ -47,6 +47,7 @@ internal fun Ddt4allCard(st: ObdState) {
     var files by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(store.downloadUrl()) }
 
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { store.loadDatabase() } }
     val open =
@@ -66,6 +67,31 @@ internal fun Ddt4allCard(st: ObdState) {
                 busy = false
             }
         }
+    val download = {
+        busy = true
+        message = context.getString(R.string.ddt_downloading, "0")
+        scope.launch {
+            message =
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        store.downloadDatabase(url) { done, total ->
+                            val mb = String.format(java.util.Locale.ROOT, "%.0f", done / 1e6)
+                            message =
+                                if (total > 0) {
+                                    context.getString(R.string.ddt_downloading, "$mb / ${total / 1_000_000}")
+                                } else {
+                                    context.getString(R.string.ddt_downloading, mb)
+                                }
+                        }
+                    }.fold(
+                        { context.getString(R.string.ddt_imported, it.size) },
+                        { context.getString(R.string.obd_car_import_error, it.message ?: it.javaClass.simpleName) },
+                    )
+                }
+            code = null
+            busy = false
+        }
+    }
     val project = projects?.firstOrNull { it.code == code }
     // An identification picks the matching file of each ECU found.
     LaunchedEffect(idents, code) {
@@ -157,6 +183,23 @@ internal fun Ddt4allCard(st: ObdState) {
                     store.deleteDatabase()
                     code = null
                 }
+            }
+        }
+        // Download: ddt4all's releases do not carry ecu.zip, the address is the user's (kept)
+        if (project == null) {
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it.trim() },
+                singleLine = true,
+                label = { Text(stringResource(R.string.ddt_url)) },
+            )
+            Hint(stringResource(R.string.ddt_url_hint))
+            Actions {
+                Pill(
+                    stringResource(if (list == null) R.string.ddt_download else R.string.ddt_download_again),
+                    enabled = !busy && url.startsWith("http"),
+                    icon = Icons.Default.FileDownload,
+                ) { download() }
             }
         }
         if (message.isNotEmpty()) StatusLine(message, null)
