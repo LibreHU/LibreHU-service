@@ -8,10 +8,13 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
+import java.util.Locale
 import org.librehu.service.MainActivity
 import org.librehu.service.R
+import org.librehu.service.ui.RetroLook
+import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
-import java.util.Locale
+import org.librehu.service.ui.WidgetColors
 
 /**
  * Phone widget: the connected iPhone (LibreHU CarPlay app: battery, charge, temperature, cycles) or else the
@@ -35,17 +38,10 @@ class PhoneWidget : AppWidgetProvider() {
         }
 
         fun views(context: Context): RemoteViews {
-            val (dark, launcherAccent) = ThemeFollower.current(context)
-            val accent =
-                if (launcherAccent != 0) {
-                    launcherAccent
-                } else if (dark) {
-                    0xFF8AB4F8.toInt()
-                } else {
-                    0xFF1A73E8.toInt()
-                }
-            val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
-            val dim = if (dark) 0xFF9AA0A6.toInt() else 0xFF5F6368.toInt()
+            val c = ThemeFollower.current(context).let { (dark, accent) -> WidgetColors(dark, accent) }
+            val accent = c.accent
+            val text = c.text
+            val dim = c.dim
             val iphone = PhoneInfo.iphone.value?.takeIf { it.connected }
             val bt = PhoneInfo.bluetooth.value
             val (title, status, active) =
@@ -54,19 +50,15 @@ class PhoneWidget : AppWidgetProvider() {
                     bt.deviceAddress.isNotEmpty() -> Triple(bt.deviceName.ifEmpty { bt.deviceAddress }, btLine(context, bt), true)
                     else -> Triple(context.getString(R.string.phone_widget_title), context.getString(R.string.phone_none), false)
                 }
-            return RemoteViews(context.packageName, R.layout.widget_projection).apply {
-                setInt(
-                    R.id.proj_root,
-                    "setBackgroundResource",
-                    if (dark) R.drawable.widget_background else R.drawable.widget_background_light,
-                )
+            return SegmentViews(context, R.layout.widget_projection, RetroLook.segment).apply {
+                c.background(this, R.id.proj_root)
                 setImageViewResource(R.id.proj_icon, R.drawable.ic_widget_phone)
                 setInt(R.id.proj_icon, "setColorFilter", accent)
                 setTextViewText(R.id.proj_title, title)
                 setTextColor(R.id.proj_title, text)
                 setTextViewText(R.id.proj_status, status)
                 setTextColor(R.id.proj_status, if (active) accent else dim)
-                setInt(R.id.proj_open, "setBackgroundResource", if (dark) R.drawable.widget_cell else R.drawable.widget_cell_light)
+                c.cell(this, R.id.proj_open)
                 setTextColor(R.id.proj_open, text)
                 setTextViewText(R.id.proj_open, context.getString(R.string.phone_details))
                 setViewVisibility(R.id.proj_disconnect, View.GONE)

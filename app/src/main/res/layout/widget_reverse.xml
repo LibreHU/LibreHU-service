@@ -41,5 +41,18 @@
             android:text="@string/reverse_widget_title"
             android:textColor="#FFE8EAED"
             android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/reverse_label_seg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="fitStart"
+            android:visibility="gone" />
+
     </LinearLayout>
 </FrameLayout>

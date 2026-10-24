@@ -6,11 +6,11 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
-import org.librehu.core.obd.GaugeSpec
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import org.librehu.core.obd.GaugeSpec
 
 enum class DashStyle { ANALOG, DIGITAL }
 
@@ -35,14 +35,24 @@ data class DashData(
 class DashColors(
     dark: Boolean,
     accentArgb: Int,
+    /** LibreHU Launcher's retro palette (its style is retro), else null: the usual colours. */
+    retro: org.librehu.service.ui.RetroLook.WidgetColors? = null,
+    /** The launcher's segment display font when it is chosen, else null: Android's. */
+    private val font: Typeface? = null,
 ) {
-    val surface = if (dark) 0xFF1E1F22.toInt() else 0xFFFFFFFF.toInt()
-    val raised = if (dark) 0xFF2B2D31.toInt() else 0xFFE8EAED.toInt()
-    val track = if (dark) 0xFF3C4043.toInt() else 0xFFDADCE0.toInt()
-    val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
-    val dim = if (dark) 0xFF9AA0A6.toInt() else 0xFF5F6368.toInt()
+    val surface = retro?.surface ?: if (dark) 0xFF1E1F22.toInt() else 0xFFFFFFFF.toInt()
+    val raised = retro?.surfaceHigh ?: if (dark) 0xFF2B2D31.toInt() else 0xFFE8EAED.toInt()
+    val track = retro?.surfaceHigh ?: if (dark) 0xFF3C4043.toInt() else 0xFFDADCE0.toInt()
+    val text = retro?.text ?: if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
+    val dim = retro?.textDim ?: if (dark) 0xFF9AA0A6.toInt() else 0xFF5F6368.toInt()
+
+    /** [usual], or the segment display font. */
+    fun face(usual: Typeface) = font ?: usual
+
     val accent =
-        if (accentArgb != 0) {
+        if (retro != null) {
+            retro.accent
+        } else if (accentArgb != 0) {
             accentArgb
         } else if (dark) {
             0xFF8AB4F8.toInt()
@@ -91,7 +101,7 @@ object DashRenderer {
             DashStyle.DIGITAL -> digital(c, w.toFloat(), h.toFloat(), colors, data)
         }
         data.status?.let { status ->
-            val t = text(colors.dim, h * 0.065f, medium)
+            val t = text(colors.dim, h * 0.065f, colors.face(medium))
             t.textAlign = Paint.Align.CENTER
             c.drawText(status, w / 2f, h * 0.1f, t)
         }
@@ -185,9 +195,9 @@ object DashRenderer {
             if (value != null) pointer(c, cx, cy, r, if (red) col.red else col.text, spec.fraction(value), full)
         }
         // Value in the middle, label above, unit below.
-        val big = text(if (red) col.red else col.text, r * if (full) 0.46f else 0.5f, light)
+        val big = text(if (red) col.red else col.text, r * if (full) 0.46f else 0.5f, col.face(light))
         c.drawText(item.number, cx, cy + big.textSize * 0.32f, big)
-        val small = text(col.dim, r * if (full) 0.13f else 0.2f, medium)
+        val small = text(col.dim, r * if (full) 0.13f else 0.2f, col.face(medium))
         if (full) {
             c.drawText(item.label.uppercase(), cx, cy - r * 0.42f, small)
             c.drawText(item.unit, cx, cy + r * 0.42f, small)
@@ -205,7 +215,7 @@ object DashRenderer {
         spec: GaugeSpec,
     ) {
         val tick = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND }
-        val label = text(col.dim, r * 0.11f, medium)
+        val label = text(col.dim, r * 0.11f, col.face(medium))
         val majors = spec.majors()
         majors.forEachIndexed { i, v ->
             val red = spec.inRed(v)
@@ -274,10 +284,10 @@ object DashRenderer {
         val left = w * 0.5f
         // Speed: huge number.
         val speedRed = d.speed.value?.let { GaugeSpec.of(d.speed.key)?.inRed(it) } == true
-        val big = text(if (speedRed) col.red else col.text, h * 0.46f, light)
+        val big = text(if (speedRed) col.red else col.text, h * 0.46f, col.face(light))
         big.textAlign = Paint.Align.LEFT
         c.drawText(d.speed.number, pad, h * 0.56f, big)
-        val unit = text(col.dim, h * 0.08f, medium).apply { textAlign = Paint.Align.LEFT }
+        val unit = text(col.dim, h * 0.08f, col.face(medium)).apply { textAlign = Paint.Align.LEFT }
         c.drawText(d.speed.unit, pad + big.measureText(d.speed.number) + h * 0.03f, h * 0.56f, unit)
         // Revs: segmented bar, red zone at the end.
         val spec = GaugeSpec.of(d.rpm.key)
@@ -304,7 +314,7 @@ object DashRenderer {
             val grow = bh * (0.55f + 0.45f * i / (segments - 1))
             c.drawRoundRect(RectF(x, top + bh - grow, x + segW, top + bh), segW * 0.3f, segW * 0.3f, seg)
         }
-        val rpmText = text(col.text, h * 0.085f, medium).apply { textAlign = Paint.Align.LEFT }
+        val rpmText = text(col.text, h * 0.085f, col.face(medium)).apply { textAlign = Paint.Align.LEFT }
         c.drawText("${d.rpm.number} ${d.rpm.unit}", pad, top + bh + h * 0.12f, rpmText)
         // Other values: tiles.
         val others = d.others.take(4)
@@ -333,12 +343,12 @@ object DashRenderer {
         val spec = GaugeSpec.of(item.key)
         val red = item.value != null && spec?.inRed(item.value) == true
         val inset = r.height() * 0.14f
-        val label = text(col.dim, r.height() * 0.17f, medium).apply { textAlign = Paint.Align.LEFT }
+        val label = text(col.dim, r.height() * 0.17f, col.face(medium)).apply { textAlign = Paint.Align.LEFT }
         c.drawText(item.label, r.left + inset, r.top + inset + label.textSize * 0.8f, label)
-        val value = text(if (red) col.red else col.text, r.height() * 0.34f, light).apply { textAlign = Paint.Align.LEFT }
+        val value = text(if (red) col.red else col.text, r.height() * 0.34f, col.face(light)).apply { textAlign = Paint.Align.LEFT }
         val baseline = r.top + r.height() * 0.68f
         c.drawText(item.number, r.left + inset, baseline, value)
-        val unit = text(col.dim, r.height() * 0.15f, medium).apply { textAlign = Paint.Align.LEFT }
+        val unit = text(col.dim, r.height() * 0.15f, col.face(medium)).apply { textAlign = Paint.Align.LEFT }
         c.drawText(item.unit, r.left + inset + value.measureText(item.number) + inset * 0.4f, baseline, unit)
         if (spec != null) {
             val barTop = r.bottom - inset * 0.9f

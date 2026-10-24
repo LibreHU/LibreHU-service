@@ -25,6 +25,16 @@
             android:textColor="#FFE8EAED"
             android:textSize="14sp" />
 
+        <ImageView
+            android:id="@+id/obd_title_seg"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="fitStart"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/obd_status"
             android:layout_width="wrap_content"
@@ -32,6 +42,16 @@
             android:maxLines="1"
             android:textColor="#FF9AA0A6"
             android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/obd_status_seg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="fitStart"
+            android:visibility="gone" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -62,6 +82,15 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
+            <ImageView
+                android:id="@+id/obd_value0_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/obd_label0"
                 android:layout_width="wrap_content"
@@ -69,6 +98,16 @@
                 android:maxLines="1"
                 android:textColor="#FF9AA0A6"
                 android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/obd_label0_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
         </LinearLayout>
         <LinearLayout
             android:id="@+id/obd_cell1"
@@ -91,6 +130,15 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
+            <ImageView
+                android:id="@+id/obd_value1_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/obd_label1"
                 android:layout_width="wrap_content"
@@ -98,6 +146,16 @@
                 android:maxLines="1"
                 android:textColor="#FF9AA0A6"
                 android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/obd_label1_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
         </LinearLayout>
     </LinearLayout>
 
@@ -128,6 +186,15 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
+            <ImageView
+                android:id="@+id/obd_value2_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/obd_label2"
                 android:layout_width="wrap_content"
@@ -135,6 +202,16 @@
                 android:maxLines="1"
                 android:textColor="#FF9AA0A6"
                 android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/obd_label2_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
         </LinearLayout>
         <LinearLayout
             android:id="@+id/obd_cell3"
@@ -157,6 +234,15 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
+            <ImageView
+                android:id="@+id/obd_value3_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/obd_label3"
                 android:layout_width="wrap_content"
@@ -164,6 +250,16 @@
                 android:maxLines="1"
                 android:textColor="#FF9AA0A6"
                 android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/obd_label3_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

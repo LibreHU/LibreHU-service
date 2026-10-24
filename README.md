@@ -230,3 +230,11 @@ sans accents (« LibreHU Seg14 », tirée de DSEG14 © keshikan, SIL Open Font L
 `third_party/DSEG-LICENSE.txt`). Le launcher publie le style, la police et la palette par
 `content://org.librehu.launcher.theme/theme` (colonnes `style`, `font`, `background`, `surface`, `surface_high`,
 `on_accent`, `text`, `text_dim`) et par la diffusion `org.librehu.action.THEME_CHANGED` (mêmes noms en extras).
+
+**Widgets** : mêmes couleurs rétro et même police. Un widget Android 9 ne peut pas utiliser la police d'une appli
+(TextView ne charge pas de police dans le contexte restreint de l'écran d'accueil) : avec la police à segments, chaque
+texte est dessiné en image (`SegmentViews`) et affiché par une ImageView `<id>_seg` placée comme lui, ajoutée à côté de
+chaque texte des layouts `widget*.xml` par `tools/segment_widgets.py` (à relancer après avoir modifié un layout de
+widget). Les fonds rétro sont des couleurs unies (Android 9 ne teinte pas un fond de widget ; la case arrondie du
+launcher les découpe).
+Le tableau de bord OBD (dessiné en image) prend aussi la palette et la police.

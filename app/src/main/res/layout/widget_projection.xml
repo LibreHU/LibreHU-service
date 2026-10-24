@@ -39,6 +39,15 @@
                 android:textColor="#FFE8EAED"
                 android:textSize="18sp" />
 
+            <ImageView
+                android:id="@+id/proj_title_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/proj_status"
                 android:layout_width="wrap_content"
@@ -46,6 +55,16 @@
                 android:maxLines="2"
                 android:textColor="#FF9AA0A6"
                 android:textSize="13sp" />
+
+            <ImageView
+                android:id="@+id/proj_status_seg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
         </LinearLayout>
     </LinearLayout>
 
@@ -66,6 +85,17 @@
             android:textColor="#FFE8EAED"
             android:textSize="15sp" />
 
+        <ImageView
+            android:id="@+id/proj_open_seg"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_cell"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="centerInside"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/proj_disconnect"
             android:layout_width="0dp"
@@ -78,5 +108,18 @@
             android:textColor="#FFE8EAED"
             android:textSize="15sp"
             android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/proj_disconnect_seg"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_cell"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:scaleType="centerInside"
+            android:visibility="gone" />
+
     </LinearLayout>
 </LinearLayout>

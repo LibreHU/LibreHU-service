@@ -8,7 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import org.librehu.service.R
+import org.librehu.service.ui.RetroLook
+import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
+import org.librehu.service.ui.WidgetColors
 
 /**
  * Home screen widget: live picture of the rear camera ([ReverseWidgetLive]) or a camera button; a touch opens
@@ -61,9 +64,10 @@ class ReverseWidget : AppWidgetProvider() {
         }
 
         private fun views(context: Context): RemoteViews {
-            val (dark, accent) = ThemeFollower.current(context)
+            val c = ThemeFollower.current(context).let { (dark, accent) -> WidgetColors(dark, accent) }
+            val accent = c.launcherAccent
             val showing = ReverseView.get(context).showing.value
-            val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
+            val text = c.text
             val live = ReverseWidgetLive.get(context)
             val frame =
                 live.lastFrame?.takeIf {
@@ -72,12 +76,8 @@ class ReverseWidget : AppWidgetProvider() {
                         .settings.value.widgetLive != WidgetLive.OFF
                 }
             live.onFullUpdate()
-            return RemoteViews(context.packageName, R.layout.widget_reverse).apply {
-                setInt(
-                    R.id.reverse_root,
-                    "setBackgroundResource",
-                    if (dark) R.drawable.widget_background else R.drawable.widget_background_light,
-                )
+            return SegmentViews(context, R.layout.widget_reverse, RetroLook.segment).apply {
+                c.background(this, R.id.reverse_root)
                 setInt(R.id.reverse_icon, "setColorFilter", if (showing && accent != 0) accent else text)
                 setTextViewText(
                     R.id.reverse_label,

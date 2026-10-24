@@ -1,12 +1,15 @@
 package org.librehu.service.ui
 
+import android.content.Context
 import android.content.Intent
 import android.database.Cursor
+import android.net.Uri
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import org.librehu.service.R
@@ -68,6 +71,37 @@ object RetroLook {
                 Palette(i.getBooleanExtra("dark", true), v[0], v[1], v[2], v[3], v[4], v[5], v[6])
             }
     }
+
+    /** Reads the launcher's row now (widgets drawn while the app's screens are closed); false without the launcher. */
+    fun query(context: Context): Boolean =
+        runCatching {
+            context.contentResolver.query(THEME_URI, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    read(c)
+                    true
+                } else {
+                    false
+                }
+            } ?: false
+        }.getOrDefault(false)
+
+    /** Widget colours (ARGB) when the retro palette applies to a [dark] / light widget; null: the usual ones. */
+    fun widget(dark: Boolean): WidgetColors? =
+        palette?.takeIf { it.dark == dark }?.let { p ->
+            WidgetColors(p.surface.toArgb(), p.surfaceHigh.toArgb(), p.accent.toArgb(), p.onAccent.toArgb(), p.text.toArgb(), p.textDim.toArgb())
+        }
+
+    /** The retro palette for RemoteViews: plain colours (backgrounds set with setBackgroundColor). */
+    data class WidgetColors(
+        val surface: Int,
+        val surfaceHigh: Int,
+        val accent: Int,
+        val onAccent: Int,
+        val text: Int,
+        val textDim: Int,
+    )
+
+    private val THEME_URI: Uri = Uri.parse("content://org.librehu.launcher.theme/theme")
 
     /** Segment display font everywhere when chosen in the launcher, Material's otherwise. */
     fun typography(): Typography {

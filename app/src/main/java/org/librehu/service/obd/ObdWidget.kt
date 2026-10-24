@@ -9,7 +9,10 @@ import android.content.Intent
 import android.widget.RemoteViews
 import org.librehu.service.MainActivity
 import org.librehu.service.R
+import org.librehu.service.ui.RetroLook
+import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
+import org.librehu.service.ui.WidgetColors
 
 /** Four OBD-II values chosen in the OBD tab, for LibreHU Launcher's widget slots or any home screen. */
 class ObdWidget : AppWidgetProvider() {
@@ -37,16 +40,12 @@ class ObdWidget : AppWidgetProvider() {
             val obd = ObdManager.get(context)
             val st = obd.state.value
             val s = obd.settings.value
-            val dark = ThemeFollower.current(context).first
-            val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
-            val dim = if (dark) 0xFF9AA0A6.toInt() else 0xFF5F6368.toInt()
+            val c = ThemeFollower.current(context).let { (dark, accent) -> WidgetColors(dark, accent) }
+            val text = c.text
+            val dim = c.dim
             val red = 0xFFF44336.toInt()
-            return RemoteViews(context.packageName, R.layout.widget_obd).apply {
-                setInt(
-                    R.id.obd_root,
-                    "setBackgroundResource",
-                    if (dark) R.drawable.widget_background else R.drawable.widget_background_light,
-                )
+            return SegmentViews(context, R.layout.widget_obd, RetroLook.segment).apply {
+                c.background(this, R.id.obd_root)
                 setTextColor(R.id.obd_title, text)
                 val status =
                     when (st.connection) {
@@ -59,7 +58,7 @@ class ObdWidget : AppWidgetProvider() {
                 setTextColor(R.id.obd_status, if (st.connection == ObdConnection.ERROR) red else dim)
                 for (i in 0 until ObdManager.WIDGET_SLOTS) {
                     val key = s.widget.getOrNull(i)
-                    setInt(CELLS[i], "setBackgroundResource", if (dark) R.drawable.widget_cell else R.drawable.widget_cell_light)
+                    c.cell(this, CELLS[i])
                     setTextViewText(LABELS[i], key?.let { ObdLabels.label(context, it) } ?: "")
                     setTextViewText(VALUES[i], key?.let { k -> st.values[k]?.let { ObdManager.format(k, it) } } ?: "—")
                     setTextColor(VALUES[i], text)

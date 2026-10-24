@@ -10,7 +10,10 @@ import android.view.View
 import android.widget.RemoteViews
 import org.librehu.service.MainActivity
 import org.librehu.service.R
+import org.librehu.service.ui.RetroLook
+import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
+import org.librehu.service.ui.WidgetColors
 
 /** Android Auto widget: Open Headunit's session (from its SESSION_STATE reports), open / back to it, disconnect. */
 class AndroidAutoWidget : AppWidgetProvider() {
@@ -129,12 +132,12 @@ object ProjectionWidgets {
         active: Boolean,
         disconnect: Boolean,
     ): RemoteViews {
-        val (dark, launcherAccent) = ThemeFollower.current(context)
-        val accent = if (launcherAccent != 0) launcherAccent else if (dark) 0xFF8AB4F8.toInt() else 0xFF1A73E8.toInt()
-        val text = if (dark) 0xFFE8EAED.toInt() else 0xFF202124.toInt()
-        val dim = if (dark) 0xFF9AA0A6.toInt() else 0xFF5F6368.toInt()
-        return RemoteViews(context.packageName, R.layout.widget_projection).apply {
-            setInt(R.id.proj_root, "setBackgroundResource", if (dark) R.drawable.widget_background else R.drawable.widget_background_light)
+        val c = ThemeFollower.current(context).let { (dark, accent) -> WidgetColors(dark, accent) }
+        val accent = c.accent
+        val text = c.text
+        val dim = c.dim
+        return SegmentViews(context, R.layout.widget_projection, RetroLook.segment).apply {
+            c.background(this, R.id.proj_root)
             setImageViewResource(R.id.proj_icon, icon)
             setInt(R.id.proj_icon, "setColorFilter", accent)
             setTextViewText(R.id.proj_title, title)
@@ -142,7 +145,7 @@ object ProjectionWidgets {
             setTextViewText(R.id.proj_status, status)
             setTextColor(R.id.proj_status, if (active) accent else dim)
             for (id in intArrayOf(R.id.proj_open, R.id.proj_disconnect)) {
-                setInt(id, "setBackgroundResource", if (dark) R.drawable.widget_cell else R.drawable.widget_cell_light)
+                c.cell(this, id)
                 setTextColor(id, text)
             }
             setTextViewText(R.id.proj_open, context.getString(if (active) R.string.proj_widget_show else R.string.aa_open))

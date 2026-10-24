@@ -8,9 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.RemoteViews
+import androidx.core.content.res.ResourcesCompat
 import org.librehu.core.obd.ObdPid
 import org.librehu.service.MainActivity
 import org.librehu.service.R
+import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.ThemeFollower
 
 /**
@@ -62,7 +64,9 @@ abstract class ObdDashWidget(
             val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH).takeIf { it > 0 } ?: 360
             val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT).takeIf { it > 0 } ?: 180
             val (dark, accent) = ThemeFollower.current(context)
-            val bmp = DashRenderer.render(style, (wDp * density).toInt(), (hDp * density).toInt(), DashColors(dark, accent), data(context))
+            val font = if (RetroLook.segment) runCatching { ResourcesCompat.getFont(context, R.font.librehu_seg14) }.getOrNull() else null
+            val colors = DashColors(dark, accent, RetroLook.widget(dark), font)
+            val bmp = DashRenderer.render(style, (wDp * density).toInt(), (hDp * density).toInt(), colors, data(context))
             val views =
                 RemoteViews(context.packageName, R.layout.widget_obd_dash).apply {
                     setImageViewBitmap(R.id.dash_image, bmp)
