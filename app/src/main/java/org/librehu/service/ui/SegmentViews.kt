@@ -1,5 +1,6 @@
 package org.librehu.service.ui
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -28,7 +29,9 @@ import org.librehu.service.R
  * widgets cannot use an app's font (TextView does not load fonts in the host's restricted context): each text is drawn
  * into a picture shown by the ImageView `<id>_seg` laid out like the TextView (added next to every text of the widget
  * layouts by tools/segment_widgets.py), the TextView hidden. Text, colour, size, visibility, background and touch given
- * to a TextView are recorded here and drawn when the views are sent; without [segment], plain RemoteViews.
+ * to a TextView are recorded here and drawn when the views are sent: the layout is inflated here, its TextViews given
+ * the segment font and laid out at the widget's size (its options), and each one drawn as it is laid out, so that a
+ * text too long is cut with "…" as usual. Without [segment], plain RemoteViews.
  */
 class SegmentViews(
     private val context: Context,
@@ -44,6 +47,9 @@ class SegmentViews(
     }
 
     private val texts = HashMap<Int, Text>()
+
+    /** Visibility given to the other views (they change the room left to the texts). */
+    private val visibilities = HashMap<Int, Int>()
     private val pairs: Map<Int, Int> = if (segment) pairs(context, layout) else emptyMap()
     private var drawn = false
 
@@ -79,7 +85,12 @@ class SegmentViews(
         visibility: Int,
     ) {
         val t = text(viewId)
-        if (t != null) t.visibility = visibility else super.setViewVisibility(viewId, visibility)
+        if (t != null) {
+            t.visibility = visibility
+        } else {
+            super.setViewVisibility(viewId, visibility)
+            if (segment) visibilities[viewId] = visibility
+        }
     }
 
     override fun setChronometer(
@@ -128,6 +139,36 @@ class SegmentViews(
             return
         }
         val looks = looks(context, layout)
+        // The layout as the widget shows it, its texts in the segment font, laid out at the widget's size when the
+        // home screen gives it: each TextView then cuts its text ("…"), aligns and wraps it as it would.
+        val root = runCatching { inflate(context, layout) }.getOrNull()
+        val shown = HashMap<Int, CharSequence>()
+        for ((id, _) in pairs) {
+            val look = looks[id] ?: continue
+            val t = texts[id]
+            val text =
+                when {
+                    t?.chronometerBase != null -> elapsed(t.chronometerBase!!)
+                    look.clockFormat != null -> DateFormat.format(look.clockFormat, System.currentTimeMillis())
+                    else -> t?.text ?: look.text
+                }
+            shown[id] = text
+            (root?.findViewById<View>(id) as? TextView)?.apply {
+                typeface = face
+                visibility = t?.visibility ?: look.visibility
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, t?.sizePx ?: look.sizePx)
+                setTextColor(t?.color ?: look.color)
+                setText(text)
+            }
+        }
+        if (root != null) {
+            for ((id, v) in visibilities) root.findViewById<View>(id)?.visibility = v
+            val size = widgetSize()
+            runCatching {
+                root.measure(spec(size?.first ?: 0), spec(size?.second ?: 0))
+                root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            }
+        }
         for ((id, image) in pairs) {
             val look = looks[id] ?: continue
             val t = texts[id]
@@ -135,20 +176,30 @@ class SegmentViews(
             super.setViewVisibility(id, View.GONE)
             super.setViewVisibility(image, visibility)
             if (visibility == View.GONE) continue
-            var shown: CharSequence = t?.text ?: look.text
+            var text = shown[id] ?: ""
             var color = t?.color ?: look.color
-            when {
-                t?.chronometerBase != null -> shown = elapsed(t.chronometerBase!!)
-                look.clockFormat != null -> shown = DateFormat.format(look.clockFormat, System.currentTimeMillis())
-                shown.isEmpty() && look.hint.isNotEmpty() -> {
-                    shown = look.hint
-                    color = look.hintColor
-                }
+            if (text.isEmpty() && look.hint.isNotEmpty()) {
+                text = look.hint
+                color = look.hintColor
             }
-            super.setImageViewBitmap(image, picture(shown.toString(), color, t?.sizePx ?: look.sizePx, face, look.gravity))
-            super.setContentDescription(image, shown)
+            val laidOut = (root?.findViewById<View>(id) as? TextView)?.let(::snapshot)
+            super.setImageViewBitmap(image, laidOut ?: picture(text.toString(), color, t?.sizePx ?: look.sizePx, face, look.gravity))
+            super.setContentDescription(image, text)
         }
     }
+
+    /** Size of this widget on the home screen in pixels (its options: widest width, lowest height), if given. */
+    private fun widgetSize(): Pair<Int, Int>? =
+        runCatching {
+            val mgr = AppWidgetManager.getInstance(context)
+            val provider = mgr.getInstalledProvidersForPackage(context.packageName, null).firstOrNull { it.initialLayout == layout }
+            val id = provider?.let { mgr.getAppWidgetIds(it.provider).firstOrNull() }
+            val o = id?.let { mgr.getAppWidgetOptions(it) }
+            val d = context.resources.displayMetrics.density
+            val w = o?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH) ?: 0
+            val h = o?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) ?: 0
+            if (w > 0 && h > 0) (w * d).toInt() to (h * d).toInt() else null
+        }.getOrNull()
 
     /** What a TextView of the layout shows by itself (inflated here once per layout). */
     private class Look(
@@ -228,6 +279,22 @@ class SegmentViews(
                         )
                 }
             }
+
+        private fun spec(px: Int) =
+            if (px > 0) View.MeasureSpec.makeMeasureSpec(px, View.MeasureSpec.EXACTLY) else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+
+        /** [tv] as laid out (its padding left out: the image has the same one), null when it has no room. */
+        private fun snapshot(tv: TextView): Bitmap? {
+            val w = tv.width - tv.paddingLeft - tv.paddingRight
+            val h = tv.height - tv.paddingTop - tv.paddingBottom
+            if (w <= 0 || h <= 0) return null
+            tv.background = null
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            c.translate(-tv.paddingLeft.toFloat(), -tv.paddingTop.toFloat())
+            tv.draw(c)
+            return bmp
+        }
 
         /** Time since [base] (elapsedRealtime) as hours and minutes: redrawn with the widget, not every second. */
         private fun elapsed(base: Long): String {

@@ -233,7 +233,9 @@ sans accents (« LibreHU Seg14 », tirée de DSEG14 © keshikan, SIL Open Font L
 
 **Widgets** : mêmes couleurs rétro et même police. Un widget Android 9 ne peut pas utiliser la police d'une appli
 (TextView ne charge pas de police dans le contexte restreint de l'écran d'accueil) : avec la police à segments, chaque
-texte est dessiné en image (`SegmentViews`) et affiché par une ImageView `<id>_seg` placée comme lui, ajoutée à côté de
+texte est dessiné en image (`SegmentViews` : le TextView lui-même, avec la police à segments, mis en page à la
+taille du widget, donc coupé avec « … », aligné et sur ses lignes comme d'habitude) et affiché par une ImageView
+`<id>_seg` placée comme lui, ajoutée à côté de
 chaque texte des layouts `widget*.xml` par `tools/segment_widgets.py` (à relancer après avoir modifié un layout de
 widget). Les fonds rétro sont des couleurs unies (Android 9 ne teinte pas un fond de widget ; la case arrondie du
 launcher les découpe).
