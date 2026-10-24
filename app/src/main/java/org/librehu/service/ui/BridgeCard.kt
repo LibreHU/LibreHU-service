@@ -42,7 +42,8 @@ fun qrBitmap(
 
 /**
  * The LibreHU phone app (LibreHU-bridge): QR code to pair a phone (valid 5 minutes, once), phones waiting for a
- * Bluetooth confirmation, paired phones (forget), the server on or off ([BridgeServer]).
+ * Bluetooth confirmation, paired phones (forget), the server on or off, the whole file system as root for the phones
+ * or not ([BridgeServer]).
  */
 @Composable
 internal fun BridgeCard() {
@@ -52,6 +53,7 @@ internal fun BridgeCard() {
     val devices by server.devices.collectAsStateWithLifecycle()
     val requests by server.requests.collectAsStateWithLifecycle()
     val connected by server.connected.collectAsStateWithLifecycle()
+    val rootFiles by server.rootFiles.collectAsStateWithLifecycle()
     var qr by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(qr) {
         if (qr != null) {
@@ -62,6 +64,7 @@ internal fun BridgeCard() {
     Card(stringResource(R.string.bridge_title)) {
         SwitchRow(stringResource(R.string.bridge_enable), enabled, stringResource(R.string.bridge_hint)) { server.setEnabled(it) }
         if (enabled) {
+            SwitchRow(stringResource(R.string.bridge_root_files), rootFiles, stringResource(R.string.bridge_root_files_hint)) { server.setRootFiles(it) }
             if (connected.isNotEmpty()) StatusLine(stringResource(R.string.bridge_connected, connected.joinToString(", ")), true)
             val code = qr
             if (code == null) {

@@ -47,9 +47,39 @@ Requêtes `{"id":n,"m":"<méthode>","p":{…}}`, réponses `{"id":n,"r":…}` ou
 | `key` | `action` (nom de `TouchAction` : `VOLUME_UP`, `NEXT`…) | touche jouée comme une touche de l'autoradio |
 | `forget` | — | le téléphone se retire |
 
+**Niveau 2** (`hello` renvoie aussi `bridge: 2`, `features`, `root`, `rootFiles` ; `bridge/BridgeTools.kt`) :
+
+| Méthode | Paramètres | Réponse |
+|---|---|---|
+| `apps` | — | applis du lanceur : `pkg`, `label`, `system`, `icon` (PNG 96 px en base64) |
+| `launch` | `pkg` | appli ouverte sur l'autoradio |
+| `reboot` | `mode` : `normal`, `recovery`, `bootloader` (fastboot) | root, 0,5 s après la réponse |
+| `system` | — | zones thermiques (`/sys/class/thermal`, SoC et sondes, °C), fréquence de chaque cœur, charge, mémoire, durée de fonctionnement, stockage `/data` et `/sdcard` |
+| `gps` | — | satellites visibles et utilisés, C/N0, constellations, fix (âge, précision, vitesse, altitude, temps du premier fix). **Jamais la position** |
+| `gps.watch` | `on` | écoute le GPS tant que le téléphone l'affiche (relâché à la déconnexion) |
+| `fs.roots` | — | stockage interne, clés USB / cartes SD ; `/` si les fichiers root sont autorisés |
+| `fs.list` | `path` | entrées : `name`, `dir`, `size`, `mtime` |
+| `fs.read` | `path`, `offset`, `length` (512 Kio au plus) | `data` (base64), `size`, `eof` |
+| `fs.write` | `path`, `offset` (0 = nouveau fichier), `data` | `written` |
+| `fs.delete`, `fs.mkdir` | `path` | — |
+| `fs.rename` | `from`, `to` | — |
+| `logs` | `kind` : `logcat`, `kernel`, `librehu` | chemin du fichier écrit dans `/sdcard/LibreHU/logs` (root), à télécharger avec `fs.read` |
+| `settings.list` | `ns` : `system`, `secure`, `global` | toutes les clés et leurs valeurs (root) |
+| `settings.put` | `ns`, `key`, `value` | directement si permis, sinon en root |
+| `settings.delete` | `ns`, `key` | root |
+
+L'événement `values` contient aussi `system` et `gps`.
+
+**Fichiers** : sans réglage, le téléphone ne voit que le stockage interne et les volumes amovibles (chemins absolus,
+`..` refusé, liens résolus avant contrôle). L'interrupteur **Tout le système de fichiers pour les téléphones (root)**
+(carte Appli téléphone, désactivé par défaut) ouvre tous les dossiers en root ; il ne se règle que sur l'autoradio,
+aucune requête ne peut le changer. Les permissions de stockage d'Android 9 sont accordées en root (`pm grant`) à la
+première requête de fichiers.
+
 Éléments : `section`, `info` (lecture), `switch`, `slider` (`min`, `max`, `step`, `unit`), `choice` (`options` :
-`{v, l}`), `button` (`confirm`). Pages du service : Autoradio (volume média, luminosité, Wi-Fi, Bluetooth,
-redémarrage), Son LibreHU (menu son, son moteur), Lumières (rétroéclairage), OBD et batterie (alarmes).
+`{v, l}`), `button` (`confirm`). Pages du service : Autoradio (volume média ; luminosité, extinction de l'écran,
+écran toujours allumé, taille du texte, animations ; heure et fuseau automatiques, format 24 h ; Wi-Fi, Bluetooth,
+localisation, mode avion ; débogage USB ; redémarrage normal, recovery, fastboot), Son LibreHU (menu son, son moteur), Lumières (rétroéclairage), OBD et batterie (alarmes).
 
 **Pages des autres applis LibreHU** : un fournisseur de contenu `<paquet>.bridge`, protégé par la permission de
 signature `org.librehu.permission.BRIDGE`, répond à `call("pages")` (Bundle `json` = tableau de pages, même format),

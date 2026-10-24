@@ -57,6 +57,10 @@
         android:name="org.librehu.permission.BRIDGE"
         android:protectionLevel="signature" />
     <uses-permission android:name="org.librehu.permission.BRIDGE" />
+    <!-- Files of the phone app (bridge/BridgeTools): internal storage and USB keys. Runtime permissions on Android 9,
+         granted with `pm grant` as root when the phone first opens the files. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />

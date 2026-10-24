@@ -158,6 +158,30 @@ object BridgePages {
                 switch("auto_brightness", r(R.string.bp_auto_brightness), get = {
                     Settings.System.getInt(app.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, 0) == 1
                 }) { on -> putSystem(app, Settings.System.SCREEN_BRIGHTNESS_MODE, if (on) 1 else 0) }
+                choice("screen_timeout", r(R.string.bp_screen_timeout), TIMEOUTS.map { (ms, label) -> ms.toString() to label(app) }, get = {
+                    Settings.System.getInt(app.contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, 60_000).toString()
+                }) { v -> putSystem(app, Settings.System.SCREEN_OFF_TIMEOUT, v.toInt()) }
+                switch("stay_on", r(R.string.bp_stay_on), r(R.string.bp_stay_on_hint), get = {
+                    Settings.Global.getInt(app.contentResolver, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, 0) != 0
+                }) { on -> put(app, "global", Settings.Global.STAY_ON_WHILE_PLUGGED_IN, if (on) "7" else "0") }
+                choice("font_scale", r(R.string.bp_font_scale), FONT_SCALES.map { it to "${(it.toFloat() * 100).toInt()} %" }, get = {
+                    FONT_SCALES.minBy { kotlin.math.abs(it.toFloat() - Settings.System.getFloat(app.contentResolver, Settings.System.FONT_SCALE, 1f)) }
+                }) { v -> put(app, "system", Settings.System.FONT_SCALE, v) }
+                choice("animations", r(R.string.bp_animations), ANIMATIONS.map { it to if (it == "0") r(R.string.bp_off) else "× $it" }, get = {
+                    ANIMATIONS.minBy { kotlin.math.abs(it.toFloat() - Settings.Global.getFloat(app.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)) }
+                }) { v ->
+                    for (k in listOf(Settings.Global.WINDOW_ANIMATION_SCALE, Settings.Global.TRANSITION_ANIMATION_SCALE, Settings.Global.ANIMATOR_DURATION_SCALE)) put(app, "global", k, v)
+                }
+                section(r(R.string.bp_time))
+                switch("auto_time", r(R.string.bp_auto_time), r(R.string.bp_auto_time_hint), get = {
+                    Settings.Global.getInt(app.contentResolver, Settings.Global.AUTO_TIME, 1) != 0
+                }) { on -> put(app, "global", Settings.Global.AUTO_TIME, if (on) "1" else "0") }
+                switch("auto_zone", r(R.string.bp_auto_zone), get = {
+                    Settings.Global.getInt(app.contentResolver, Settings.Global.AUTO_TIME_ZONE, 1) != 0
+                }) { on -> put(app, "global", Settings.Global.AUTO_TIME_ZONE, if (on) "1" else "0") }
+                switch("clock_24", r(R.string.bp_clock_24), get = {
+                    Settings.System.getString(app.contentResolver, Settings.System.TIME_12_24) != "12"
+                }) { on -> put(app, "system", Settings.System.TIME_12_24, if (on) "24" else "12") }
                 section(r(R.string.bp_connections))
                 switch("wifi", r(R.string.bp_wifi), get = {
                     Settings.Global.getInt(app.contentResolver, Settings.Global.WIFI_ON, 0) != 0
@@ -165,8 +189,24 @@ object BridgePages {
                 switch("bluetooth", r(R.string.bp_bluetooth), get = {
                     Settings.Global.getInt(app.contentResolver, Settings.Global.BLUETOOTH_ON, 0) != 0
                 }) { on -> RootShell.run("svc bluetooth ${if (on) "enable" else "disable"}") }
+                @Suppress("DEPRECATION")
+                switch("gps", r(R.string.bp_location), get = {
+                    "gps" in Settings.Secure.getString(app.contentResolver, Settings.Secure.LOCATION_PROVIDERS_ALLOWED).orEmpty()
+                }) { on -> RootShell.run("settings put secure location_providers_allowed ${if (on) "+" else "-"}gps") }
+                switch("airplane", r(R.string.bp_airplane), get = {
+                    Settings.Global.getInt(app.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+                }) { on ->
+                    // Android 9: the setting plus the broadcast the system sends itself (both need root).
+                    RootShell.run("settings put global airplane_mode_on ${if (on) 1 else 0} && am broadcast -a android.intent.action.AIRPLANE_MODE --ez state $on")
+                }
+                section(r(R.string.bp_developer))
+                switch("adb", r(R.string.bp_adb), r(R.string.bp_adb_hint), get = {
+                    Settings.Global.getInt(app.contentResolver, Settings.Global.ADB_ENABLED, 0) != 0
+                }) { on -> put(app, "global", Settings.Global.ADB_ENABLED, if (on) "1" else "0") }
                 section(r(R.string.bp_power))
-                button("reboot", r(R.string.bp_reboot), confirm = true) { RootShell.run("svc power reboot || reboot") }
+                button("reboot", r(R.string.bp_reboot), confirm = true) { BridgeTools.reboot("normal") }
+                button("reboot_recovery", r(R.string.bp_reboot_recovery), confirm = true) { BridgeTools.reboot("recovery") }
+                button("reboot_bootloader", r(R.string.bp_reboot_bootloader), confirm = true) { BridgeTools.reboot("bootloader") }
             },
             page("sound", r(R.string.bp_sound_librehu), "volume") {
                 switch("osd", r(R.string.bp_osd), r(R.string.bp_osd_hint), get = { osd.settings.value.enabled }) { on ->
@@ -209,6 +249,32 @@ object BridgePages {
                 switch("sound", r(R.string.bp_alarm_sound), get = { battery.settings.value.sound }) { on -> battery.update { it.copy(sound = on) } }
             },
         )
+    }
+
+    /** Screen timeouts offered (ms) and their names. */
+    private val TIMEOUTS: List<Pair<Int, (Context) -> String>> =
+        listOf(
+            30_000 to { c -> c.getString(R.string.bp_seconds, 30) },
+            60_000 to { c -> c.getString(R.string.bp_minutes, 1) },
+            300_000 to { c -> c.getString(R.string.bp_minutes, 5) },
+            600_000 to { c -> c.getString(R.string.bp_minutes, 10) },
+            1_800_000 to { c -> c.getString(R.string.bp_minutes, 30) },
+            Int.MAX_VALUE to { c -> c.getString(R.string.bp_never) },
+        )
+
+    // Both followed at once on Android 9: ActivityManagerService's FontScaleSettingObserver, WindowManagerService's
+    // SettingsObserver for the animation scales.
+    private val FONT_SCALES = listOf("0.85", "1.0", "1.15", "1.3")
+    private val ANIMATIONS = listOf("0", "0.5", "1.0", "1.5", "2.0")
+
+    /** Any key of `system`, `secure` or `global`: directly when allowed, else as root. */
+    private fun put(
+        context: Context,
+        ns: String,
+        key: String,
+        value: String,
+    ) {
+        BridgeTools.settingsPut(context, ns, key, value)
     }
 
     private fun putSystem(

@@ -29,6 +29,8 @@ import org.librehu.service.LibreHu
 import org.librehu.service.car.CarName
 import org.librehu.service.obd.BatteryWatch
 import org.librehu.service.obd.ObdManager
+import org.librehu.service.root.RootShell
+import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
 import java.io.File
 import java.net.Inet4Address
@@ -66,7 +68,10 @@ data class BridgeRequest(
  *
  * Requests `{"id":n,"m":method,"p":{…}}` → `{"id":n,"r":…}` or `{"id":n,"e":"…"}`; events `{"ev":topic,"d":…}`.
  * Methods: `hello`, `pages`, `page` (id), `set` (page, item, value), `action` (page, item), `values`,
- * `subscribe` (topics: values), `key` (TouchAction name), `forget`.
+ * `subscribe` (topics: values), `key` (TouchAction name), `forget`; bridge level 2 ([BridgeTools]): `apps`,
+ * `launch` (pkg), `reboot` (mode), `system`, `gps`, `gps.watch` (on), `fs.roots`, `fs.list` (path), `fs.read` (path,
+ * offset, length), `fs.write` (path, offset, data), `fs.delete` / `fs.mkdir` (path), `fs.rename` (from, to), `logs`
+ * (kind), `settings.list` (ns), `settings.put` (ns, key, value), `settings.delete` (ns, key).
  */
 class BridgeServer private constructor(
     context: Context,
@@ -91,6 +96,11 @@ class BridgeServer private constructor(
     private val _enabled = MutableStateFlow(prefs.getBoolean("enabled", true))
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
+    private val _rootFiles = MutableStateFlow(prefs.getBoolean("root_files", false))
+
+    /** The phones may open the whole file system as root. Changed on the head unit only, never from a phone. */
+    val rootFiles: StateFlow<Boolean> = _rootFiles.asStateFlow()
+
     @Volatile
     private var token: ByteArray? = null
 
@@ -109,6 +119,11 @@ class BridgeServer private constructor(
         prefs.edit().putBoolean("enabled", on).apply()
         _enabled.value = on
         if (on) start() else stop()
+    }
+
+    fun setRootFiles(on: Boolean) {
+        prefs.edit().putBoolean("root_files", on).apply()
+        _rootFiles.value = on
     }
 
     fun start() {
@@ -257,6 +272,7 @@ class BridgeServer private constructor(
     ) {
         var device: BridgeDevice? = null
         var events: Thread? = null
+        val gpsWatch = booleanArrayOf(false)
         // A connection that does not finish the key exchange and pairing in time is closed: it would keep its place.
         val handshake =
             Thread({
@@ -295,7 +311,7 @@ class BridgeServer private constructor(
                         }
                         buildJsonObject {
                             id?.let { put("id", it) }
-                            put("r", handle(method, p))
+                            put("r", if (method == "gps.watch") watchGps(gpsWatch, p) else handle(method, p))
                         }
                     } catch (e: Exception) {
                         buildJsonObject {
@@ -309,6 +325,7 @@ class BridgeServer private constructor(
             Log.i(TAG, "$link: ${e.message ?: e.javaClass.simpleName}")
         } finally {
             events?.interrupt()
+            if (gpsWatch[0]) TimeController.get(app).watch(false)
             device?.let { d -> _connected.value = _connected.value - d.name }
             runCatching { close() }
         }
@@ -395,7 +412,17 @@ class BridgeServer private constructor(
         p: JsonObject,
     ): JsonElement =
         when (method) {
-            "hello" -> json(JSONObject().put("unit", unitName()).put("api", LibreHu.API_VERSION).put("fingerprint", fingerprint))
+            "hello" ->
+                json(
+                    JSONObject()
+                        .put("unit", unitName())
+                        .put("api", LibreHu.API_VERSION)
+                        .put("fingerprint", fingerprint)
+                        .put("bridge", BRIDGE_LEVEL)
+                        .put("features", JSONArray(FEATURES))
+                        .put("root", RootShell.isAvailable())
+                        .put("rootFiles", _rootFiles.value),
+                )
             "pages" -> json(JSONArray(allPages().map { (pkg, o) -> JSONObject().put("id", key(pkg, o.getString("id"))).put("title", o.optString("title")).put("icon", o.optString("icon")) }))
             "page" -> {
                 val id = p.s("id")
@@ -424,15 +451,61 @@ class BridgeServer private constructor(
                 android.os.Handler(android.os.Looper.getMainLooper()).post { TouchKeys.get(app).run(null, ZoneAction(a)) }
                 JsonPrimitive(true)
             }
+            "apps" -> json(BridgeTools.apps(app))
+            "launch" -> JsonPrimitive(BridgeTools.launch(app, p.s("pkg")))
+            "reboot" -> JsonPrimitive(BridgeTools.reboot(p.s("mode")))
+            "system" -> json(BridgeTools.system(app))
+            "gps" -> json(BridgeTools.gps(app))
+            "fs.roots" -> json(BridgeTools.roots(rootFiles()))
+            "fs.list" -> files { json(BridgeTools.list(p.s("path"), it)) }
+            "fs.read" -> files { json(BridgeTools.read(p.s("path"), p.l("offset"), p.l("length").toInt(), it)) }
+            "fs.write" -> files { json(BridgeTools.write(p.s("path"), p.l("offset"), p.s("data"), it)) }
+            "fs.delete" -> files { JsonPrimitive(BridgeTools.delete(p.s("path"), it)) }
+            "fs.mkdir" -> files { JsonPrimitive(BridgeTools.mkdir(p.s("path"), it)) }
+            "fs.rename" -> files { JsonPrimitive(BridgeTools.rename(p.s("from"), p.s("to"), it)) }
+            "logs" -> json(BridgeTools.logs(p.s("kind")))
+            "settings.list" -> json(BridgeTools.settingsList(p.s("ns")))
+            "settings.put" -> JsonPrimitive(BridgeTools.settingsPut(app, p.s("ns"), p.s("key"), p.s("value")))
+            "settings.delete" -> JsonPrimitive(BridgeTools.settingsDelete(p.s("ns"), p.s("key")))
             else -> throw BridgeException("unknown method $method")
         }
 
-    /** Live values: OBD, car battery, head unit name. */
+    /** Root files allowed on the head unit, and root there. */
+    private fun rootFiles() = _rootFiles.value && RootShell.isAvailable()
+
+    @Volatile
+    private var storageAsked = false
+
+    /** Storage permissions (runtime on Android 9) granted as root the first time the phone opens the files. */
+    private fun <T> files(block: (Boolean) -> T): T {
+        if (!storageAsked && app.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            storageAsked = true
+            RootShell.run("pm grant ${app.packageName} android.permission.READ_EXTERNAL_STORAGE; pm grant ${app.packageName} android.permission.WRITE_EXTERNAL_STORAGE", timeoutS = 15)
+        }
+        return block(rootFiles())
+    }
+
+    /** GPS listened to while a phone shows it (one hold per connection, released when it closes). */
+    private fun watchGps(
+        held: BooleanArray,
+        p: JsonObject,
+    ): JsonElement {
+        val on = (p["on"] as? JsonPrimitive)?.booleanOrNull ?: true
+        if (on != held[0]) {
+            held[0] = on
+            TimeController.get(app).watch(on)
+        }
+        return JsonPrimitive(on)
+    }
+
+    /** Live values: OBD, car battery, head unit name, system (temperatures, CPU, memory), GPS (fix, satellites). */
     private fun values(): JsonObject {
         val obd = ObdManager.get(app).state.value
         val bat = BatteryWatch.get(app).reading.value
         return buildJsonObject {
             put("unit", unitName())
+            runCatching { put("system", json(BridgeTools.system(app))) }
+            runCatching { put("gps", json(BridgeTools.gps(app))) }
             put("obd", JsonObject(obd.values.mapValues { JsonPrimitive(it.value) }))
             put("car", JsonObject(obd.car.mapValues { JsonPrimitive(it.value.text) }))
             if (bat != null) {
@@ -461,6 +534,8 @@ class BridgeServer private constructor(
     private fun split(k: String): Pair<String, String> = k.substringBefore(':') to k.substringAfter(':')
 
     private fun JsonObject.s(k: String): String = (this[k] as? JsonPrimitive)?.contentOrNull ?: throw BridgeException("missing $k")
+
+    private fun JsonObject.l(k: String): Long = (this[k] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()?.takeIf { it >= 0 } ?: throw BridgeException("missing $k")
 
     private fun JsonElement?.toAny(): Any? =
         when (this) {
@@ -512,6 +587,10 @@ class BridgeServer private constructor(
         private const val CONFIRM_S = 60L
         private const val IDLE_TIMEOUT_MS = 0
         private const val MAX_CLIENTS = 4
+
+        /** Level of the bridge requests (1: pages and values; 2: [BridgeTools]). */
+        const val BRIDGE_LEVEL = 2
+        private val FEATURES = listOf("pages", "values", "key", "apps", "reboot", "system", "gps", "files", "logs", "settings")
 
         /** Key exchange and pairing, a Bluetooth confirmation on the head unit included. */
         private const val HANDSHAKE_MS = (CONFIRM_S + 20) * 1000L
