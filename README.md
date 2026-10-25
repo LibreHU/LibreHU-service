@@ -11,13 +11,36 @@ des tests unitaires ; le comportement réel sur l'UJC201 reste à valider.
 
 | | |
 |---|---|
-| ![Accueil](docs/screenshots/home.png)<br>Accueil | ![Véhicule : nom, caméra de recul](docs/screenshots/vehicle.png)<br>Véhicule : nom, caméra de recul |
-| ![Trames CAN](docs/screenshots/can.png)<br>Trames CAN | ![Audio](docs/screenshots/audio.png)<br>Audio |
-| ![Bluetooth](docs/screenshots/bluetooth.png)<br>Bluetooth | ![Écran](docs/screenshots/display.png)<br>Écran |
-| ![Lumières (LED)](docs/screenshots/lights.png)<br>Lumières (LED) | ![Système](docs/screenshots/system.png)<br>Système |
-| ![Avancé : MCU](docs/screenshots/advanced.png)<br>Avancé : MCU | ![Outils MCU](docs/screenshots/mcu-tools.png)<br>Outils MCU |
+| ![Accueil](docs/screenshots/home.png)<br>Accueil | ![Accueil (2)](docs/screenshots/home-2.png)<br>Accueil (2) |
+| ![Véhicule](docs/screenshots/vehicle.png)<br>Véhicule | ![Véhicule (2)](docs/screenshots/vehicle-2.png)<br>Véhicule (2) |
+| ![Véhicule (3)](docs/screenshots/vehicle-3.png)<br>Véhicule (3) | ![Caméra de recul](docs/screenshots/reverse.png)<br>Caméra de recul |
+| ![Caméra de recul (2)](docs/screenshots/reverse-2.png)<br>Caméra de recul (2) | ![Caméra de recul (3)](docs/screenshots/reverse-3.png)<br>Caméra de recul (3) |
+| ![Caméra de recul (4)](docs/screenshots/reverse-4.png)<br>Caméra de recul (4) | ![Entrées vidéo](docs/screenshots/video.png)<br>Entrées vidéo |
+| ![Entrées vidéo (2)](docs/screenshots/video-2.png)<br>Entrées vidéo (2) | ![OBD](docs/screenshots/obd.png)<br>OBD |
+| ![OBD (2)](docs/screenshots/obd-2.png)<br>OBD (2) | ![OBD (3)](docs/screenshots/obd-3.png)<br>OBD (3) |
+| ![OBD (4)](docs/screenshots/obd-4.png)<br>OBD (4) | ![Boîtier CAN](docs/screenshots/can.png)<br>Boîtier CAN |
+| ![Boîtier CAN (2)](docs/screenshots/can-2.png)<br>Boîtier CAN (2) | ![Audio](docs/screenshots/audio.png)<br>Audio |
+| ![Audio (2)](docs/screenshots/audio-2.png)<br>Audio (2) | ![Audio (3)](docs/screenshots/audio-3.png)<br>Audio (3) |
+| ![Audio (4)](docs/screenshots/audio-4.png)<br>Audio (4) | ![Bluetooth](docs/screenshots/bluetooth.png)<br>Bluetooth |
+| ![Bluetooth (2)](docs/screenshots/bluetooth-2.png)<br>Bluetooth (2) | ![Téléphone](docs/screenshots/phone.png)<br>Téléphone |
+| ![Téléphone (2)](docs/screenshots/phone-2.png)<br>Téléphone (2) | ![Android Auto](docs/screenshots/android-auto.png)<br>Android Auto |
+| ![Android Auto (2)](docs/screenshots/android-auto-2.png)<br>Android Auto (2) | ![Android Auto (3)](docs/screenshots/android-auto-3.png)<br>Android Auto (3) |
+| ![CarPlay](docs/screenshots/carplay.png)<br>CarPlay | ![CarPlay (2)](docs/screenshots/carplay-2.png)<br>CarPlay (2) |
+| ![Affichage](docs/screenshots/display.png)<br>Affichage | ![Affichage (2)](docs/screenshots/display-2.png)<br>Affichage (2) |
+| ![Dalle tactile](docs/screenshots/touch.png)<br>Dalle tactile | ![Dalle tactile (2)](docs/screenshots/touch-2.png)<br>Dalle tactile (2) |
+| ![Lumières](docs/screenshots/lights.png)<br>Lumières | ![Lumières (2)](docs/screenshots/lights-2.png)<br>Lumières (2) |
+| ![Système](docs/screenshots/system.png)<br>Système | ![Système (2)](docs/screenshots/system-2.png)<br>Système (2) |
+| ![Système (3)](docs/screenshots/system-3.png)<br>Système (3) | ![GPS et heure](docs/screenshots/gps.png)<br>GPS et heure |
+| ![Réseau](docs/screenshots/network.png)<br>Réseau | ![Réseau (2)](docs/screenshots/network-2.png)<br>Réseau (2) |
+| ![Tweaks](docs/screenshots/tweaks.png)<br>Tweaks | ![Tweaks (2)](docs/screenshots/tweaks-2.png)<br>Tweaks (2) |
+| ![Tweaks (3)](docs/screenshots/tweaks-3.png)<br>Tweaks (3) | ![Tweaks (4)](docs/screenshots/tweaks-4.png)<br>Tweaks (4) |
+| ![MCU](docs/screenshots/advanced.png)<br>MCU | ![MCU (2)](docs/screenshots/advanced-2.png)<br>MCU (2) |
+| ![Outils MCU](docs/screenshots/mcu-tools.png)<br>Outils MCU | ![Outils MCU (2)](docs/screenshots/mcu-tools-2.png)<br>Outils MCU (2) |
+| ![Diag audio](docs/screenshots/audio-diag.png)<br>Diag audio | ![Diag audio (2)](docs/screenshots/audio-diag-2.png)<br>Diag audio (2) |
+| ![Autochips](docs/screenshots/atc.png)<br>Autochips | ![Autochips (2)](docs/screenshots/atc-2.png)<br>Autochips (2) |
+| ![Diagnostic](docs/screenshots/diag.png)<br>Diagnostic | ![Diagnostic (2)](docs/screenshots/diag-2.png)<br>Diagnostic (2) |
 
-Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), sans autoradio branché : les valeurs du véhicule et de la MCU sont vides. Refaites-les avec l'action **Screenshots** de [LibreHU-OTA-app](https://github.com/LibreHU/LibreHU-OTA-app/tree/main/screenshots).
+Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), sans autoradio branché : les valeurs du véhicule et de la MCU sont vides. Refaites-les avec l'action **Screenshots** de [LibreHU-OTA-app](https://github.com/LibreHU/LibreHU-OTA-app/tree/main/screenshots). Galerie : [librehu.github.io/screenshots/service.html](https://librehu.github.io/screenshots/service.html).
 
 ## Ce qui est implémenté
 
