@@ -59,3 +59,8 @@ Diffusions vers `org.librehu.headunit`, acceptees seulement d'une appli qui a la
   mise a jour suivante du service (ou a sa reinstallation).
 - Le sans-fil depend d'Android Auto sur le telephone (voir le README d'Open Headunit) ; le filaire USB est le plus
   fiable.
+- Passage USB -> sans fil d'un nouveau telephone : il faut un appairage Bluetooth. Android Auto le demande par le cable
+  (message PairingRequest du canal Bluetooth) ; Open Headunit LibreHU (depuis le 27/10/2026, `55d10ed9`) y repond et
+  lance l'appairage depuis l'autoradio, et LibreHU-service accepte la confirmation cote autoradio quand il gere le
+  Bluetooth (`BluetoothModule`, mode actif). Laisser le cable une minute la premiere fois, puis debrancher. Journal :
+  lignes `AAP Bluetooth` d'Open Headunit, `LibreHU-BT` du service.
