@@ -153,6 +153,35 @@ fun AppScreen(
     actions: AppActions,
 ) {
     val section = Section.of(tab)
+    val content: @Composable () -> Unit = {
+        when (tab) {
+            Tab.HOME -> HomeScreen(client, onTab)
+            Tab.VEHICLE -> VehicleScreen()
+            Tab.REVERSE -> ReverseScreen(actions)
+            Tab.VIDEO -> VideoScreen()
+            Tab.OBD -> ObdScreen(client, actions)
+            Tab.CAN -> CanScreen(actions)
+            Tab.AUDIO -> AudioScreen(client)
+            Tab.BLUETOOTH -> BluetoothScreen(client, actions)
+            Tab.PHONE -> PhoneScreen()
+            Tab.ANDROID_AUTO -> AndroidAutoScreen()
+            Tab.CARPLAY -> CarPlayScreen()
+            Tab.DISPLAY -> DisplayScreen(actions)
+            Tab.TOUCH -> TouchScreen(actions)
+            Tab.LIGHTS -> LightsScreen(actions)
+            Tab.SYSTEM -> SystemScreen()
+            Tab.GPS -> GpsTimeScreen(actions)
+            Tab.NETWORK -> NetworkScreen()
+            Tab.TWEAKS -> TweaksScreen()
+            Tab.MCU -> McuScreen(actions)
+            Tab.MCU_TOOLS -> McuToolsScreen(client)
+            Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
+            Tab.DIAG -> DiagScreen(client, actions)
+            Tab.ATC -> AtcScreen(actions)
+        }
+    }
+    // LibreHU Launcher's car styles (the launcher asks the app for them): the sections as soft keys or tabs.
+    if (carStyled) return StyledAppScreen(section, tab, onTab, content)
     Row(Modifier.fillMaxSize().background(CarColors.Background)) {
         Column(
             modifier =
@@ -175,33 +204,7 @@ fun AppScreen(
                     for (t in section.tabs) Pill(stringResource(t.label), selected = t == tab, icon = t.icon) { onTab(t) }
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                when (tab) {
-                    Tab.HOME -> HomeScreen(client, onTab)
-                    Tab.VEHICLE -> VehicleScreen()
-                    Tab.REVERSE -> ReverseScreen(actions)
-                    Tab.VIDEO -> VideoScreen()
-                    Tab.OBD -> ObdScreen(client, actions)
-                    Tab.CAN -> CanScreen(actions)
-                    Tab.AUDIO -> AudioScreen(client)
-                    Tab.BLUETOOTH -> BluetoothScreen(client, actions)
-                    Tab.PHONE -> PhoneScreen()
-                    Tab.ANDROID_AUTO -> AndroidAutoScreen()
-                    Tab.CARPLAY -> CarPlayScreen()
-                    Tab.DISPLAY -> DisplayScreen(actions)
-                    Tab.TOUCH -> TouchScreen(actions)
-                    Tab.LIGHTS -> LightsScreen(actions)
-                    Tab.SYSTEM -> SystemScreen()
-                    Tab.GPS -> GpsTimeScreen(actions)
-                    Tab.NETWORK -> NetworkScreen()
-                    Tab.TWEAKS -> TweaksScreen()
-                    Tab.MCU -> McuScreen(actions)
-                    Tab.MCU_TOOLS -> McuToolsScreen(client)
-                    Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
-                    Tab.DIAG -> DiagScreen(client, actions)
-                    Tab.ATC -> AtcScreen(actions)
-                }
-            }
+            Box(Modifier.weight(1f).fillMaxWidth()) { content() }
         }
     }
 }
@@ -217,7 +220,7 @@ private fun RailItem(
         modifier =
             Modifier
                 .width(92.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .clip(carShape(20.dp))
                 .background(if (selected) CarColors.SurfaceHigh else CarColors.Background)
                 .clickable(onClick = onClick)
                 .padding(vertical = 10.dp),
@@ -458,5 +461,54 @@ private fun MicrophoneCard() {
                 now.second?.let { stringResource(if (it) R.string.on else R.string.off) } ?: "?",
             ),
         )
+    }
+}
+
+/**
+ * The settings in LibreHU Launcher's car styles. Factory (Modularer Infotainment-Baukasten): the page's name over the
+ * accent line, its sibling pages as framed keys, the sections as soft keys. Ambient (LHU-Link): the sections as
+ * framed tabs, the sibling pages as keys under them, the bar Back / Options.
+ */
+@Composable
+private fun StyledAppScreen(
+    section: Section,
+    tab: Tab,
+    onTab: (Tab) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val pages: @Composable () -> Unit = {
+        if (section.tabs.size > 1) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for (t in section.tabs) Pill(stringResource(t.label), selected = t == tab, icon = t.icon) { onTab(t) }
+            }
+        }
+    }
+    if (RetroLook.factory) {
+        FactoryScreen(
+            title = stringResource(tab.label),
+            back = false,
+            keys = Section.entries.map { s -> SoftKey(stringResource(s.label), s.icon, s == section) { if (s != section) onTab(s.tabs.first()) } },
+        ) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                pages()
+                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+            }
+        }
+    } else {
+        AmbientScreen(stringResource(tab.label), keys = emptyList(), options = emptyList()) {
+            Column(Modifier.fillMaxSize()) {
+                AmbientTabs(Section.entries.map { stringResource(it.label) }, section.ordinal) { i ->
+                    val s = Section.entries[i]
+                    if (s != section) onTab(s.tabs.first())
+                }
+                Column(Modifier.fillMaxSize().padding(10.dp)) {
+                    pages()
+                    Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                }
+            }
+        }
     }
 }

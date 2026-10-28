@@ -48,12 +48,13 @@ fun Card(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // LibreHU Launcher's car styles: the group as the style draws it (the launcher asks the app for them).
+    if (carStyled) return StyledCard(title, modifier, content)
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(CarColors.Surface)
+                .carPanel(24.dp, CarColors.Surface)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -79,12 +80,13 @@ fun SwitchRow(
     enabled: Boolean = true,
     onChange: (Boolean) -> Unit,
 ) {
+    if (carStyled) return StyledSwitchRow(title, subtitle, checked, enabled, onChange)
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(carShape(16.dp))
                 .clickable(enabled = enabled) { onChange(!checked) }
                 .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -154,6 +156,7 @@ fun Pill(
     icon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
+    if (carStyled) return StyledPill(label, selected, icon, enabled, onClick)
     Row(
         modifier =
             Modifier
@@ -199,8 +202,7 @@ fun Tile(
         modifier =
             modifier
                 .widthIn(min = 140.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(CarColors.SurfaceHigh)
+                .carPanel(20.dp, CarColors.SurfaceHigh)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
@@ -251,7 +253,7 @@ fun ListRow(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(carShape(16.dp))
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -73,7 +73,7 @@ internal fun BridgeCard() {
                 Image(
                     code.asImageBitmap(),
                     null,
-                    Modifier.size(280.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp),
+                    Modifier.size(280.dp).clip(carShape(12.dp)).background(Color.White).padding(8.dp),
                 )
                 Hint(stringResource(R.string.bridge_qr_hint, server.fingerprint.take(8)))
                 Actions {
