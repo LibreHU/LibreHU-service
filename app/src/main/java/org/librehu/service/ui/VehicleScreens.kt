@@ -374,6 +374,7 @@ fun SystemScreen() {
     Page(stringResource(R.string.tab_system)) {
         RootCard()
         StandbyCard()
+        StandbyJournalCard()
         BootAppsCard()
         AppDataCard()
         BackupCard()

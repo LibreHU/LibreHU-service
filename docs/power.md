@@ -45,6 +45,42 @@ Réveil (contact revenu, ou suspension détectée par un saut de l'horloge `elap
 PC_READY renvoyé (sinon la MCU recoupe le SoC au bout de 10 s), écran rallumé, mode avion / GPS rétablis s'ils
 avaient été coupés par le service, reprise de la lecture 4 s plus tard.
 
+## Journal de veille (`power/StandbyJournal.kt`)
+
+Onglet **Système → Veille → Journal de veille**. Chaque étape est écrite dans
+`/data/user_de/0/org.librehu.service/files/standby.log` (plus `standby.1.log`, 256 Kio chacun) et forcée sur le
+stockage à chaque ligne (`fsync`) : elle survit à la coupure du SoC par la MCU. Chaque ligne porte l'heure, `up=`
+(uptime, arrêté pendant la suspension) et `boot=` (temps depuis le démarrage, qui continue).
+
+| Ligne | Sens |
+|---|---|
+| `Ignition off (MCU)` / `Ignition on (MCU)` | le fil ACC tel que la MCU l'annonce, tout de suite : départ du minutage `t+` |
+| `Powered off after the engine-start delay (t+3.0 s)` | fin du délai de démarrage moteur |
+| `Standby: SLEEP …`, `Media paused…`, `Radios off`, `MCU sleep timer F1 n sent`, `Screen off … preparation done` | chaque étape avec son `t+` ; `LATE` si la préparation finit après les 15 s de la MCU |
+| `Still running N s after standby, SoC suspended X s` | le SoC ne dort pas (30 s, puis chaque minute pendant 10 min, puis toutes les 10 min) ; au premier, les wakelocks |
+| `SoC resumed after N s suspended: PC_READY` | sortie de suspension (saut `elapsedRealtime` / `uptimeMillis`), suivie des lignes `dmesg` du noyau |
+| `Wake up (ignition on) after N s of standby, SoC suspended X s of it` | réveil complet |
+| `Previous standby (…) never woke up` | au démarrage suivant : la veille n'a pas été suivie d'un réveil, la MCU a coupé le SoC (ou il a redémarré) |
+| `Service start`, `Boot reason`, `Previous kernel log (pstore)` | à chaque démarrage du service : raison du démarrage et fin du journal noyau précédent (root) |
+
+Instantanés root : `dumpsys power` (wakelocks Android), `/sys/power/wake_lock`, sources de réveil actives
+(`/sys/kernel/debug/wakeup_sources`, `active_since > 0`), `dmesg` filtré (`PM:`, suspend, resume, Freezing, wakeup,
+spm), `/sys/power/wakeup_count`, `suspend_stats`.
+
+**Tester la suspension** (contact mis) : écran éteint comme en veille, **sans** prévenir la MCU (ni `F1`, ni radios),
+alarme `ELAPSED_REALTIME_WAKEUP` 60 s plus tard ; le journal donne le temps réellement suspendu et un verdict
+(« suspended and woke up », « only part of the time », « did NOT suspend » avec les wakelocks).
+
+### Protocole d'essai
+
+1. Système → Veille : mode **Veille**, durée **7 h**, journal **effacé**.
+2. Contact mis, **Tester la suspension** : attendre 60 s sans toucher l'écran. Verdict dans le journal.
+3. Contact coupé, attendre **2 min**, contact remis : démarrage instantané ou à froid ? Le journal dit si
+   la préparation a tenu dans les 15 s, si le SoC s'est suspendu et comment il s'est réveillé.
+4. Même essai avec **30 min** de coupure, puis une nuit (consommation : tension batterie avant / après).
+5. Mode **Extinction** : contact coupé 1 min, remis : la ligne `Previous standby … never woke up` est attendue.
+6. **Exporter** le journal (et Diagnostic → Exporter pour le trafic MCU) et le joindre au ticket.
+
 ## À vérifier sur l'appareil
 
 - le SoC entre-t-il vraiment en suspension (aucun wakelock qui la bloque) et en sort-il proprement ?

@@ -544,6 +544,14 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="standby_mode_shutdown">Extinction</string>
     <string name="standby_mode_off_hint">Comme avant : écran, son et ampli coupés ; la MCU coupe le SoC d\'elle-même (démarrage à froid au prochain contact, sauf si elle garde une durée de veille réglée par Jancar).</string>
     <string name="standby_mode_sleep_hint">Médias en pause, écran d\'accueil, données écrites, minuterie de veille de la MCU, Android en veille : démarrage instantané au retour du contact. Pas encore testé sur l\'UJC201 : essayer d\'abord avec une durée courte.</string>
+    <string name="standby_journal">Journal de veille</string>
+    <string name="standby_journal_hint">Chaque étape de chaque mise en veille et de chaque réveil, minutée depuis la coupure du contact (la MCU coupe le SoC à t+15 s), avec ce que dit le noyau (root). Écrit sur le stockage à chaque ligne : toujours là après une coupure du SoC par la MCU. L\'exporter après un essai et le joindre à un ticket.</string>
+    <string name="standby_journal_empty">Rien pour l\'instant : couper puis remettre le contact, ou lancer le test.</string>
+    <string name="standby_journal_clear">Effacer</string>
+    <string name="standby_journal_export_failed">Impossible d\'écrire le fichier</string>
+    <string name="standby_test">Tester la suspension</string>
+    <string name="standby_test_running">Test en cours…</string>
+    <string name="standby_test_hint">Contact mis : l\'écran s\'éteint comme en veille (la MCU n\'est pas prévenue), une alarme réveille le SoC %1$d s plus tard ; le journal dit s\'il s\'est vraiment suspendu et, sinon, quels wakelocks l\'en ont empêché.</string>
     <string name="standby_mode_shutdown_hint">Médias en pause, données écrites, minuterie de la MCU à 0 : la MCU coupe le SoC (démarrage à froid au prochain contact).</string>
     <string name="standby_max">Extinction après</string>
     <string name="standby_days">%1$d jours</string>

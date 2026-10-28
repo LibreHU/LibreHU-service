@@ -1,5 +1,6 @@
 package org.librehu.service.power
 
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -8,6 +9,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,17 +73,45 @@ class Standby private constructor(
     /** Standby done, waiting for the ignition. */
     val asleep: StateFlow<Boolean> = _asleep.asStateFlow()
 
+    private val _testing = MutableStateFlow(false)
+
+    /** A suspend test runs ([testSuspend]). */
+    val testing: StateFlow<Boolean> = _testing.asStateFlow()
+
+    /** Every step written down, kept across a cut of the SoC (see [StandbyJournal]). */
+    val journal = StandbyJournal.get(app)
+
     /** MCU sleep timer, PC_READY again: given by the service once the link runs. */
     var sleepTimer: (Int) -> Unit = {}
     var handshake: () -> Unit = {}
-    var log: (String) -> Unit = {}
 
     private var acc: Boolean? = null
     private var wasPlaying = false
 
+    /** The ACC wire as the MCU reports it (before the engine-start delay), and when it went off. */
+    private var accWire: Boolean? = null
+    private var accWireOffAt = 0L
+
+    /** Standby entered at (elapsedRealtime), and how long the SoC has been suspended since. */
+    private var standbyAt = 0L
+    private var suspendedMs = 0L
+    private var nextBeatAt = 0L
+    private var lockSnapshotDone = false
+
     private val prepare = Runnable { enter() }
 
     init {
+        Thread({
+            journal.boot()
+            // Standby entered in the previous run and never left: the MCU cut the SoC (or it rebooted) while asleep.
+            prefs.getLong(KEY_ASLEEP_SINCE, 0L).takeIf { it > 0L }?.let { since ->
+                note(
+                    "Previous standby (entered ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(since))}) " +
+                        "never woke up: the SoC was cut or rebooted, this is a cold boot",
+                )
+                prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+            }
+        }, "standby-journal").start()
         // Radios cut by a standby the head unit did not wake up from (the MCU cut the SoC, a reboot, the service
         // restarted): airplane mode stayed on and GPS off. Put back once the service runs again.
         if (prefs.getBoolean(KEY_AIRPLANE_SET, false) || prefs.getBoolean(KEY_GPS_SET, false)) {
@@ -116,6 +146,9 @@ class Standby private constructor(
         val old = acc
         acc = on
         if (old == on) return
+        if (old != null) {
+            note(if (on) "Powered on" else "Powered off after the engine-start delay (${since()}), mode ${_settings.value.mode}")
+        }
         main.removeCallbacks(prepare)
         if (on) {
             if (old != null) exit("ignition on")
@@ -126,10 +159,33 @@ class Standby private constructor(
         }
     }
 
+    /** The ACC wire as the MCU reports it, at once (written down only: [onAcc] acts after the engine-start delay). */
+    fun onAccWire(on: Boolean) {
+        val old = accWire
+        accWire = on
+        if (old == on) return
+        if (!on) accWireOffAt = SystemClock.elapsedRealtime()
+        if (old != null || !on) note(if (on) "Ignition on (MCU)" else "Ignition off (MCU): the MCU cuts the SoC 15 s later unless F1 is set")
+    }
+
+    /** Time since the ignition went off, "t+4.6 s" (the MCU cuts the SoC at t+15 s). */
+    private fun since(): String =
+        if (accWireOffAt == 0L) "t=?" else "t+%.1f s".format(java.util.Locale.ROOT, (SystemClock.elapsedRealtime() - accWireOffAt) / 1000f)
+
+    private fun note(line: String) {
+        Log.i(TAG, line)
+        journal.add(line)
+    }
+
     private fun enter() {
         if (acc != false || _asleep.value) return
         val s = _settings.value
-        log("Standby: ${s.mode}${if (s.mode == StandbyMode.SLEEP) ", MCU timer ${s.mcuUnits} × 7 h" else ""}")
+        note("Standby: ${s.mode}${if (s.mode == StandbyMode.SLEEP) ", MCU timer ${s.mcuUnits} × 7 h" else ""} (${since()})")
+        prefs.edit().putLong(KEY_ASLEEP_SINCE, System.currentTimeMillis()).commit()
+        standbyAt = SystemClock.elapsedRealtime()
+        suspendedMs = 0L
+        lockSnapshotDone = false
+        nextBeatAt = standbyAt + FIRST_BEAT_MS
         _asleep.value = true
         val audio = app.getSystemService(AudioManager::class.java)
         wasPlaying = s.resumeMedia && audio?.isMusicActive == true
@@ -137,12 +193,18 @@ class Standby private constructor(
         runCatching {
             app.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+        note("Media paused${if (wasPlaying) " (was playing)" else ""}, home screen (${since()})")
         Thread({
-            if (s.mode == StandbyMode.SLEEP && s.radiosOff) radiosOff()
+            if (s.mode == StandbyMode.SLEEP && s.radiosOff) {
+                radiosOff()
+                note("Radios off (${since()})")
+            }
             runCatching { ProcessBuilder("sync").start().waitFor() }
             sleepTimer(s.mcuUnits)
+            note("MCU sleep timer F1 ${s.mcuUnits} sent, storage written (${since()})")
             runCatching { ProcessBuilder("sync").start().waitFor() }
             screen(false)
+            note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
             if (s.mode == StandbyMode.SLEEP) main.post { watchResume() }
         }, "standby").start()
     }
@@ -151,7 +213,9 @@ class Standby private constructor(
         main.removeCallbacks(resumeWatch)
         if (!_asleep.value) return
         _asleep.value = false
-        log("Wake up ($why)")
+        prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+        val total = (SystemClock.elapsedRealtime() - standbyAt) / 1000
+        note("Wake up ($why) after $total s of standby, SoC suspended ${suspendedMs / 1000} s of it")
         handshake()
         val play = wasPlaying
         Thread({
@@ -179,9 +243,21 @@ class Standby private constructor(
                 val suspended = (e - lastElapsed) - (u - lastUptime)
                 lastElapsed = e
                 lastUptime = u
+                if (suspended > 0) suspendedMs += suspended
                 if (suspended > RESUME_JUMP_MS && _asleep.value) {
-                    log("SoC resumed after ${suspended / 1000} s asleep: PC_READY")
+                    note("SoC resumed after ${suspended / 1000} s suspended: PC_READY")
                     handshake()
+                    Thread({ journal.kernelPm("Resume") }, "standby-journal").start()
+                }
+                // Not suspended: Android stays awake, something holds it (written down at the first beat).
+                if (_asleep.value && e >= nextBeatAt) {
+                    val awake = (e - standbyAt) / 1000
+                    note("Still running $awake s after standby, SoC suspended ${suspendedMs / 1000} s in total")
+                    if (!lockSnapshotDone && suspendedMs < (e - standbyAt) / 2) {
+                        lockSnapshotDone = true
+                        Thread({ journal.wakelocks("Not suspending") }, "standby-journal").start()
+                    }
+                    nextBeatAt = e + if (e - standbyAt < SLOW_BEATS_AFTER_MS) FAST_BEAT_MS else SLOW_BEAT_MS
                 }
                 if (_asleep.value) main.postDelayed(this, RESUME_WATCH_MS)
             }
@@ -192,6 +268,52 @@ class Standby private constructor(
         lastUptime = SystemClock.uptimeMillis()
         main.removeCallbacks(resumeWatch)
         main.postDelayed(resumeWatch, RESUME_WATCH_MS)
+    }
+
+    /**
+     * Suspend test with the ignition on: screen off as in a standby (the MCU is not told: no `F1`, nothing cut), an
+     * alarm wakes the SoC [seconds] later, then the journal says how long it was really suspended, with the kernel's
+     * lines. Not suspended at all: the wakelocks holding it are written down. False when one runs or in standby.
+     */
+    fun testSuspend(seconds: Int): Boolean {
+        if (_asleep.value || _testing.value) return false
+        _testing.value = true
+        note("TEST: suspend for $seconds s, ignition on (the MCU is not told)")
+        val e0 = SystemClock.elapsedRealtime()
+        val u0 = SystemClock.uptimeMillis()
+        Thread({
+            journal.wakelocks("TEST before")
+            screen(false)
+            note("TEST: screen off")
+            main.post {
+                val alarms = app.getSystemService(AlarmManager::class.java)
+                val done =
+                    AlarmManager.OnAlarmListener {
+                        val e = SystemClock.elapsedRealtime() - e0
+                        val suspended = e - (SystemClock.uptimeMillis() - u0)
+                        val verdict =
+                            when {
+                                suspended >= e / 2 -> "the SoC suspended and woke up"
+                                suspended > RESUME_JUMP_MS -> "the SoC suspended only part of the time"
+                                else -> "the SoC did NOT suspend (see the wakelocks)"
+                            }
+                        note("TEST: alarm after ${e / 1000} s, suspended ${suspended / 1000} s: $verdict")
+                        Thread({
+                            screen(true)
+                            if (suspended < e / 2) journal.wakelocks("TEST after")
+                            journal.kernelPm("TEST")
+                            _testing.value = false
+                        }, "standby-test").start()
+                    }
+                if (alarms == null) {
+                    note("TEST: no AlarmManager")
+                    _testing.value = false
+                } else {
+                    alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + seconds * 1000L, "librehu:standby-test", done, main)
+                }
+            }
+        }, "standby-test").start()
+        return true
     }
 
     /**
@@ -219,7 +341,7 @@ class Standby private constructor(
         val airplane = prefs.getBoolean(KEY_AIRPLANE_SET, false)
         val gps = prefs.getBoolean(KEY_GPS_SET, false)
         if (!airplane && !gps) return
-        log("Radios back ($why):${if (airplane) " airplane mode off" else ""}${if (gps) " GPS on" else ""}")
+        note("Radios back ($why):${if (airplane) " airplane mode off" else ""}${if (gps) " GPS on" else ""}")
         val airplaneDone = !airplane || setAirplane(false)
         val gpsDone = !gps || RootShell.run("settings put secure location_providers_allowed +gps") != null
         prefs.edit().putBoolean(KEY_AIRPLANE_SET, !airplaneDone).putBoolean(KEY_GPS_SET, !gpsDone).apply()
@@ -246,7 +368,10 @@ class Standby private constructor(
             } catch (_: Throwable) {
                 false
             }
-        if (!done) RootShell.run("input keyevent ${if (on) KeyEvent.KEYCODE_WAKEUP else KeyEvent.KEYCODE_SLEEP}")
+        if (!done) {
+            val root = RootShell.run("input keyevent ${if (on) KeyEvent.KEYCODE_WAKEUP else KeyEvent.KEYCODE_SLEEP}") != null
+            note("Screen ${if (on) "on" else "off"} by a key (root)${if (root) "" else " FAILED: no PowerManager access nor root"}")
+        }
     }
 
     private fun mediaKey(code: Int) {
@@ -275,6 +400,15 @@ class Standby private constructor(
         private const val KEY_AIRPLANE_SET = "airplane_set_by_standby"
         private const val KEY_GPS_SET = "gps_cut_by_standby"
         private const val START_RESTORE_DELAY_MS = 4000L
+        private const val KEY_ASLEEP_SINCE = "journal_asleep_since"
+        private const val TAG = "LibreHU-Standby"
+
+        /** The MCU cuts the SoC this long after the ignition when no sleep timer is set. */
+        private const val MCU_CUT_MS = 15_000L
+        private const val FIRST_BEAT_MS = 30_000L
+        private const val FAST_BEAT_MS = 60_000L
+        private const val SLOW_BEAT_MS = 600_000L
+        private const val SLOW_BEATS_AFTER_MS = 600_000L
 
         /** After the ACC is reported off: the MCU cuts the SoC 15 s after the ignition (engine delay included). */
         const val PREPARE_DELAY_MS = 1500L

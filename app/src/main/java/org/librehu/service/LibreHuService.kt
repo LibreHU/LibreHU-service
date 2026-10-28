@@ -193,7 +193,6 @@ class LibreHuService : Service() {
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
             handshake = { unit?.wake() }
-            log = { this@LibreHuService.log(it) }
         }
     }
 
@@ -392,7 +391,10 @@ class LibreHuService : Service() {
                 ServiceState.setVehicle(state)
                 org.librehu.service.power.Standby
                     .get(this@LibreHuService)
-                    .onAcc(state.powered)
+                    .apply {
+                        if (state.mcuOnline) onAccWire(state.acc)
+                        onAcc(state.powered)
+                    }
                 display.onHeadlights(state.headlight)
                 org.librehu.service.overlay.StatusOsd
                     .get(this@LibreHuService)

@@ -5,6 +5,8 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.OutlinedTextField
@@ -20,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -473,6 +476,71 @@ internal fun StandbyCard() {
         }
     }
 }
+
+/**
+ * Standby journal ([org.librehu.service.power.StandbyJournal]): its last lines, a suspend test with the ignition on,
+ * export and clear. The journal survives the MCU cutting the SoC.
+ */
+@Composable
+internal fun StandbyJournalCard() {
+    val context = LocalContext.current
+    val standby =
+        org.librehu.service.power.Standby
+            .get(context)
+    val testing by standby.testing.collectAsStateWithLifecycle()
+    var lines by remember { mutableStateOf(standby.journal.tail(JOURNAL_LINES)) }
+    // Kept up to date while shown (a test writes as it goes).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            lines = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { standby.journal.tail(JOURNAL_LINES) }
+            kotlinx.coroutines.delay(2000)
+        }
+    }
+    val export =
+        androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts
+                .CreateDocument("text/plain"),
+        ) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            val ok =
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(standby.journal.read().toByteArray()) } != null
+                }.getOrDefault(false)
+            android.widget.Toast
+                .makeText(context, if (ok) R.string.diag_exported else R.string.standby_journal_export_failed, android.widget.Toast.LENGTH_SHORT)
+                .show()
+        }
+    Card(stringResource(R.string.standby_journal)) {
+        Hint(stringResource(R.string.standby_journal_hint))
+        Actions {
+            Pill(stringResource(if (testing) R.string.standby_test_running else R.string.standby_test), icon = Icons.Default.Bedtime) {
+                if (!testing) standby.testSuspend(TEST_SECONDS)
+            }
+            Pill(stringResource(R.string.diag_export), icon = Icons.Default.FileUpload) {
+                val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+                export.launch("librehu-standby-$stamp.log")
+            }
+            Pill(stringResource(R.string.standby_journal_clear), icon = Icons.Default.Delete) {
+                standby.journal.clear()
+                lines = emptyList()
+            }
+        }
+        Hint(stringResource(R.string.standby_test_hint, TEST_SECONDS))
+        if (lines.isEmpty()) {
+            Hint(stringResource(R.string.standby_journal_empty))
+        } else {
+            Text(
+                lines.joinToString("\n"),
+                color = CarColors.Text,
+                fontSize = 12.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            )
+        }
+    }
+}
+
+private const val JOURNAL_LINES = 14
+private const val TEST_SECONDS = 60
 
 /** LibreHU apps started at boot (their boot receivers), each can be turned off (root). */
 @Composable
