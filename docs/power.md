@@ -95,6 +95,27 @@ sur ce noyau). Un plantage Java du service est écrit dans le journal avant qu'A
 5. Mode **Extinction** : contact coupé 1 min, remis : la ligne `Previous standby … never woke up` est attendue.
 6. **Exporter** le journal (et Diagnostic → Exporter pour le trafic MCU) et le joindre au ticket.
 
+### QuickBoot d'Autochips : chaque extinction d'écran tue les applis (28/10, trouvé)
+
+`logcat` du test du 28/10 : à l'extinction de l'écran, le framework modifié (`PowerManagerNotifier` : « Hello QB
+OFF », `setSuspendState 2`) diffuse `autochips.intent.action.QB_POWEROFF` ; Bluetooth, Wi-Fi, CarPlay et caméras se
+coupent, et **QuickBootManager** (`com.autochips.quickbootmanager`, `doQuickBootPowerOff`) fait `forceStopPackage` de
+toute appli absente de sa liste blanche : LibreHU-service, launcher, téléphone, BtnRemap, ViPER, Open Headunit…
+(« Force stopping org.librehu.service … from pid 924 »). Une appli arrêtée de force perd ses alarmes et ne redémarre
+pas seule : personne ne renvoie PC_READY au réveil, la MCU recoupe le SoC ; contact mis, rien ne réveille le SoC
+suspendu (il faut couper le contact plus de 40 s pour un démarrage à froid).
+
+Liste blanche (analyse de l'APK, `Utils.readList`) : **`/vendor/etc/qb_list.xml`** (`Environment.getVendorDirectory()`),
+éléments `<app_whitelist name="paquet"/>` (jamais arrêtés : `containsKey` avant `forceStopPackage`) et
+`<app_yellowlist name="paquet"/>`, lue une fois au démarrage de QuickBootManager ; propriété
+`sys.qb.startapp_onresume` (appli relancée au réveil). Le zip **`qb-whitelist`** (LibreHU-flashablesZips) y ajoute
+les applis LibreHU et ViPER4Android ; le journal dit à chaque démarrage si le service y figure.
+
+En attendant (et en plus) : **gardien** (`power/QuickBootGuard.kt`), shell root hors du groupe de processus de l'appli,
+lancé juste avant l'extinction de l'écran en veille, qui relance le service s'il n'existe plus ; au réveil, le service
+relance l'accueil, les applis LibreHU (leurs récepteurs de démarrage) et ViPER4Android. Le **test de suspension contact
+mis est désactivé** : avec le contact mis, rien ne réveillerait le SoC.
+
 ### Reboot spontané écran éteint (28/10, analysé)
 
 Écran Android éteint, contact mis, SoC resté réveillé : environ 5 à 6 min plus tard, **reboot par le hang_detect de

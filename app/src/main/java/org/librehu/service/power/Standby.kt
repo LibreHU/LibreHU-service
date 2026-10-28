@@ -125,6 +125,7 @@ class Standby private constructor(
             )
             prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
         }
+        if (!_asleep.value && QuickBootGuard.active(app)) QuickBootGuard.stop(app)
         Thread({
             // A test cut short (process restarted, reboot): the screen first, then what Android and the kernel say.
             if (prefs.getLong(KEY_TEST_UNTIL, 0L) > 0L) {
@@ -228,6 +229,10 @@ class Standby private constructor(
             sleepTimer(s.mcuUnits)
             note("MCU sleep timer F1 ${s.mcuUnits} sent, storage written (${since()})")
             runCatching { ProcessBuilder("sync").start().waitFor() }
+            // QuickBoot stops every app at the screen off: the guard starts this service again (see QuickBootGuard).
+            if (s.mode == StandbyMode.SLEEP) {
+                note(if (QuickBootGuard.start(app)) "QuickBoot guard on (${since()})" else "QuickBoot guard FAILED (no root): no PC_READY after the wake up")
+            }
             screen(false)
             note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
             if (s.mode == StandbyMode.SLEEP) {
@@ -269,10 +274,14 @@ class Standby private constructor(
         prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
         val total = (SystemClock.elapsedRealtime() - standbyAt) / 1000
         note("Wake up ($why) after $total s of standby, SoC suspended ${suspendedMs / 1000} s of it")
+        val guarded = QuickBootGuard.active(app)
+        QuickBootGuard.stop(app)
         handshake()
         val play = wasPlaying
         Thread({
             screen(true)
+            // What QuickBoot stopped at the screen off: home screen, LibreHU apps, ViPER4Android.
+            if (guarded) note("Apps started again after QuickBoot: ${QuickBootGuard.restartApps(app).joinToString()}")
             restoreRadios(why)
             if (play) {
                 // The Bluetooth phone reconnects first (airplane mode off).
@@ -330,6 +339,9 @@ class Standby private constructor(
      * with the kernel's lines, or which wakelocks held it. False when one runs or in standby.
      */
     fun testSuspend(seconds: Int): Boolean {
+        // Off since 28/10: the screen off is a QuickBoot power off on this ROM (every app stopped, alarms gone), and
+        // with the ignition on nothing wakes the SoC again. See QuickBootGuard; the standby is tried with the ignition.
+        if (!TEST_ALLOWED) return false
         if (_asleep.value || _testing.value) return false
         _testing.value = true
         val e0 = SystemClock.elapsedRealtime()
@@ -515,6 +527,7 @@ class Standby private constructor(
         private const val KEY_TEST_U0 = "test_u0"
         private const val CRASH_LINES = 25
         private const val SAFETY_EXTRA_S = 15
+        private const val TEST_ALLOWED = false
 
         /** Time left to the SoC to suspend once the screen is off (hang_detect reboots about 5 min later). */
         private const val SUSPEND_DEADLINE_MS = 90_000L

@@ -5,7 +5,6 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -487,7 +486,6 @@ internal fun StandbyJournalCard() {
     val standby =
         org.librehu.service.power.Standby
             .get(context)
-    val testing by standby.testing.collectAsStateWithLifecycle()
     var lines by remember { mutableStateOf(standby.journal.tail(JOURNAL_LINES)) }
     // Kept up to date while shown (a test writes as it goes).
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -513,9 +511,6 @@ internal fun StandbyJournalCard() {
     Card(stringResource(R.string.standby_journal)) {
         Hint(stringResource(R.string.standby_journal_hint))
         Actions {
-            Pill(stringResource(if (testing) R.string.standby_test_running else R.string.standby_test), icon = Icons.Default.Bedtime) {
-                if (!testing) standby.testSuspend(TEST_SECONDS)
-            }
             Pill(stringResource(R.string.diag_export), icon = Icons.Default.FileUpload) {
                 val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
                 export.launch("librehu-standby-$stamp.log")
@@ -525,7 +520,7 @@ internal fun StandbyJournalCard() {
                 lines = emptyList()
             }
         }
-        Hint(stringResource(R.string.standby_test_hint, TEST_SECONDS))
+        Hint(stringResource(R.string.standby_test_off))
         if (lines.isEmpty()) {
             Hint(stringResource(R.string.standby_journal_empty))
         } else {
@@ -540,7 +535,6 @@ internal fun StandbyJournalCard() {
 }
 
 private const val JOURNAL_LINES = 14
-private const val TEST_SECONDS = 30
 
 /** LibreHU apps started at boot (their boot receivers), each can be turned off (root). */
 @Composable

@@ -124,6 +124,16 @@ class StandbyJournal private constructor(
             RootShell.run("getprop sys.boot.reason; getprop ro.boot.bootreason; getprop persist.sys.boot.reason"),
         )
         dropbox(System.currentTimeMillis() - boot - DROPBOX_BEFORE_BOOT_MS)
+        // Autochips QuickBoot stops every app outside /vendor/etc/qb_list.xml (app_whitelist) at each screen off.
+        val qb = RootShell.run("cat /vendor/etc/qb_list.xml 2>/dev/null")
+        add(
+            when {
+                qb == null || qb.isBlank() -> "QuickBoot list: /vendor/etc/qb_list.xml unreadable"
+                Regex("app_whitelist[^>]*name=\"org\\.librehu\\.service\"").containsMatchIn(qb) ->
+                    "QuickBoot list: this service is in app_whitelist (not stopped at the screen off)"
+                else -> "QuickBoot list: this service is NOT in app_whitelist: stopped at each screen off (zip qb-whitelist)"
+            },
+        )
         block(
             "MediaTek exception reports (newest first)",
             RootShell.run("ls -lt /data/aee_exp /data/vendor/aee_exp /data/tombstones /data/anr 2>/dev/null | head -n 20"),

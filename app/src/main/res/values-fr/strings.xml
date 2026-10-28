@@ -549,6 +549,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="standby_journal_empty">Rien pour l\'instant : couper puis remettre le contact, ou lancer le test.</string>
     <string name="standby_journal_clear">Effacer</string>
     <string name="standby_journal_export_failed">Impossible d\'écrire le fichier</string>
+    <string name="standby_test_off">Test de suspension contact mis : désactivé. Sur cette ROM, l\'extinction de l\'écran est un « QuickBoot power off » d\'Autochips (toutes les applis arrêtées) et rien ne réveillerait l\'autoradio. Essayer la veille en coupant le contact : 2 min, puis 10 min.</string>
     <string name="standby_test">Tester la suspension</string>
     <string name="standby_test_running">Test en cours…</string>
     <string name="standby_test_hint">Contact mis : l\'écran s\'éteint comme en veille (la MCU n\'est pas prévenue), une alarme réveille le SoC %1$d s plus tard ; le journal dit s\'il s\'est vraiment suspendu et, sinon, quels wakelocks l\'en ont empêché.</string>
