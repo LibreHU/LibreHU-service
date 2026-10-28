@@ -37,6 +37,12 @@ import org.librehu.service.ui.profileFileName
  * each with its pages. Talks to the service through its public API.
  */
 class MainActivity : ComponentActivity() {
+    /** A click on each tap, the sound of LibreHU Launcher's style (see KeyClick). */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        org.librehu.service.ui.KeyClick.onTouch(this, ev, org.librehu.service.ui.RetroLook.style)
+        return super.dispatchTouchEvent(ev)
+    }
+
     private lateinit var client: ServiceClient
     private lateinit var theme: ThemeFollower
     private val tab = mutableStateOf(Tab.HOME)
