@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -259,7 +258,7 @@ private fun ReverseImageCard(
         Hint(stringResource(R.string.rv_image_hint))
     }
     if (picking) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { picking = false },
             title = { Text(stringResource(R.string.rv_camera)) },
             text = {
@@ -321,7 +320,7 @@ private fun ReverseExtrasCard(
         }
     }
     if (adding) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { adding = false },
             title = { Text(stringResource(R.string.rv_extras_add)) },
             text = {
@@ -516,7 +515,7 @@ private fun AppPicker(
                     .sortedBy { it.second.lowercase() }
             }
     }
-    AlertDialog(
+    CarAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reverse_app)) },
         text = {

@@ -1,6 +1,5 @@
 package org.librehu.service.ui
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,7 +59,7 @@ fun rememberMcuSender(
 @Composable
 fun McuSenderDialogs(sender: McuSender) {
     sender.pending?.let { f ->
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { sender.pending = null },
             title = { Text(stringResource(R.string.risk_confirm_title, JacDebug.nameToMcu(f.cmd))) },
             text = { Text(stringResource(R.string.risk_confirm, sender.wire(f))) },
@@ -69,7 +68,7 @@ fun McuSenderDialogs(sender: McuSender) {
         )
     }
     sender.blocked?.let {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { sender.blocked = null },
             title = { Text(stringResource(R.string.risk_blocked_title)) },
             text = { Text(stringResource(R.string.risk_blocked)) },

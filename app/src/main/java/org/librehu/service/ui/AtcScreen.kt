@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -264,7 +263,7 @@ private fun FastReverseCard() {
         if (savedFormat) Hint(stringResource(R.string.atc_reboot_needed))
     }
     if (confirmArm2) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { confirmArm2 = false },
             title = { Text(stringResource(R.string.atc_arm2)) },
             text = { Text(stringResource(R.string.atc_arm2_confirm)) },
@@ -336,7 +335,7 @@ private fun LogoCard(actions: AppActions) {
         }
     }
     if (confirm) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text(stringResource(R.string.atc_logo_title)) },
             text = { Text(stringResource(R.string.atc_logo_confirm)) },

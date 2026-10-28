@@ -176,7 +176,7 @@ private fun AddAppDialog(
     var all by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
     var filter by remember { mutableStateOf("") }
     LaunchedEffect(Unit) { all = withContext(Dispatchers.IO) { compiler.candidates() } }
-    androidx.compose.material3.AlertDialog(
+    CarAlertDialog(
         onDismissRequest = onDismiss,
         title = { androidx.compose.material3.Text(stringResource(R.string.aot_add)) },
         text = {

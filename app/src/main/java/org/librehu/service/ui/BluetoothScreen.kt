@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -168,7 +167,7 @@ fun BluetoothScreen(
 
     ask?.let { (title, done) ->
         var text by remember(title) { mutableStateOf(if (title == R.string.bt_rename) s.name else "") }
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { ask = null },
             title = { Text(stringResource(title)) },
             text = {
@@ -198,7 +197,7 @@ fun BluetoothScreen(
 
     client.pairing?.let { p ->
         var code by remember(p) { mutableStateOf("") }
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.bt_pairing_title, p.name.ifEmpty { p.address })) },
             text = {

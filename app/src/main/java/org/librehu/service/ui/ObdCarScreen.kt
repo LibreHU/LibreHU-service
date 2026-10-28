@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -104,7 +103,7 @@ fun ObdCarCards(
     }
 
     confirmDelete?.let { id ->
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text(stringResource(R.string.mcu_delete)) },
             text = { Text(cars.firstOrNull { it.id == id }?.name ?: id) },

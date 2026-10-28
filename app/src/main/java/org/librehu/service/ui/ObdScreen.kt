@@ -3,7 +3,6 @@ package org.librehu.service.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -142,7 +141,7 @@ fun ObdScreen(
     }
 
     widgetSlot?.let { slot ->
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { widgetSlot = null },
             title = { Text(stringResource(R.string.obd_widget_slot, slot + 1)) },
             text = {
@@ -160,7 +159,7 @@ fun ObdScreen(
     }
 
     if (confirmClear) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text(stringResource(R.string.obd_dtc_clear)) },
             text = { Text(stringResource(R.string.obd_dtc_clear_confirm)) },

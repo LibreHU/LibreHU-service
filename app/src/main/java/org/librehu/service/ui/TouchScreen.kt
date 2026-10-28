@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -141,7 +140,7 @@ fun TouchScreen(actions: AppActions) {
     }
 
     if (confirmFactory) {
-        AlertDialog(
+        CarAlertDialog(
             onDismissRequest = { confirmFactory = false },
             title = { Text(stringResource(R.string.touch_factory_keys)) },
             text = { Text(stringResource(R.string.touch_factory_confirm)) },
@@ -190,7 +189,7 @@ private fun ZoneDialog(
             z = z.copy(x = x, y = y)
         }, onDismiss = { relearn = false })
     }
-    AlertDialog(
+    CarAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.touch_zone)) },
         text = {
@@ -301,7 +300,7 @@ private fun LearnDialog(
             keys.learning = false
         }
     }
-    AlertDialog(
+    CarAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.touch_learn)) },
         text = {
