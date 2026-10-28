@@ -171,9 +171,41 @@ class StandbyJournal private constructor(
                         tmp.readText()
                     }
                 }.getOrNull()
-            block("dropbox $tag at ${stamp.format(Date(t))}", text?.lines()?.take(MAX_BLOCK_LINES)?.joinToString("\n"))
+            if (tag == "SYSTEM_LAST_KMSG" && text != null) {
+                lastKmsg(stamp.format(Date(t)), text)
+            } else {
+                block("dropbox $tag at ${stamp.format(Date(t))}", text?.lines()?.take(MAX_BLOCK_LINES)?.joinToString("\n"))
+            }
         }
         tmp.delete()
+    }
+
+    /**
+     * The kernel log of the boot before this one: why it ended (MediaTek's hang_detect, a panic, the watchdog, a plain
+     * reboot), how many "wait VSYNC timeout" (the display pipeline with the screen off), and its last lines without them.
+     */
+    private fun lastKmsg(
+        at: String,
+        text: String,
+    ) {
+        val lines = text.lines()
+        val vsync = lines.count { "wait VSYNC timeout" in it }
+        val verdict =
+            when {
+                lines.any { "hang_detect" in it && ("exception reboot" in it || "counts down -1" in it) } ->
+                    "ended by MediaTek's hang_detect (Android blocked: its watchdog stopped)"
+                lines.any { "Kernel panic" in it } -> "ended by a kernel panic"
+                lines.any { "exception reboot" in it } -> "ended by an exception reboot"
+                lines.any { "reboot: Restarting system" in it || "Restarting system" in it } -> "ended by a normal reboot"
+                lines.any { "reboot: Power down" in it || "Power down" in it } -> "ended by a power off"
+                else -> "no end in the log (power cut, e.g. the MCU)"
+            }
+        add("Previous boot $verdict${if (vsync > 0) ", $vsync \"wait VSYNC timeout\" (display pipeline with the screen off)" else ""} (dropbox SYSTEM_LAST_KMSG at $at)")
+        val kept =
+            lines
+                .filter { "wait VSYNC timeout" !in it && !it.contains(Regex("hang_detect1\\]\\[ *\\d+\\] ")) }
+                .let { l -> l.indexOfFirst { "early pstore console" in it }.takeIf { it > 0 }?.let { l.take(it) } ?: l }
+        block("Previous boot: last kernel lines", kept.takeLast(MAX_BLOCK_LINES).joinToString("\n"))
     }
 
     companion object {

@@ -540,7 +540,7 @@ internal fun StandbyJournalCard() {
 }
 
 private const val JOURNAL_LINES = 14
-private const val TEST_SECONDS = 60
+private const val TEST_SECONDS = 30
 
 /** LibreHU apps started at boot (their boot receivers), each can be turned off (root). */
 @Composable

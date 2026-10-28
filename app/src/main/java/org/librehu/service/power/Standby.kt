@@ -230,12 +230,40 @@ class Standby private constructor(
             runCatching { ProcessBuilder("sync").start().waitFor() }
             screen(false)
             note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
-            if (s.mode == StandbyMode.SLEEP) main.post { watchResume() }
+            if (s.mode == StandbyMode.SLEEP) {
+                main.post { watchResume() }
+                main.postDelayed(suspendDeadline, SUSPEND_DEADLINE_MS)
+            }
         }, "standby").start()
     }
 
+    /**
+     * On this unit, Android's display off with the SoC still running ends in a reboot by MediaTek's hang_detect about
+     * 5 min later (28/10: "wait VSYNC timeout" every 100 ms, then "exception reboot"). A standby whose SoC has not
+     * suspended by then is turned into a clean shutdown (`F1 0`, then Android's power off) instead.
+     */
+    private val suspendDeadline =
+        Runnable {
+            if (!_asleep.value || acc != false) return@Runnable
+            if (suspendedMs >= SUSPENDED_ENOUGH_MS) return@Runnable
+            note(
+                "SoC still running ${SUSPEND_DEADLINE_MS / 1000} s after the screen went off (suspended ${suspendedMs / 1000} s): " +
+                    "clean shutdown instead of a hang reboot",
+            )
+            Thread({
+                journal.wakelocks("Not suspending")
+                journal.kernelPm("Not suspending")
+                sleepTimer(0)
+                runCatching { ProcessBuilder("sync").start().waitFor() }
+                prefs.edit().remove(KEY_ASLEEP_SINCE).commit()
+                note("Shutdown")
+                RootShell.run("svc power shutdown || reboot -p", timeoutS = 30)
+            }, "standby-shutdown").start()
+        }
+
     private fun exit(why: String) {
         main.removeCallbacks(resumeWatch)
+        main.removeCallbacks(suspendDeadline)
         if (!_asleep.value) return
         _asleep.value = false
         prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
@@ -324,7 +352,8 @@ class Standby private constructor(
             // the screen on a bit after the alarm even if the service and its alarm are gone (its sleep stops while the
             // SoC is suspended, the alarm wakes it).
             RootShell.run(
-                "nohup sh -c 'sleep ${seconds + SAFETY_EXTRA_S}; input keyevent ${KeyEvent.KEYCODE_WAKEUP}' >/dev/null 2>&1 &",
+                // Out of this app's process group first (/acct/cgroup.procs): a force stop kills the whole group.
+                "nohup sh -c 'echo \$\$ > /acct/cgroup.procs 2>/dev/null; sleep ${seconds + SAFETY_EXTRA_S}; input keyevent ${KeyEvent.KEYCODE_WAKEUP}' >/dev/null 2>&1 &",
                 timeoutS = 3,
             )
             val alarms = app.getSystemService(AlarmManager::class.java)
@@ -485,7 +514,11 @@ class Standby private constructor(
         private const val KEY_TEST_E0 = "test_e0"
         private const val KEY_TEST_U0 = "test_u0"
         private const val CRASH_LINES = 25
-        private const val SAFETY_EXTRA_S = 20
+        private const val SAFETY_EXTRA_S = 15
+
+        /** Time left to the SoC to suspend once the screen is off (hang_detect reboots about 5 min later). */
+        private const val SUSPEND_DEADLINE_MS = 90_000L
+        private const val SUSPENDED_ENOUGH_MS = 5_000L
         private const val TAG = "LibreHU-Standby"
 
         /** The MCU cuts the SoC this long after the ignition when no sleep timer is set. */

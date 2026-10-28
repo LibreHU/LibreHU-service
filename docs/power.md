@@ -95,6 +95,31 @@ sur ce noyau). Un plantage Java du service est écrit dans le journal avant qu'A
 5. Mode **Extinction** : contact coupé 1 min, remis : la ligne `Previous standby … never woke up` est attendue.
 6. **Exporter** le journal (et Diagnostic → Exporter pour le trafic MCU) et le joindre au ticket.
 
+### Reboot spontané écran éteint (28/10, analysé)
+
+Écran Android éteint, contact mis, SoC resté réveillé : environ 5 à 6 min plus tard, **reboot par le hang_detect de
+MediaTek** (« hang_detect thread counts down -1:10 », puis « exception reboot » ; dropbox `SYSTEM_LAST_KMSG`). Avant,
+le thread noyau `fast_disp_composer` (affichage rapide Autochips, `primary_display.c`) écrit « wait VSYNC timeout on
+scenario primary_disp » toutes les 100 ms : l'écran est coupé et il attend toujours sa synchro. Le hang_detect se
+déclenche quand le watchdog d'Android cesse de le relancer (Android bloqué) ; la cause exacte du blocage n'est pas
+dans la fin du journal conservée. ivi-services ne coupait que le rétroéclairage au contact coupé et n'éteignait
+l'écran d'Android qu'à l'« ACC long off », juste avant la suspension ou la coupure par la MCU.
+
+En conséquence :
+- veille : si le SoC ne s'est pas suspendu **90 s** après l'extinction de l'écran, le service note les wakelocks et
+  le `dmesg`, envoie `F1 0` et éteint Android proprement (`svc power shutdown`) plutôt que d'attendre ce reboot ;
+- test de suspension : 30 s, shell root de secours sorti du groupe de processus de l'appli (`/acct/cgroup.procs`),
+  car un arrêt forcé du paquet tue tout le groupe (« removeLocked: Shouldn't for UID=1000 » d'`AlarmManager` à
+  l'extinction de l'écran : un composant de la ROM force l'arrêt des applis système, à identifier par `logcat`) ;
+- au démarrage, le journal lit le `SYSTEM_LAST_KMSG` du dropbox et dit comment la session précédente a fini
+  (hang_detect, panique, reboot, extinction, coupure d'alimentation) et combien de « wait VSYNC timeout » il y a eu.
+
+Les `system_app_crash` du dropbox à ces moments sont **Google Play Services** (`IllegalArgumentException` en boucle
+dans son chargeur de modules), pas LibreHU-service.
+
+Piste noyau (non faite) : dans `fast_disp_composer_thread`, ne pas attendre la VSYNC quand l'affichage est en veille
+(`pgc->state == DISP_SLEPT` → `msleep(100)`), ce qui supprime le flot d'erreurs ; sans garantie sur le blocage.
+
 ## À vérifier sur l'appareil
 
 - le SoC entre-t-il vraiment en suspension (aucun wakelock qui la bloque) et en sort-il proprement ?
