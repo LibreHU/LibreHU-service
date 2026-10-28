@@ -108,26 +108,99 @@ class StandbyJournal private constructor(
         block("$tag: wakeup_count / suspend_stats", RootShell.run("cat /sys/power/wakeup_count; cat /sys/kernel/debug/suspend_stats 2>/dev/null | head -n 12"))
     }
 
-    /** Service start: boot reason, uptime, and the end of the previous kernel log when there is one (root). */
+    /**
+     * Service process start: how long after the boot (a late start without a boot in between is the process restarted
+     * by Android: killed or crashed), the boot reason, what Android filed since shortly before this boot (crashes,
+     * ANR, system restarts, kernel logs of the dropbox), MediaTek's exception reports, the pstore (root).
+     */
     fun boot() {
+        val boot = SystemClock.elapsedRealtime()
         add(
-            "Service start: uptime ${SystemClock.uptimeMillis() / 1000} s since boot ${SystemClock.elapsedRealtime() / 1000} s",
+            "Service process start (pid ${android.os.Process.myPid()}), ${boot / 1000} s after the boot" +
+                if (boot > LATE_START_MS) ": the process was restarted (killed or crashed) unless just installed / updated" else "",
         )
         block(
             "Boot reason",
             RootShell.run("getprop sys.boot.reason; getprop ro.boot.bootreason; getprop persist.sys.boot.reason"),
         )
+        dropbox(System.currentTimeMillis() - boot - DROPBOX_BEFORE_BOOT_MS)
         block(
-            "Previous kernel log (pstore, last lines)",
+            "MediaTek exception reports (newest first)",
+            RootShell.run("ls -lt /data/aee_exp /data/vendor/aee_exp /data/tombstones /data/anr 2>/dev/null | head -n 20"),
+        )
+        // console-ramoops of this kernel only holds the first 0.15 s (it stops at "bootconsole disabled"): the
+        // panic records (dmesg-ramoops) are what matters.
+        block(
+            "pstore",
             RootShell.run(
-                "for f in /sys/fs/pstore/console-ramoops* /proc/last_kmsg; do [ -f \$f ] && { echo \"== \$f\"; tail -n 25 \$f; }; done",
+                "ls -l /sys/fs/pstore; for f in /sys/fs/pstore/dmesg-ramoops* /sys/fs/pstore/pmsg-ramoops*; do [ -f \$f ] && { echo \"== \$f\"; tail -n 30 \$f; }; done",
             ),
         )
+    }
+
+    /**
+     * Dropbox entries written since [sinceMillis] (`TAG@millis.txt[.gz]` in /data/system/dropbox): the list, then the
+     * start of each crash, ANR, watchdog, restart or kernel log entry (copied out as root, gunzipped here).
+     */
+    private fun dropbox(sinceMillis: Long) {
+        val box = "/data/system/dropbox"
+        val names =
+            RootShell
+                .run("ls $box")
+                ?.lines()
+                ?.map { it.trim() }
+                ?.filter { '@' in it }
+                .orEmpty()
+        val entries =
+            names
+                .mapNotNull { n ->
+                    n.substringAfter('@').substringBefore('.').toLongOrNull()?.let { t -> Triple(n.substringBefore('@'), t, n) }
+                }.filter { it.second >= sinceMillis }
+                .sortedBy { it.second }
+        val stamp = SimpleDateFormat("HH:mm:ss", Locale.ROOT)
+        block("Android dropbox since shortly before this boot", entries.joinToString("\n") { "${stamp.format(Date(it.second))} ${it.first}" })
+        val tmp = File(dir, "dropbox.tmp")
+        for ((tag, t, name) in entries.filter { e -> DROPBOX_TAGS.any { e.first.startsWith(it) } }.takeLast(MAX_DROPBOX_ENTRIES)) {
+            tmp.delete()
+            RootShell.run("cp '$box/$name' '${tmp.absolutePath}' && chmod 644 '${tmp.absolutePath}'")
+            val text =
+                runCatching {
+                    if (name.endsWith(".gz")) {
+                        java.util.zip.GZIPInputStream(tmp.inputStream()).bufferedReader().use { it.readText() }
+                    } else {
+                        tmp.readText()
+                    }
+                }.getOrNull()
+            block("dropbox $tag at ${stamp.format(Date(t))}", text?.lines()?.take(MAX_BLOCK_LINES)?.joinToString("\n"))
+        }
+        tmp.delete()
     }
 
     companion object {
         private const val MAX_BYTES = 256 * 1024L
         private const val MAX_BLOCK_LINES = 40
+        private const val LATE_START_MS = 180_000L
+        private const val DROPBOX_BEFORE_BOOT_MS = 15 * 60_000L
+        private const val MAX_DROPBOX_ENTRIES = 6
+
+        /** Dropbox tags worth reading after a restart: crashes, ANR, watchdog, restarts, kernel logs. */
+        private val DROPBOX_TAGS =
+            listOf(
+                "data_app_crash",
+                "data_app_native_crash",
+                "data_app_anr",
+                "system_app_crash",
+                "system_app_native_crash",
+                "system_app_anr",
+                "system_server_crash",
+                "system_server_native_crash",
+                "system_server_watchdog",
+                "system_server_anr",
+                "SYSTEM_RESTART",
+                "SYSTEM_TOMBSTONE",
+                "SYSTEM_LAST_KMSG",
+                "SYSTEM_FSCK",
+            )
 
         @Volatile
         private var instance: StandbyJournal? = null

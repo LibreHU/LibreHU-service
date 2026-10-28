@@ -68,8 +68,22 @@ Instantanés root : `dumpsys power` (wakelocks Android), `/sys/power/wake_lock`,
 spm), `/sys/power/wakeup_count`, `suspend_stats`.
 
 **Tester la suspension** (contact mis) : écran éteint comme en veille, **sans** prévenir la MCU (ni `F1`, ni radios),
-alarme `ELAPSED_REALTIME_WAKEUP` 60 s plus tard ; le journal donne le temps réellement suspendu et un verdict
-(« suspended and woke up », « only part of the time », « did NOT suspend » avec les wakelocks).
+mode avion et GPS coupés si la veille le fait (le pilote GPS garde un wakelock), alarme `ELAPSED_REALTIME_WAKEUP`
+60 s plus tard par un `PendingIntent` (qui survit à un redémarrage du processus) ; le journal donne le temps
+réellement suspendu et un verdict (« suspended and woke up », « only part of the time », « did NOT suspend » avec les
+wakelocks). Filets de sécurité : un shell root rallume l'écran 20 s après l'alarme quoi qu'il arrive, et un service
+relancé pendant le test rallume l'écran à son démarrage (`TEST interrupted`).
+
+Premier essai (28/10, version `74f6f7e`) : l'écran ne s'est jamais rallumé. Le processus du service a redémarré 2 s
+après l'extinction de l'écran et l'alarme d'alors (`OnAlarmListener`) est partie avec lui ; seule une coupure du
+contact a rendu la main (démarrage à froid). Cause du redémarrage à trouver (dropbox, voir ci-dessous). Un service
+relancé pendant une vraie veille reste maintenant « en veille » : le retour du contact rallume l'écran.
+
+À chaque démarrage du processus, le journal note aussi s'il s'agit d'un redémarrage sans boot, les entrées du
+**dropbox** d'Android depuis peu avant le boot (plantages Java / natifs, ANR, watchdog, `SYSTEM_RESTART`,
+`SYSTEM_LAST_KMSG`, avec le début de chacune), les rapports d'exception MediaTek (`/data/aee_exp`), `tombstones`,
+`anr`, et `pstore` (`dmesg-ramoops` après une panique : `console-ramoops` ne garde que les 0,15 premières secondes
+sur ce noyau). Un plantage Java du service est écrit dans le journal avant qu'Android ne tue le processus.
 
 ### Protocole d'essai
 

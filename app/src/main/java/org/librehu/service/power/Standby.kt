@@ -101,16 +101,39 @@ class Standby private constructor(
     private val prepare = Runnable { enter() }
 
     init {
-        Thread({
-            journal.boot()
-            // Standby entered in the previous run and never left: the MCU cut the SoC (or it rebooted) while asleep.
-            prefs.getLong(KEY_ASLEEP_SINCE, 0L).takeIf { it > 0L }?.let { since ->
-                note(
-                    "Previous standby (entered ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(since))}) " +
-                        "never woke up: the SoC was cut or rebooted, this is a cold boot",
-                )
-                prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+        // A crash of the service process written down before Android kills it.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching { journal.add("CRASH in thread ${t.name}: ${e.stackTraceToString().lines().take(CRASH_LINES).joinToString("\n    ")}") }
+            previous?.uncaughtException(t, e)
+        }
+        val bootAt = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+        prefs.getLong(KEY_ASLEEP_SINCE, 0L).takeIf { it > 0L }?.let { since ->
+            if (since > bootAt) {
+                // Same boot: the process was restarted during the standby. Still asleep: the ignition coming back
+                // wakes the head unit up (screen, PC_READY, radios) as if nothing had happened.
+                note("Service restarted during the standby (entered ${(System.currentTimeMillis() - since) / 1000} s ago): still in standby")
+                standbyAt = SystemClock.elapsedRealtime()
+                _asleep.value = true
+                main.post { watchResume() }
+                if (acc == true) main.post { exit("ignition already on") }
+                return@let
             }
+            note(
+                "Previous standby (entered ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(since))}) " +
+                    "never woke up: the SoC was cut or rebooted, this is a cold boot",
+            )
+            prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+        }
+        Thread({
+            // A test cut short (process restarted, reboot): the screen first, then what Android and the kernel say.
+            if (prefs.getLong(KEY_TEST_UNTIL, 0L) > 0L) {
+                note("TEST interrupted: the service process restarted or the head unit rebooted during the test: screen back on")
+                prefs.edit().remove(KEY_TEST_UNTIL).apply()
+                screen(true)
+                restoreRadios("test interrupted")
+            }
+            journal.boot()
         }, "standby-journal").start()
         // Radios cut by a standby the head unit did not wake up from (the MCU cut the SoC, a reboot, the service
         // restarted): airplane mode stayed on and GPS off. Put back once the service runs again.
@@ -151,7 +174,7 @@ class Standby private constructor(
         }
         main.removeCallbacks(prepare)
         if (on) {
-            if (old != null) exit("ignition on")
+            if (old != null || _asleep.value) exit("ignition on")
             // Also when this run of the service did not put the head unit to sleep itself (see init)
             if (!_asleep.value && hasCutRadios()) Thread({ restoreRadios("ignition on") }, "standby-restore").start()
         } else if (old == true && _settings.value.mode != StandbyMode.OFF) {
@@ -164,8 +187,10 @@ class Standby private constructor(
         val old = accWire
         accWire = on
         if (old == on) return
+        // The first value after the service starts is not a change (often "off" until the MCU tells).
+        if (old == null) return
         if (!on) accWireOffAt = SystemClock.elapsedRealtime()
-        if (old != null || !on) note(if (on) "Ignition on (MCU)" else "Ignition off (MCU): the MCU cuts the SoC 15 s later unless F1 is set")
+        note(if (on) "Ignition on (MCU)" else "Ignition off (MCU): the MCU cuts the SoC 15 s later unless F1 is set")
     }
 
     /** Time since the ignition went off, "t+4.6 s" (the MCU cuts the SoC at t+15 s). */
@@ -271,49 +296,84 @@ class Standby private constructor(
     }
 
     /**
-     * Suspend test with the ignition on: screen off as in a standby (the MCU is not told: no `F1`, nothing cut), an
-     * alarm wakes the SoC [seconds] later, then the journal says how long it was really suspended, with the kernel's
-     * lines. Not suspended at all: the wakelocks holding it are written down. False when one runs or in standby.
+     * Suspend test with the ignition on: screen off as in a standby, airplane mode and GPS off when the standby does so
+     * (the GPS driver holds a wakelock), the MCU is not told (no `F1`). An alarm (a PendingIntent: it survives the
+     * process being restarted) wakes the SoC [seconds] later; then the journal says how long it was really suspended,
+     * with the kernel's lines, or which wakelocks held it. False when one runs or in standby.
      */
     fun testSuspend(seconds: Int): Boolean {
         if (_asleep.value || _testing.value) return false
         _testing.value = true
-        note("TEST: suspend for $seconds s, ignition on (the MCU is not told)")
         val e0 = SystemClock.elapsedRealtime()
         val u0 = SystemClock.uptimeMillis()
+        prefs
+            .edit()
+            .putLong(KEY_TEST_UNTIL, e0 + seconds * 1000L)
+            .putLong(KEY_TEST_E0, e0)
+            .putLong(KEY_TEST_U0, u0)
+            .commit()
+        val radios = _settings.value.radiosOff
+        note("TEST: suspend for $seconds s, ignition on (the MCU is not told)${if (radios) ", radios off as in a standby" else ""}")
         Thread({
-            journal.wakelocks("TEST before")
-            screen(false)
-            note("TEST: screen off")
-            main.post {
-                val alarms = app.getSystemService(AlarmManager::class.java)
-                val done =
-                    AlarmManager.OnAlarmListener {
-                        val e = SystemClock.elapsedRealtime() - e0
-                        val suspended = e - (SystemClock.uptimeMillis() - u0)
-                        val verdict =
-                            when {
-                                suspended >= e / 2 -> "the SoC suspended and woke up"
-                                suspended > RESUME_JUMP_MS -> "the SoC suspended only part of the time"
-                                else -> "the SoC did NOT suspend (see the wakelocks)"
-                            }
-                        note("TEST: alarm after ${e / 1000} s, suspended ${suspended / 1000} s: $verdict")
-                        Thread({
-                            screen(true)
-                            if (suspended < e / 2) journal.wakelocks("TEST after")
-                            journal.kernelPm("TEST")
-                            _testing.value = false
-                        }, "standby-test").start()
-                    }
-                if (alarms == null) {
-                    note("TEST: no AlarmManager")
-                    _testing.value = false
-                } else {
-                    alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + seconds * 1000L, "librehu:standby-test", done, main)
-                }
+            if (radios) {
+                radiosOff()
+                note("TEST: radios off")
             }
+            journal.wakelocks("TEST before")
+            val alarms = app.getSystemService(AlarmManager::class.java)
+            if (alarms == null) {
+                note("TEST: no AlarmManager")
+                finishTest()
+                return@Thread
+            }
+            alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, e0 + seconds * 1000L, testIntent())
+            // Last safety net, outside this app: a root shell that turns the screen on a bit after the alarm even if
+            // the service and its alarm are gone (its sleep stops while the SoC is suspended, the alarm wakes it).
+            RootShell.run(
+                "nohup sh -c 'sleep ${seconds + SAFETY_EXTRA_S}; input keyevent ${KeyEvent.KEYCODE_WAKEUP}' >/dev/null 2>&1 &",
+                timeoutS = 3,
+            )
+            screen(false)
+            note("TEST: screen off, alarm set (and a root wake up ${seconds + SAFETY_EXTRA_S} s later as a safety net)")
         }, "standby-test").start()
         return true
+    }
+
+    private fun testIntent(): android.app.PendingIntent =
+        android.app.PendingIntent.getBroadcast(
+            app,
+            0,
+            Intent(app, StandbyTestReceiver::class.java),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+    /** The test's alarm (see [StandbyTestReceiver]): verdict, screen and radios back, the kernel's lines. */
+    fun finishTest() {
+        val e0 = prefs.getLong(KEY_TEST_E0, 0L)
+        val u0 = prefs.getLong(KEY_TEST_U0, 0L)
+        if (prefs.getLong(KEY_TEST_UNTIL, 0L) == 0L) {
+            _testing.value = false
+            return
+        }
+        prefs.edit().remove(KEY_TEST_UNTIL).commit()
+        // Same process since the start of the test only (the uptime of another one says nothing).
+        val e = SystemClock.elapsedRealtime() - e0
+        val suspended = e - (SystemClock.uptimeMillis() - u0)
+        val verdict =
+            when {
+                !_testing.value -> "the service process restarted during the test: suspended time unknown"
+                suspended >= e / 2 -> "the SoC suspended and woke up"
+                suspended > RESUME_JUMP_MS -> "the SoC suspended only part of the time"
+                else -> "the SoC did NOT suspend (see the wakelocks)"
+            }
+        note("TEST: alarm after ${e / 1000} s, suspended ${suspended / 1000} s: $verdict")
+        Thread({
+            screen(true)
+            restoreRadios("test done")
+            if (suspended < e / 2) journal.wakelocks("TEST after")
+            journal.kernelPm("TEST")
+            _testing.value = false
+        }, "standby-test").start()
     }
 
     /**
@@ -368,6 +428,7 @@ class Standby private constructor(
             } catch (_: Throwable) {
                 false
             }
+        if (done) note("Screen ${if (on) "on" else "off"} (PowerManager)")
         if (!done) {
             val root = RootShell.run("input keyevent ${if (on) KeyEvent.KEYCODE_WAKEUP else KeyEvent.KEYCODE_SLEEP}") != null
             note("Screen ${if (on) "on" else "off"} by a key (root)${if (root) "" else " FAILED: no PowerManager access nor root"}")
@@ -401,6 +462,11 @@ class Standby private constructor(
         private const val KEY_GPS_SET = "gps_cut_by_standby"
         private const val START_RESTORE_DELAY_MS = 4000L
         private const val KEY_ASLEEP_SINCE = "journal_asleep_since"
+        private const val KEY_TEST_UNTIL = "test_until"
+        private const val KEY_TEST_E0 = "test_e0"
+        private const val KEY_TEST_U0 = "test_u0"
+        private const val CRASH_LINES = 25
+        private const val SAFETY_EXTRA_S = 20
         private const val TAG = "LibreHU-Standby"
 
         /** The MCU cuts the SoC this long after the ignition when no sleep timer is set. */

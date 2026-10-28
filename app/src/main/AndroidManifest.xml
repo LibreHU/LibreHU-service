@@ -217,6 +217,11 @@
             android:name=".AccessReceiver"
             android:exported="false" />
 
+        <!-- Alarm of the standby suspend test (power/Standby.testSuspend). -->
+        <receiver
+            android:name=".power.StandbyTestReceiver"
+            android:exported="false" />
+
         <!-- Allow / refuse of a phone pairing in Bluetooth (bridge/BridgeNotify). -->
         <receiver
             android:name=".bridge.BridgeAnswerReceiver"
