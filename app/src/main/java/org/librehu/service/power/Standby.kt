@@ -320,21 +320,40 @@ class Standby private constructor(
                 note("TEST: radios off")
             }
             journal.wakelocks("TEST before")
+            // Safety net first (before anything that could kill the process), outside this app: a root shell that turns
+            // the screen on a bit after the alarm even if the service and its alarm are gone (its sleep stops while the
+            // SoC is suspended, the alarm wakes it).
+            RootShell.run(
+                "nohup sh -c 'sleep ${seconds + SAFETY_EXTRA_S}; input keyevent ${KeyEvent.KEYCODE_WAKEUP}' >/dev/null 2>&1 &",
+                timeoutS = 3,
+            )
             val alarms = app.getSystemService(AlarmManager::class.java)
             if (alarms == null) {
                 note("TEST: no AlarmManager")
                 finishTest()
                 return@Thread
             }
-            alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, e0 + seconds * 1000L, testIntent())
-            // Last safety net, outside this app: a root shell that turns the screen on a bit after the alarm even if
-            // the service and its alarm are gone (its sleep stops while the SoC is suspended, the alarm wakes it).
-            RootShell.run(
-                "nohup sh -c 'sleep ${seconds + SAFETY_EXTRA_S}; input keyevent ${KeyEvent.KEYCODE_WAKEUP}' >/dev/null 2>&1 &",
-                timeoutS = 3,
-            )
+            // First try on the head unit: the service died 9 ms after the alarm call of then (system_app_crash in the
+            // dropbox at that very moment). Each way of setting it is tried and its failure written down; the root
+            // wake up above works without it.
+            val at = e0 + seconds * 1000L
+            val set =
+                listOf<Pair<String, () -> Unit>>(
+                    "setExact" to { alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, testIntent()) },
+                    "setExactAndAllowWhileIdle" to { alarms.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, testIntent()) },
+                    "set" to { alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, testIntent()) },
+                ).firstOrNull { (name, call) ->
+                    try {
+                        call()
+                        true
+                    } catch (t: Throwable) {
+                        note("TEST: AlarmManager.$name failed: $t")
+                        false
+                    }
+                }
+            if (set == null) note("TEST: no alarm could be set: only the root wake up will turn the screen on")
             screen(false)
-            note("TEST: screen off, alarm set (and a root wake up ${seconds + SAFETY_EXTRA_S} s later as a safety net)")
+            note("TEST: screen off, alarm ${set?.first ?: "none"} (and a root wake up ${seconds + SAFETY_EXTRA_S} s later as a safety net)")
         }, "standby-test").start()
         return true
     }
