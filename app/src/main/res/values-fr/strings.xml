@@ -794,7 +794,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="atc_fr_dither">Tramage</string>
     <string name="atc_fr_fast_avm">Vue 360 rapide</string>
     <string name="atc_fr_cvbs_avm">360 sur CVBS</string>
-    <string name="atc_fr_rear_display">Écran arrière</string>
+    <string name="atc_fr_rear_display">Second écran LVDS (pas VIDEO OUT)</string>
+    <string name="atc_fr_rear_display_hint">Écran externe d\'Autochips (metazone 65550), lu au démarrage par le chargeur et le noyau. VIDEO OUT est dans l\'onglet Vidéo. Activé sans second écran branché : bandes à l\'écran dès le logo. Redémarrage nécessaire.</string>
+    <string name="atc_fr_rear_display_confirm">Seulement pour un second écran LVDS câblé sur l\'autoradio, pas pour VIDEO OUT. Sans lui, l\'écran affiche des bandes dès le logo au démarrage suivant, jusqu\'à ce qu\'il soit désactivé. L\'activer ?</string>
     <string name="atc_reload">Relire</string>
     <string name="atc_save">Enregistrer</string>
     <string name="atc_arm2">Envoyer à l\'ARM2</string>

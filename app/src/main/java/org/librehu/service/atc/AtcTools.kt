@@ -98,6 +98,7 @@ object CameraFormat {
  */
 object AtcTools {
     private const val TAG = "LibreHU-ATC"
+    private const val SECOND_PANEL_CHECK_DELAY_MS = 30_000L
 
     val ENGINEER_MODE = ComponentName("com.mediatek.engineermode", "com.mediatek.engineermode.EngineerMode")
     val ATC_SETTINGS = ComponentName("com.android.settings", "com.autochips.atcsettings.mainui.MainActivity")
@@ -163,6 +164,30 @@ object AtcTools {
         val r = helper(context, "get " + addresses.joinToString(" ")) ?: return Result.NoRoot
         r["error"]?.let { return Result.Error(it) }
         return Result.Values(addresses.associateWith { r[it.toString()]?.toIntOrNull() ?: 0 })
+    }
+
+    /**
+     * Second LVDS panel (metazone 65550) on while the boot loader finds none (`ext(0, 0)` in `/proc/pl_lk`): stripes
+     * on the screen from the boot logo (29/10, the switch taken for VIDEO OUT). Written in the standby journal with
+     * how to turn it off, nothing changed. In the background, a while after the start.
+     */
+    fun checkSecondPanelAtStart(context: Context) {
+        val app = context.applicationContext
+        Thread({
+            Thread.sleep(SECOND_PANEL_CHECK_DELAY_MS)
+            val on = (read(app, listOf(Mtz.REAR_DISPLAY)) as? Result.Values)?.values?.get(Mtz.REAR_DISPLAY) == 1
+            if (!on) return@Thread
+            val ext = RootShell.run("grep -m1 -o 'ext([0-9]*, [0-9]*)' /proc/pl_lk")?.trim().orEmpty()
+            if (ext.isNotEmpty() && ext != "ext(0, 0)") return@Thread
+            val line =
+                "Second LVDS panel on (metazone 65550 = 1) but the boot loader finds none (${ext.ifEmpty { "no /proc/pl_lk" }}): " +
+                    "stripes on the screen. Off: Autochips → Fast reverse → Second LVDS panel, or " +
+                    "AtcHelper set 65550=0, then restart"
+            Log.w(TAG, line)
+            org.librehu.service.power.StandbyJournal
+                .get(app)
+                .add(line)
+        }, "atc-second-panel").start()
     }
 
     /** Writes and saves (flush); null = done, else the error. */

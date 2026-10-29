@@ -133,6 +133,7 @@ private fun FastReverseCard() {
     var edited by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
     var status by remember { mutableStateOf<String?>(null) }
     var confirmArm2 by remember { mutableStateOf(false) }
+    var confirmRear by remember { mutableStateOf(false) }
     var raw by remember { mutableStateOf(false) }
     var formatChanged by remember { mutableStateOf(false) }
     var savedFormat by remember { mutableStateOf(false) }
@@ -229,9 +230,11 @@ private fun FastReverseCard() {
             SwitchRow(stringResource(R.string.atc_fr_dither), v(Mtz.DITHER) == 1) { set(Mtz.DITHER, if (it) 1 else 0) }
             SwitchRow(stringResource(R.string.atc_fr_fast_avm), v(Mtz.FAST_AVM) == 1) { set(Mtz.FAST_AVM, if (it) 1 else 0) }
             SwitchRow(stringResource(R.string.atc_fr_cvbs_avm), v(Mtz.CVBS_AVM) == 1) { set(Mtz.CVBS_AVM, if (it) 1 else 0) }
+            // A second LVDS panel, not VIDEO OUT: on without one, stripes on the screen from the boot logo (29/10).
             SwitchRow(stringResource(R.string.atc_fr_rear_display), v(Mtz.REAR_DISPLAY) == 1) {
-                set(Mtz.REAR_DISPLAY, if (it) 1 else 0)
+                if (it) confirmRear = true else set(Mtz.REAR_DISPLAY, 0)
             }
+            Hint(stringResource(R.string.atc_fr_rear_display_hint))
         }
         Actions {
             Pill(stringResource(R.string.atc_reload)) { load() }
@@ -261,6 +264,20 @@ private fun FastReverseCard() {
             }
         }
         if (savedFormat) Hint(stringResource(R.string.atc_reboot_needed))
+    }
+    if (confirmRear) {
+        CarAlertDialog(
+            onDismissRequest = { confirmRear = false },
+            title = { Text(stringResource(R.string.atc_fr_rear_display)) },
+            text = { Text(stringResource(R.string.atc_fr_rear_display_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRear = false
+                    set(Mtz.REAR_DISPLAY, 1)
+                }) { Text(stringResource(android.R.string.ok)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRear = false }) { Text(stringResource(android.R.string.cancel)) } },
+        )
     }
     if (confirmArm2) {
         CarAlertDialog(

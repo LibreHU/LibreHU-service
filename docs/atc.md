@@ -19,7 +19,7 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 ## Adresses metazone utilisées
 | Adresse | Valeur |
 |---|---|
-| 65550 | écran arrière (0 / 1) |
+| 65550 | second écran LVDS d'Autochips (0 / 1), voir plus bas : **pas VIDEO OUT** |
 | 65588 / 65600 | miroir du recul rapide CVBS / AHD (1 gauche-droite + 2 haut-bas) |
 | 65594..65597 / 65601..65604 | recadrage x, y, largeur, hauteur (CVBS / AHD) |
 | 65598 / 65599 | netteté / tramage (0 / 1) |
@@ -29,6 +29,17 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | 66018 | valeur capteur de Jancar : 0 AHD 720p25, 1 1080p25, 2 720p30, 3 1080p30 |
 | 65608 / 65611 | 360 rapide / 360 sur CVBS |
 | 65616 | port USB 0 : 2 hôte, 1 périphérique |
+
+## Second écran LVDS (65550, `METAZONE_OPEN_EXT_DISP_INDEX` = 0x1000E)
+Lu au démarrage par le chargeur (`/proc/pl_lk` : `g_open_ext_disp:1`) et par le noyau (`lcm_driver_common.c`
+`lcm_get_matezone`, `primary_display.c`). Sans second écran câblé (`ext(0, 0)` dans `pl_lk`), il donne des bandes
+à l'écran dès le logo (29/10, interrupteur pris pour VIDEO OUT ; disparues une fois remis à 0 puis redémarré).
+Dans la ROM stock (dump `jancar` V1.151R6), seul ATC Settings l'écrit (`AtcDisplaySettingsUtils.setRearDisplay`,
+sur un geste, interrupteur caché sauf `hwc.external_display_enable`) ; VIDEO OUT (`com.jancar.usbdisplay`) ne le
+lit ni ne l'écrit, et `RearDisplay` d'`ivi-settings.ini` est le réglage de VIDEO OUT (`key_rear_display`), pas
+celui-ci. Le service demande confirmation avant de l'activer et, 30 s après le démarrage, écrit dans le journal de
+veille s'il est à 1 alors que le chargeur ne trouve pas de second écran. Remise à 0 : l'interrupteur, ou
+`AtcHelper set 65550=0`, puis redémarrer.
 
 ## Format de la caméra
 Préréglages repris de Jancar (`ImportSingleConfigUtil.importBackCarVideoSource` d'ivi-settings, index =

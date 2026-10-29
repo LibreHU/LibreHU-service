@@ -130,6 +130,8 @@ class LibreHuService : Service() {
         org.librehu.service.tweaks.TouchBoost
             .get(this)
             .start() // CPU at its maximum while a finger is on the screen (off by default)
+        org.librehu.service.atc.AtcTools
+            .checkSecondPanelAtStart(this) // second LVDS panel left on without one: stripes from the boot logo
         obd = ObdManager.get(this).also { it.start() }
         // Engine sound made up from the OBD values (off by default).
         org.librehu.service.car.EngineSound.get(this).start()
