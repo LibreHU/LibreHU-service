@@ -216,6 +216,9 @@ class Standby private constructor(
         lockSnapshotDone = false
         nextBeatAt = standbyAt + FIRST_BEAT_MS
         _asleep.value = true
+        // From now on: the SoC may suspend as soon as the screen is off and its wake locks are gone (29/10: under a
+        // second). A watch started after that would take its first reading after the resume and never see it.
+        if (s.mode == StandbyMode.SLEEP) watchResume()
         val audio = app.getSystemService(AudioManager::class.java)
         wasPlaying = s.resumeMedia && audio?.isMusicActive == true
         mediaKey(KeyEvent.KEYCODE_MEDIA_PAUSE)
@@ -241,7 +244,6 @@ class Standby private constructor(
             if (s.mode == StandbyMode.SLEEP) {
                 Thread.sleep(WAKELOCK_CHECK_MS)
                 stopWakelockHolders()
-                main.post { watchResume() }
                 // Counted from the ignition off: the MCU cuts the SoC 40 s after it when it has not suspended.
                 val left = if (accWireOffAt > 0L) accWireOffAt + SUSPEND_DEADLINE_MS - SystemClock.elapsedRealtime() else NO_ACC_TIME_DEADLINE_MS
                 main.postDelayed(suspendDeadline, left.coerceAtLeast(0L))
@@ -543,7 +545,12 @@ class Standby private constructor(
      * again on wake up with the other apps ([QuickBootGuard.restartApps]).
      */
     private fun stopWakelockHolders() {
-        val dump = RootShell.run("dumpsys power | grep -E \"PARTIAL_WAKE_LOCK.*uid=\"") ?: return
+        // grep finds nothing (exit 1) once every wake lock is gone: still a success.
+        val dump = RootShell.run("dumpsys power | grep -E \"PARTIAL_WAKE_LOCK.*uid=\" || true")
+        if (dump == null) {
+            note("Wake lock check failed (root) (${since()})")
+            return
+        }
         val holders =
             Regex("PARTIAL_WAKE_LOCK\\s+'([^']*)'.*uid=(\\d+)")
                 .findAll(dump)

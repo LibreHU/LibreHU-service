@@ -139,6 +139,14 @@ l'extinction de l'écran sur un autoradio LibreHU, et la veille arrête (`am for
 qui tient encore un verrou 3 s après l'extinction de l'écran, en l'écrivant dans le journal ; elle est relancée au
 réveil.
 
+**Premier SoC suspendu, réveil manqué (29/10 13:35 et 13:45, journal + logcat)** : avec le fork, « Boot WakeLock
+released » à l'extinction de l'écran, `PowerManagerService.WakeLocks` relâché 0,8 s plus tard, et le logcat s'arrête
+là (SoC suspendu). Contact remis 60 s après : démarrage à froid, sans aucune ligne au journal après « Screen off ».
+Deux erreurs de la veille : la surveillance de la reprise (saut d'horloge) ne démarrait qu'après l'attente de 3 s
+du contrôle des verrous, donc après la reprise, qu'elle ne voyait plus : pas de `1F 01`, la MCU coupe 10 s après son
+impulsion ; et le contrôle des verrous se taisait quand il n'en trouvait aucun (grep sans résultat = échec). La
+surveillance démarre maintenant à l'entrée en veille.
+
 ### Ce que fait la MCU après la coupure du contact (firmware `JCST_AC8257_8T7` 2024.08.09, désassemblé le 29/10)
 
 Machine d'alimentation (tâche 100 ms, structure `0x200002B4` ; voir aussi `MCU-tools-app/docs/mcu_firmware.md`) :
