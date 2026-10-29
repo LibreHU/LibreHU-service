@@ -127,6 +127,18 @@ power écrite sur le périphérique du clavier `mtk-kpd` (`sendevent`, comme la 
 `mWakefulness` de `dumpsys power` après chaque essai ; le journal dit lequel a marché. La règle exacte du refus est
 dans `services.jar` de la ROM (non public) : à lire pour confirmer.
 
+**Le SoC ne se suspend pas : verrou d'Open Headunit (29/10, journal de veille)** : liste blanche QuickBoot en place
+(« this service is in app_whitelist »), veille à t+6,5 s, `F1 1` envoyé, écran éteint à t+8 s, puis 30 s plus tard
+« Still running, SoC suspended 0 s » : `mWakefulness=Asleep` mais `PARTIAL_WAKE_LOCK 'HeadunitRevived::BootAutoStart'`
+(uid d'Open Headunit, `org.librehu.headunit`) tenu depuis le démarrage, donc `PowerManagerService.WakeLocks` actif dans
+le noyau. Démarrage à froid environ 40 à 50 s après la coupure du contact, deux fois (28/10 16:08, 29/10 12:35) : la MCU
+coupe le SoC qui ne s'est pas mis en veille. Ce verrou est pris pour 10 min à chaque démarrage ou rallumage par Open
+Headunit (`AapService.acquireBootWakeLock`, contre les ROM qui tuent les applis contact coupé) ; avant la liste
+blanche, QuickBoot tuait l'appli et le verrou partait avec. Correctifs : le fork Open Headunit relâche ce verrou à
+l'extinction de l'écran sur un autoradio LibreHU, et la veille arrête (`am force-stop`, comme QuickBoot) toute appli
+qui tient encore un verrou 3 s après l'extinction de l'écran, en l'écrivant dans le journal ; elle est relancée au
+réveil.
+
 ### Reboot spontané écran éteint (28/10, analysé)
 
 Écran Android éteint, contact mis, SoC resté réveillé : environ 5 à 6 min plus tard, **reboot par le hang_detect de

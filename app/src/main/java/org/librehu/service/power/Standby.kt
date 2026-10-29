@@ -236,6 +236,8 @@ class Standby private constructor(
             screen(false)
             note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
             if (s.mode == StandbyMode.SLEEP) {
+                Thread.sleep(WAKELOCK_CHECK_MS)
+                stopWakelockHolders()
                 main.post { watchResume() }
                 main.postDelayed(suspendDeadline, SUSPEND_DEADLINE_MS)
             }
@@ -527,6 +529,31 @@ class Standby private constructor(
         journal.block("Screen still off: power state", RootShell.run("dumpsys power | grep -iE 'mWakefulness|quick|qb'"))
     }
 
+    /**
+     * Apps still holding a partial wake lock once the screen is off keep the SoC from suspending, and the MCU cuts the
+     * power about 40 s after the ignition (journal of 29/10: Open Headunit's `HeadunitRevived::BootAutoStart`, a
+     * 10 min wake lock taken at each start, then a cold boot). They are stopped as QuickBoot would (root), and started
+     * again on wake up with the other apps ([QuickBootGuard.restartApps]).
+     */
+    private fun stopWakelockHolders() {
+        val dump = RootShell.run("dumpsys power | grep -E \"PARTIAL_WAKE_LOCK.*uid=\"") ?: return
+        val holders =
+            Regex("PARTIAL_WAKE_LOCK\\s+'([^']*)'.*uid=(\\d+)")
+                .findAll(dump)
+                .map { it.groupValues[1] to it.groupValues[2].toInt() }
+                .filter { (_, uid) -> uid >= android.os.Process.FIRST_APPLICATION_UID && uid != android.os.Process.myUid() }
+                .toList()
+        if (holders.isEmpty()) {
+            note("No app wake lock after the screen off (${since()})")
+            return
+        }
+        for ((uid, tags) in holders.groupBy({ it.second }, { it.first })) {
+            val pkgs = app.packageManager.getPackagesForUid(uid).orEmpty().filter { it != app.packageName }
+            for (pkg in pkgs) RootShell.run("am force-stop $pkg")
+            note("Wake lock ${tags.joinToString { "'$it'" }} of ${pkgs.joinToString().ifEmpty { "uid $uid" }}: app stopped so that the SoC suspends (${since()})")
+        }
+    }
+
     /** Android's wakefulness from `dumpsys power` (root): true awake, false asleep or dozing, null unknown. */
     private fun awake(): Boolean? =
         RootShell
@@ -569,6 +596,7 @@ class Standby private constructor(
         private const val CRASH_LINES = 25
         private const val SAFETY_EXTRA_S = 15
         private const val WAKE_CHECK_MS = 1_500L
+        private const val WAKELOCK_CHECK_MS = 3_000L
         private const val TEST_ALLOWED = false
 
         /** Time left to the SoC to suspend once the screen is off (hang_detect reboots about 5 min later). */
