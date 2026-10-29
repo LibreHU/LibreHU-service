@@ -110,7 +110,10 @@ class Standby private constructor(
         }
         val bootAt = System.currentTimeMillis() - SystemClock.elapsedRealtime()
         prefs.getLong(KEY_ASLEEP_SINCE, 0L).takeIf { it > 0L }?.let { since ->
-            if (since > bootAt) {
+            // The kernel's boot id: the wall clock is wrong after a cold boot until the network sets it (29/10:
+            // "entered -24251864 s ago"). The clock only for a standby written before the boot id was kept.
+            val sameBoot = prefs.getString(KEY_ASLEEP_BOOT, null)?.let { it == bootId() } ?: (since > bootAt)
+            if (sameBoot) {
                 // Same boot: the process was restarted during the standby. Still asleep: the ignition coming back
                 // wakes the head unit up (screen, PC_READY, radios) as if nothing had happened.
                 note("Service restarted during the standby (entered ${(System.currentTimeMillis() - since) / 1000} s ago): still in standby")
@@ -125,7 +128,7 @@ class Standby private constructor(
                 "Previous standby (entered ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date(since))}) " +
                     "never woke up: the SoC was cut or rebooted, this is a cold boot",
             )
-            prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+            prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).apply()
         }
         if (!_asleep.value && QuickBootGuard.active(app)) QuickBootGuard.stop(app)
         Thread({
@@ -209,7 +212,7 @@ class Standby private constructor(
         if (acc != false || _asleep.value) return
         val s = _settings.value
         note("Standby: ${s.mode}${if (s.mode == StandbyMode.SLEEP) ", MCU timer ${s.mcuUnits} × 7 h" else ""} (${since()})")
-        prefs.edit().putLong(KEY_ASLEEP_SINCE, System.currentTimeMillis()).commit()
+        prefs.edit().putLong(KEY_ASLEEP_SINCE, System.currentTimeMillis()).putString(KEY_ASLEEP_BOOT, bootId()).commit()
         standbyAt = SystemClock.elapsedRealtime()
         standbyUp = SystemClock.uptimeMillis()
         suspendedMs = 0L
@@ -270,7 +273,7 @@ class Standby private constructor(
                 journal.kernelPm("Not suspending")
                 sleepTimer(0)
                 runCatching { ProcessBuilder("sync").start().waitFor() }
-                prefs.edit().remove(KEY_ASLEEP_SINCE).commit()
+                prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).commit()
                 note("Shutdown")
                 // init's power off (sync, remount read-only): quicker than the framework's, which QuickBoot may also take over.
                 RootShell.run("reboot -p || svc power shutdown", timeoutS = 30)
@@ -282,7 +285,7 @@ class Standby private constructor(
         main.removeCallbacks(suspendDeadline)
         if (!_asleep.value) return
         _asleep.value = false
-        prefs.edit().remove(KEY_ASLEEP_SINCE).apply()
+        prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).apply()
         val total = (SystemClock.elapsedRealtime() - standbyAt) / 1000
         note("Wake up ($why) after $total s of standby, SoC suspended ${suspendedMs / 1000} s of it")
         val guarded = QuickBootGuard.active(app)
@@ -568,6 +571,9 @@ class Standby private constructor(
         }
     }
 
+    /** Changes at each boot of the kernel; null if unreadable. */
+    private fun bootId(): String? = runCatching { java.io.File("/proc/sys/kernel/random/boot_id").readText().trim() }.getOrNull()
+
     /** Android's wakefulness from `dumpsys power` (root): true awake, false asleep or dozing, null unknown. */
     private fun awake(): Boolean? =
         RootShell
@@ -604,6 +610,7 @@ class Standby private constructor(
         private const val KEY_GPS_SET = "gps_cut_by_standby"
         private const val START_RESTORE_DELAY_MS = 4000L
         private const val KEY_ASLEEP_SINCE = "journal_asleep_since"
+        private const val KEY_ASLEEP_BOOT = "journal_asleep_boot"
         private const val KEY_TEST_UNTIL = "test_until"
         private const val KEY_TEST_E0 = "test_e0"
         private const val KEY_TEST_U0 = "test_u0"
