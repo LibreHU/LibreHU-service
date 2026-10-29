@@ -489,11 +489,52 @@ class Standby private constructor(
                 false
             }
         if (done) note("Screen ${if (on) "on" else "off"} (PowerManager)")
-        if (!done) {
-            val root = RootShell.run("input keyevent ${if (on) KeyEvent.KEYCODE_WAKEUP else KeyEvent.KEYCODE_SLEEP}") != null
-            note("Screen ${if (on) "on" else "off"} by a key (root)${if (root) "" else " FAILED: no PowerManager access nor root"}")
+        if (!done && !on) {
+            val root = RootShell.run("input keyevent ${KeyEvent.KEYCODE_SLEEP}") != null
+            note("Screen off by a key (root)${if (root) "" else " FAILED: no PowerManager access nor root"}")
         }
+        if (on) wakeUp(done)
     }
+
+    /**
+     * After a QuickBoot power off the Autochips PowerManagerService turns down ordinary wake ups (logcat of 28/10:
+     * "implicit intent to wakeup, reject!" right after KEYCODE_WAKEUP injected from root, and the screen stayed off).
+     * Tried in turn, off the main thread, until Android is awake: KEYCODE_WAKEUP, the power key (another wake reason),
+     * then the power key written to the keypad's input device (mtk-kpd) as the hardware key would send it.
+     */
+    private fun wakeUp(pmDone: Boolean) {
+        if (awake() == true) return
+        if (pmDone) note("Still asleep after PowerManager.wakeUp")
+        val kpd = "for e in /sys/class/input/event*; do [ \"\$(cat \$e/device/name 2>/dev/null)\" = mtk-kpd ] && echo /dev/input/\${e##*/}; done"
+        val tries =
+            listOf(
+                "KEYCODE_WAKEUP" to "input keyevent ${KeyEvent.KEYCODE_WAKEUP}",
+                "KEYCODE_POWER" to "input keyevent ${KeyEvent.KEYCODE_POWER}",
+                "mtk-kpd KEY_POWER" to
+                    "d=\$($kpd); [ -n \"\$d\" ] && sendevent \$d 1 116 1 && sendevent \$d 0 0 0 && sleep 0.1 && sendevent \$d 1 116 0 && sendevent \$d 0 0 0",
+            )
+        for ((name, cmd) in tries) {
+            if (RootShell.run(cmd) == null) {
+                note("Screen on: $name FAILED (no root, or no such input device)")
+                continue
+            }
+            Thread.sleep(WAKE_CHECK_MS)
+            val a = awake()
+            note("Screen on: $name -> ${when (a) { true -> "awake"; false -> "still asleep"; null -> "state unknown" }}")
+            // Unknown (no root for dumpsys): no further key, a power key would turn an awake screen off.
+            if (a != false) return
+        }
+        journal.block("Screen still off: power state", RootShell.run("dumpsys power | grep -iE 'mWakefulness|quick|qb'"))
+    }
+
+    /** Android's wakefulness from `dumpsys power` (root): true awake, false asleep or dozing, null unknown. */
+    private fun awake(): Boolean? =
+        RootShell
+            .run("dumpsys power | grep -m1 'mWakefulness='")
+            ?.substringAfter("mWakefulness=")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.startsWith("Awake")
 
     private fun mediaKey(code: Int) {
         val audio = app.getSystemService(AudioManager::class.java) ?: return
@@ -527,6 +568,7 @@ class Standby private constructor(
         private const val KEY_TEST_U0 = "test_u0"
         private const val CRASH_LINES = 25
         private const val SAFETY_EXTRA_S = 15
+        private const val WAKE_CHECK_MS = 1_500L
         private const val TEST_ALLOWED = false
 
         /** Time left to the SoC to suspend once the screen is off (hang_detect reboots about 5 min later). */

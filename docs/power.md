@@ -116,6 +116,17 @@ lancé juste avant l'extinction de l'écran en veille, qui relance le service s'
 relance l'accueil, les applis LibreHU (leurs récepteurs de démarrage) et ViPER4Android. Le **test de suspension contact
 mis est désactivé** : avec le contact mis, rien ne réveillerait le SoC.
 
+**Le réveil refusé (29/10, logcat du test A)** : 1 s après l'arrêt forcé, Android relance le service (« Scheduling
+restart of crashed service ») ; le service reçoit bien le contact (ACC on) et envoie `input keyevent KEYCODE_WAKEUP`
+en root, mais le PowerManagerService modifié par Autochips répond **« implicit intent to wakeup, reject! »** : après
+un QuickBoot power off, il refuse les réveils ordinaires, l'écran reste éteint, le SoC se suspend et adb disparaît
+(l'USB est coupé). Côté ROM stock, `SystemUtil.wakeUp()` d'ivi-services est **vide** : le stock ne rallume pas l'écran
+lui-même, le réveil vient du matériel (impulsion de la MCU au retour du contact, après `F1`). Le service essaie
+maintenant dans l'ordre `KEYCODE_WAKEUP`, la touche power (`KEYCODE_POWER`, autre raison de réveil), puis la touche
+power écrite sur le périphérique du clavier `mtk-kpd` (`sendevent`, comme la vraie touche), en vérifiant
+`mWakefulness` de `dumpsys power` après chaque essai ; le journal dit lequel a marché. La règle exacte du refus est
+dans `services.jar` de la ROM (non public) : à lire pour confirmer.
+
 ### Reboot spontané écran éteint (28/10, analysé)
 
 Écran Android éteint, contact mis, SoC resté réveillé : environ 5 à 6 min plus tard, **reboot par le hang_detect de
