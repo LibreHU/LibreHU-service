@@ -181,8 +181,9 @@ object AtcTools {
             if (ext.isNotEmpty() && ext != "ext(0, 0)") return@Thread
             val line =
                 "Second LVDS panel on (metazone 65550 = 1) but the boot loader finds none (${ext.ifEmpty { "no /proc/pl_lk" }}): " +
-                    "stripes on the screen. Off: Autochips → Fast reverse → Second LVDS panel, or " +
-                    "AtcHelper set 65550=0, then restart"
+                    "stripes on the screen. Off: Autochips → Fast reverse → Second LVDS panel, or as root: " +
+                    "CLASSPATH=\$(pm path org.librehu.service | cut -d: -f2) app_process /system/bin " +
+                    "org.librehu.service.atc.AtcHelper set 65550=0 (docs/atc.md), then restart"
             Log.w(TAG, line)
             org.librehu.service.power.StandbyJournal
                 .get(app)

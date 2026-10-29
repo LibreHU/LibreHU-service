@@ -38,8 +38,16 @@ Dans la ROM stock (dump `jancar` V1.151R6), seul ATC Settings l'écrit (`AtcDisp
 sur un geste, interrupteur caché sauf `hwc.external_display_enable`) ; VIDEO OUT (`com.jancar.usbdisplay`) ne le
 lit ni ne l'écrit, et `RearDisplay` d'`ivi-settings.ini` est le réglage de VIDEO OUT (`key_rear_display`), pas
 celui-ci. Le service demande confirmation avant de l'activer et, 30 s après le démarrage, écrit dans le journal de
-veille s'il est à 1 alors que le chargeur ne trouve pas de second écran. Remise à 0 : l'interrupteur, ou
-`AtcHelper set 65550=0`, puis redémarrer.
+veille s'il est à 1 alors que le chargeur ne trouve pas de second écran. Remise à 0 : l'interrupteur, ou depuis un
+PC (PowerShell : apostrophes extérieures simples), puis couper le contact 1 min ou redémarrer :
+
+```
+adb shell 'su -c "CLASSPATH=$(pm path org.librehu.service | cut -d: -f2) app_process /system/bin org.librehu.service.atc.AtcHelper get 65550"'
+adb shell 'su -c "CLASSPATH=$(pm path org.librehu.service | cut -d: -f2) app_process /system/bin org.librehu.service.atc.AtcHelper set 65550=0"'
+adb shell "su -c 'cat /proc/pl_lk'" | grep -E "g_open_ext_disp|multidisp"
+```
+
+`set` répond `65550=0` puis `ok` ; après le redémarrage, `pl_lk` doit dire `g_open_ext_disp:0`.
 
 ## Format de la caméra
 Préréglages repris de Jancar (`ImportSingleConfigUtil.importBackCarVideoSource` d'ivi-settings, index =
