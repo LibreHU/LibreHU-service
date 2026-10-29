@@ -139,6 +139,27 @@ l'extinction de l'écran sur un autoradio LibreHU, et la veille arrête (`am for
 qui tient encore un verrou 3 s après l'extinction de l'écran, en l'écrivant dans le journal ; elle est relancée au
 réveil.
 
+### Ce que fait la MCU après la coupure du contact (firmware `JCST_AC8257_8T7` 2024.08.09, désassemblé le 29/10)
+
+Machine d'alimentation (tâche 100 ms, structure `0x200002B4` ; voir aussi `MCU-tools-app/docs/mcu_firmware.md`) :
+
+| Étape | Adresse | Comportement |
+|---|---|---|
+| Contact coupé | 0x8005C64 | entrée ACC filtrée 1 s, trame `00 00`, compteur à zéro, état 3 |
+| Sans `F1` | 0x8005E80 | indicateur « SoC prêt » (`1F 01`) présent : coupure du SoC à **15 s**, sauf retour du contact (`00 01`, état 2) |
+| `F1 n` reçu | 0x8005D34 | durée de veille n × 420 min, **et l'indicateur « SoC prêt » est effacé** |
+| Après `F1` | 0x8005E80 | attente de l'entrée PA11 (« SoC en veille ») : dès qu'elle passe à 0, veille ; sinon veille **à 40 s quoi qu'il arrive**. Le retour du contact n'est pas regardé pendant cette attente |
+| Veille | 0x8005DA0 | octet `11`, rail PB4 coupé, rail PB5 gardé (mémoire du SoC suspendu), décompte par minute (RTC), batterie basse 20 fois : arrêt complet. Un SoC encore en marche meurt à la coupure de PB4 |
+| Retour du contact | 0x8005BC4, 0x8005ED4 | rails rallumés, octet `AC` puis `DD`, **impulsion de 100 ms sur PB2** (touche power), attente de `1F 01` **10 s** ; sinon tout est coupé, puis démarrage à froid |
+
+Conséquences pour la veille : `F1` doit partir avant t+15 s (délai « démarrage moteur » limité à 8 s), le SoC doit
+être suspendu avant t+40 s, et `1F 01` doit repartir dans les 10 s après le réveil (détection de la reprise par le
+saut d'horloge). Une veille dont le SoC n'est pas suspendu à **t+25 s** se termine par un arrêt propre (`F1 0`, puis
+`reboot -p`) plutôt que par la coupure de la MCU (le 28/10, le fsck suivant a réparé des inodes orphelins de /data).
+Le réveil stock passe par l'impulsion PB2 (touche power réelle), ce qui explique que `SystemUtil.wakeUp()`
+d'ivi-services soit vide. Réglages stock (`/jancar/config/ivi-settings.ini`) : `DeepSleep=ENABLE`, `SmartAccOff=2880`
+(min), soit `F1 8` = 56 h. La broche du SoC reliée à PA11 n'est pas identifiée.
+
 ### Reboot spontané écran éteint (28/10, analysé)
 
 Écran Android éteint, contact mis, SoC resté réveillé : environ 5 à 6 min plus tard, **reboot par le hang_detect de

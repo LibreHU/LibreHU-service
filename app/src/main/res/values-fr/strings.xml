@@ -538,7 +538,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="boot_apps_failed">Impossible de changer (root nécessaire).</string>
     <string name="standby_title">Coupure du contact et veille</string>
     <string name="standby_acc_delay">Délai avant coupure (démarrage moteur)</string>
-    <string name="standby_acc_delay_hint">Le + après-contact chute pendant le démarrage du moteur : une coupure plus courte que ce délai garde l\'écran, le son et l\'ampli. La MCU attend elle-même 1 s et coupe le SoC 15 s après le contact : 10 s au plus.</string>
+    <string name="standby_acc_delay_hint">Le + après-contact chute pendant le démarrage du moteur : une coupure plus courte que ce délai garde l\'écran, le son et l\'ampli. La MCU attend elle-même 1 s et coupe le SoC 15 s après le contact si la minuterie de veille ne lui arrive pas avant : 8 s au plus.</string>
     <string name="standby_mode_off">Écran éteint seulement</string>
     <string name="standby_mode_sleep">Veille</string>
     <string name="standby_mode_shutdown">Extinction</string>

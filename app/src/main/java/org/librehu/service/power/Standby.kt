@@ -46,7 +46,7 @@ data class StandbySettings(
     companion object {
         /** Minutes per unit of `F1` on firmware 2024.08.09 (Android's code assumed 6 h). */
         const val MCU_UNIT_MIN = 420
-        const val MAX_ACC_OFF_DELAY_SEC = 10
+        const val MAX_ACC_OFF_DELAY_SEC = 8
         val HOURS_CHOICES = listOf(7, 14, 28, 56, 112, 168, 336)
     }
 }
@@ -94,6 +94,7 @@ class Standby private constructor(
 
     /** Standby entered at (elapsedRealtime), and how long the SoC has been suspended since. */
     private var standbyAt = 0L
+    private var standbyUp = 0L
     private var suspendedMs = 0L
     private var nextBeatAt = 0L
     private var lockSnapshotDone = false
@@ -114,6 +115,7 @@ class Standby private constructor(
                 // wakes the head unit up (screen, PC_READY, radios) as if nothing had happened.
                 note("Service restarted during the standby (entered ${(System.currentTimeMillis() - since) / 1000} s ago): still in standby")
                 standbyAt = SystemClock.elapsedRealtime()
+                standbyUp = SystemClock.uptimeMillis()
                 _asleep.value = true
                 main.post { watchResume() }
                 if (acc == true) main.post { exit("ignition already on") }
@@ -209,6 +211,7 @@ class Standby private constructor(
         note("Standby: ${s.mode}${if (s.mode == StandbyMode.SLEEP) ", MCU timer ${s.mcuUnits} × 7 h" else ""} (${since()})")
         prefs.edit().putLong(KEY_ASLEEP_SINCE, System.currentTimeMillis()).commit()
         standbyAt = SystemClock.elapsedRealtime()
+        standbyUp = SystemClock.uptimeMillis()
         suspendedMs = 0L
         lockSnapshotDone = false
         nextBeatAt = standbyAt + FIRST_BEAT_MS
@@ -239,24 +242,27 @@ class Standby private constructor(
                 Thread.sleep(WAKELOCK_CHECK_MS)
                 stopWakelockHolders()
                 main.post { watchResume() }
-                main.postDelayed(suspendDeadline, SUSPEND_DEADLINE_MS)
+                // Counted from the ignition off: the MCU cuts the SoC 40 s after it when it has not suspended.
+                val left = if (accWireOffAt > 0L) accWireOffAt + SUSPEND_DEADLINE_MS - SystemClock.elapsedRealtime() else NO_ACC_TIME_DEADLINE_MS
+                main.postDelayed(suspendDeadline, left.coerceAtLeast(0L))
             }
         }, "standby").start()
     }
 
     /**
-     * On this unit, Android's display off with the SoC still running ends in a reboot by MediaTek's hang_detect about
-     * 5 min later (28/10: "wait VSYNC timeout" every 100 ms, then "exception reboot"). A standby whose SoC has not
-     * suspended by then is turned into a clean shutdown (`F1 0`, then Android's power off) instead.
+     * MCU firmware (JCST_AC8257_8T7, 0x8005E80): once `F1` is set it waits for the SoC's sleep line for 40 s at most
+     * after the ignition, then cuts a rail of the SoC whether it suspended or not, and a SoC still running dies there
+     * (29/10: cold boot, fsck repairs on /data). A standby whose SoC has not suspended [SUSPEND_DEADLINE_MS] after the
+     * ignition is turned into a clean shutdown (`F1 0`, then Android's power off) instead. Otherwise the display off
+     * with the SoC running also ends in a reboot by MediaTek's hang_detect about 5 min later (28/10).
      */
     private val suspendDeadline =
         Runnable {
             if (!_asleep.value || acc != false) return@Runnable
-            if (suspendedMs >= SUSPENDED_ENOUGH_MS) return@Runnable
-            note(
-                "SoC still running ${SUSPEND_DEADLINE_MS / 1000} s after the screen went off (suspended ${suspendedMs / 1000} s): " +
-                    "clean shutdown instead of a hang reboot",
-            )
+            // The Handler counts awake time only: the time really suspended is read here, not from the resume watch.
+            val suspended = (SystemClock.elapsedRealtime() - standbyAt) - (SystemClock.uptimeMillis() - standbyUp)
+            if (suspendedMs >= SUSPENDED_ENOUGH_MS || suspended >= SUSPENDED_ENOUGH_MS) return@Runnable
+            note("SoC still running (${since()}, suspended ${suspended / 1000} s): clean shutdown before the MCU cuts it at t+40 s")
             Thread({
                 journal.wakelocks("Not suspending")
                 journal.kernelPm("Not suspending")
@@ -264,7 +270,8 @@ class Standby private constructor(
                 runCatching { ProcessBuilder("sync").start().waitFor() }
                 prefs.edit().remove(KEY_ASLEEP_SINCE).commit()
                 note("Shutdown")
-                RootShell.run("svc power shutdown || reboot -p", timeoutS = 30)
+                // init's power off (sync, remount read-only): quicker than the framework's, which QuickBoot may also take over.
+                RootShell.run("reboot -p || svc power shutdown", timeoutS = 30)
             }, "standby-shutdown").start()
         }
 
@@ -572,7 +579,7 @@ class Standby private constructor(
     private fun load(): StandbySettings {
         val d = StandbySettings()
         return StandbySettings(
-            accOffDelaySec = prefs.getInt(KEY_DELAY, d.accOffDelaySec),
+            accOffDelaySec = prefs.getInt(KEY_DELAY, d.accOffDelaySec).coerceIn(0, StandbySettings.MAX_ACC_OFF_DELAY_SEC),
             mode = runCatching { StandbyMode.valueOf(prefs.getString(KEY_MODE, null)!!) }.getOrDefault(d.mode),
             maxHours = prefs.getInt(KEY_HOURS, d.maxHours),
             radiosOff = prefs.getBoolean(KEY_RADIOS, d.radiosOff),
@@ -599,8 +606,11 @@ class Standby private constructor(
         private const val WAKELOCK_CHECK_MS = 3_000L
         private const val TEST_ALLOWED = false
 
-        /** Time left to the SoC to suspend once the screen is off (hang_detect reboots about 5 min later). */
-        private const val SUSPEND_DEADLINE_MS = 90_000L
+        /** Time after the ignition off for the SoC to suspend: the MCU cuts it at 40 s, the power off takes some. */
+        private const val SUSPEND_DEADLINE_MS = 25_000L
+
+        /** Same, counted from the screen off when the ignition time is unknown. */
+        private const val NO_ACC_TIME_DEADLINE_MS = 15_000L
         private const val SUSPENDED_ENOUGH_MS = 5_000L
         private const val TAG = "LibreHU-Standby"
 
