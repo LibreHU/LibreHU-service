@@ -194,6 +194,22 @@ class HeadUnit(
      */
     fun wake() = executor.execute { handshake() }
 
+    /**
+     * After a real standby: the MCU cut the sound processor's supply, so its registers are back to their power-on
+     * values (setup, input selector) while [Bd37534] still caches the old ones; only volume, tone, faders and mute were
+     * written again, and the chip stayed silent on the wrong input. Start-up sequence again, then the input of the
+     * current source and all the settings, as [start] does; muted until then.
+     */
+    fun reinitAudio() =
+        executor.execute {
+            val dsp = dsp ?: return@execute
+            setGpio(board.ampMuteGpio, true)
+            val ok = dsp.init()
+            if (source == SOURCE_AUX) dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB)
+            log("BD37534 init after a standby: $ok")
+            applyAudio()
+        }
+
     // PC_READY until the MCU answers with its version (ivi-services: again after 4 s without version).
     private var handshakeDone = false
     private var handshakeTries = 0

@@ -503,6 +503,9 @@ class LibreHuService : Service() {
             }
         }
 
+    // Time the SoC spent suspended since boot: elapsedRealtime() goes on during a suspend, uptimeMillis() stops.
+    private var suspendedSince = android.os.SystemClock.elapsedRealtime() - android.os.SystemClock.uptimeMillis()
+
     private val wakeReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(
@@ -511,6 +514,14 @@ class LibreHuService : Service() {
             ) {
                 log("Screen on: PC_READY again")
                 unit?.wake()
+                // Suspended since the last screen on (a real standby, whatever started it): the sound processor lost its
+                // supply with the SoC, so it gets its start-up sequence and the settings again. A screen off alone keeps it.
+                val suspended = android.os.SystemClock.elapsedRealtime() - android.os.SystemClock.uptimeMillis()
+                if (suspended - suspendedSince > SUSPENDED_REINIT_MS) {
+                    log("Screen on after ${(suspended - suspendedSince) / 1000} s suspended: sound processor set up again")
+                    unit?.reinitAudio()
+                }
+                suspendedSince = suspended
                 // Ignition back on: the Clio 3 remote's phantom press at that moment is ignored
                 org.librehu.service.can.CanWheelKeys.get(context).guard()
             }
@@ -809,6 +820,9 @@ class LibreHuService : Service() {
         private const val CHANNEL_ID = "service"
         private const val NOTIFICATION_ID = 1
         private const val CLOCK_TOLERANCE_MS = 5_000L
+
+        /** Suspended at least this long since the last screen on: the sound processor is set up again. */
+        private const val SUSPENDED_REINIT_MS = 1_000L
         const val ACTION_RESTART = "org.librehu.service.RESTART"
         const val ACTION_RESET_SOC = "org.librehu.service.RESET_SOC"
         private const val EXTRA_TOKEN = "token"
