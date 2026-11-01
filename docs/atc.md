@@ -74,6 +74,21 @@ sur AC8227L). `dumpsys usb set-port-roles` ne fait rien ici : aucun port n'est d
 La metazone 65616 est aussi écrite (2 hôte, 1 périphérique) pour le démarrage suivant, comme ATC Settings. En
 périphérique, `adb_enabled` passe à 1. L'état affiché est celui du fichier `data_role`.
 
+**Transfert de fichiers avec un ordinateur (MTP)**, réglage du même écran, **désactivé par défaut** (`MtpMode.kt`) :
+- désactivé : MTP est retiré des fonctions USB, les courantes (`svc usb setFunctions`) et celles qu'Android applique à
+  chaque déverrouillage d'écran (`svc usb setScreenUnlockedFunctions`, gardées par UsbDeviceManager d'un démarrage à
+  l'autre) ; le port en périphérique ne propose qu'adb et la recharge, aucun serveur MTP ne tourne ;
+- activé : MTP dans ces deux réglages, et le serveur MTP de MediaProvider (`MtpService`) démarré en root à chaque
+  branchement. Sous Android 9, c'est le `MtpReceiver` de MediaProvider qui le démarre quand l'USB passe en connecté +
+  configuré avec MTP ; la ROM Jancar livre MediaProvider sans ce récepteur, le serveur ne tournait donc jamais :
+  Windows chargeait son pilote MTP, n'avait pas de réponse et abandonnait au bout de 30 s (`MTP_REQ_CANCEL` dans le
+  journal du noyau). Le serveur s'arrête tout seul au débranchement (erreur de lecture sur `/dev/mtp_usb`), d'où un
+  démarrage à chaque branchement ; rien n'est démarré sur une ROM qui a son propre récepteur.
+- Windows qui affichait « Code 28 » (pilote absent, interface vue en classe `ff`) : il avait gardé en cache qu'à un
+  premier branchement l'autoradio n'avait pas répondu à la requête des descripteurs Microsoft (`0xEE`). Effacer
+  `HKLM\SYSTEM\CurrentControlSet\Control\usbflags\2BE182570223` (valeur `osvc` à `0000`) en administrateur, désinstaller
+  le périphérique, rebrancher.
+
 ## Outils
 Engineer Mode (`com.mediatek.engineermode/.EngineerMode`), ATC Settings
 (`com.android.settings/com.autochips.atcsettings.mainui.MainActivity`), ATCLogger (`com.autochips.atclogger/.MainActivity`)
