@@ -782,6 +782,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="atc_usb_device_short">Périphérique</string>
     <string name="atc_usb_done">Port basculé (et enregistré pour le prochain démarrage)</string>
     <string name="atc_usb_hint">Comme les réglages Jancar : le rôle du port (data_role de dual_role_usb) tout de suite, et la valeur de la metazone pour le prochain démarrage. Le mode périphérique active adb.</string>
+    <string name="atc_mtp_title">Transfert de fichiers avec un ordinateur (MTP)</string>
+    <string name="atc_mtp_hint">Désactivé par défaut : en mode périphérique, le port ne propose qu\'adb et la recharge. Activé : l\'ordinateur voit la mémoire de l\'autoradio en MTP ; la ROM Jancar ne lance jamais le serveur MTP d\'Android, le service le démarre à chaque branchement. adb se coupe un instant au changement.</string>
     <string name="atc_fr_title">Recul rapide (ARM2)</string>
     <string name="atc_fr_hint">La vue arrière affichée par le coprocesseur ARM2 avant le démarrage d\'Android. Réglages stockés dans la metazone : « Enregistrer », puis « Envoyer à l\'ARM2 ». La vue LibreHU (Véhicule → Recul) a ses propres réglages.</string>
     <string name="atc_fr_source">Source de la caméra</string>

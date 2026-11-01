@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import org.librehu.service.R
 import org.librehu.service.atc.AtcTools
 import org.librehu.service.atc.CameraFormat
+import org.librehu.service.atc.MtpMode
 import org.librehu.service.atc.Mtz
 
 /** Autochips features of the stock ROM: hidden tools, USB mode, ARM2 fast reverse, boot logo. */
@@ -121,6 +122,11 @@ private fun UsbModeCard() {
         }
         status?.let { Hint(it) }
         Hint(stringResource(R.string.atc_usb_hint))
+        var mtp by remember { mutableStateOf(MtpMode.enabled(context)) }
+        SwitchRow(stringResource(R.string.atc_mtp_title), mtp, stringResource(R.string.atc_mtp_hint)) { on ->
+            mtp = on
+            scope.launch(Dispatchers.IO) { MtpMode.setEnabled(context, on) }
+        }
     }
 }
 

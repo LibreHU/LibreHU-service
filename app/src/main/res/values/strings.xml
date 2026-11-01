@@ -782,6 +782,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="atc_usb_device_short">Device</string>
     <string name="atc_usb_done">Port switched (saved for the next start-up too)</string>
     <string name="atc_usb_hint">Like Jancar\'s settings: the role of the port (dual_role_usb data_role) at once, and the metazone value for the next start-up. Device mode turns adb on.</string>
+    <string name="atc_mtp_title">File transfer with a computer (MTP)</string>
+    <string name="atc_mtp_hint">Off by default: the port in device mode only offers adb and charging. On: the computer sees the head unit\'s storage over MTP; the Jancar ROM never starts Android\'s MTP server, so the service starts it at each connection. adb drops for a moment when this changes.</string>
     <string name="atc_fr_title">Fast reverse (ARM2)</string>
     <string name="atc_fr_hint">The rear view shown by the ARM2 co-processor before Android has started. Settings stored in the metazone: \"Save\", then \"Send to the ARM2\". The LibreHU view (Vehicle → Rear view) has its own settings.</string>
     <string name="atc_fr_source">Camera source</string>

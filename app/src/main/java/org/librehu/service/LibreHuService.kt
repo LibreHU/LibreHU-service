@@ -192,6 +192,8 @@ class LibreHuService : Service() {
         }, "car-name").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         registerReceiver(usbReceiver, IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED))
+        // MTP with a computer: off by default (taken out of the USB functions), else its server started at each connection
+        org.librehu.service.atc.MtpMode.start(this)
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
             handshake = { unit?.wake() }
