@@ -45,6 +45,14 @@ Réveil (contact revenu, ou suspension détectée par un saut de l'horloge `elap
 PC_READY renvoyé (sinon la MCU recoupe le SoC au bout de 10 s), écran rallumé, mode avion / GPS rétablis s'ils
 avaient été coupés par le service, reprise de la lecture 4 s plus tard.
 
+Processeur audio après une vraie veille : la MCU coupe aussi l'alimentation du BD37534 pendant la suspension, qui
+revient à ses registres de mise sous tension. À l'allumage d'écran qui suit une suspension du SoC (quelle que soit
+la veille, celle du service ou celle de Jancar), le service lui renvoie sa séquence de démarrage, l'entrée de la
+source en cours et tous les réglages, comme au démarrage (`HeadUnit.reinitAudio()`) ; avant le 01/11/2026, seuls le
+volume, les tonalités, les faders et le mute étaient renvoyés et il n'y avait plus de son (trace I2C du bus 6). Un
+écran éteint sans suspension ne touche pas à la puce. Ligne du journal : `Screen on after N s suspended: sound
+processor set up again`.
+
 ## Journal de veille (`power/StandbyJournal.kt`)
 
 Onglet **Système → Veille → Journal de veille**. Chaque étape est écrite dans
