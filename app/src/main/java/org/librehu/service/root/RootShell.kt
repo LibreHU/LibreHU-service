@@ -22,6 +22,10 @@ object RootShell {
     @Volatile
     private var checkedAt = 0L
 
+    /** Older Android su binaries take a numeric UID instead of supporting `-c`. */
+    @Volatile
+    private var uidStyleSu = false
+
     /**
      * True when `su` grants root. Magisk / SuperSU show their prompt the first time; KernelSU and KernelSU Next only
      * give `su` to the apps allowed in their manager (Superuser tab), so a refusal is checked again later.
@@ -88,42 +92,52 @@ object RootShell {
         timeoutS: Long = 10,
     ): String? =
         try {
-            val p = ProcessBuilder("su", "-c", command).redirectErrorStream(true).start()
-            val out = StringBuilder()
-            val reader =
+            fun execute(uidStyle: Boolean): Pair<Int, String>? {
+                val args = if (uidStyle) arrayOf("su", "0", "sh", "-c", command) else arrayOf("su", "-c", command)
+                val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+                val out = StringBuilder()
+                val reader =
+                    Thread({
+                        try {
+                            val text = p.inputStream.bufferedReader().readText()
+                            synchronized(out) { out.append(text) }
+                        } catch (_: Exception) {
+                        }
+                    }, "root-out").apply {
+                        isDaemon = true
+                        start()
+                    }
                 Thread({
                     try {
-                        val text = p.inputStream.bufferedReader().readText()
-                        synchronized(out) { out.append(text) }
+                        p.outputStream.use { if (stdin != null) it.write(stdin) }
                     } catch (_: Exception) {
                     }
-                }, "root-out").apply {
+                }, "root-in").apply {
                     isDaemon = true
                     start()
                 }
-            Thread({
-                try {
-                    p.outputStream.use { if (stdin != null) it.write(stdin) }
-                } catch (_: Exception) {
+                if (!p.waitFor(timeoutS, TimeUnit.SECONDS)) {
+                    p.destroy()
+                    reader.join(500)
+                    Log.w(TAG, "$command: timeout ${timeoutS}s")
+                    return null
                 }
-            }, "root-in").apply {
-                isDaemon = true
-                start()
-            }
-            if (!p.waitFor(timeoutS, TimeUnit.SECONDS)) {
-                p.destroy()
-                reader.join(500)
-                Log.w(TAG, "$command: timeout ${timeoutS}s")
-                null
-            } else {
                 reader.join(2_000)
-                val text = synchronized(out) { out.toString() }
-                if (p.exitValue() == 0) {
-                    text
-                } else {
-                    Log.w(TAG, "$command: exit ${p.exitValue()} $text")
-                    null
-                }
+                return p.exitValue() to synchronized(out) { out.toString() }
+            }
+
+            var result = execute(uidStyleSu) ?: return null
+            // The device's /system/xbin/su uses `su UID COMMAND`; its parser rejects `-c`
+            // before the requested command starts, so retrying cannot execute a side effect twice.
+            if (!uidStyleSu && result.first != 0 && result.second.contains("invalid uid/gid", ignoreCase = true)) {
+                result = execute(uidStyle = true) ?: return null
+                if (result.first == 0) uidStyleSu = true
+            }
+            if (result.first == 0) {
+                result.second
+            } else {
+                Log.w(TAG, "$command: exit ${result.first} ${result.second}")
+                null
             }
         } catch (e: Exception) {
             Log.w(TAG, "$command: ${e.message}")
@@ -159,7 +173,8 @@ object RootShell {
             if (direct.canRead()) {
                 null
             } else if (isAvailable()) {
-                val p = ProcessBuilder("su", "-c", "cat '$path'").start()
+                val args = if (uidStyleSu) arrayOf("su", "0", "sh", "-c", "cat '$path'") else arrayOf("su", "-c", "cat '$path'")
+                val p = ProcessBuilder(*args).start()
                 p.outputStream.close()
                 p to p.inputStream
             } else {

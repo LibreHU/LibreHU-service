@@ -1,5 +1,6 @@
 package org.librehu.service.atc
 
+import android.os.Looper
 import java.io.File
 
 /**
@@ -50,13 +51,13 @@ object AtcHelper {
 
                 "arm2" -> {
                     val c = cls(BACKCAR)
-                    c.getMethod("updateArm2MdpSetting").invoke(c.getDeclaredConstructor().newInstance())
+                    c.getMethod("updateArm2MdpSetting").invoke(newBackCar(c))
                     println("ok")
                 }
 
                 "arm2ready" -> {
                     val c = cls(BACKCAR)
-                    val backcar = c.getDeclaredConstructor().newInstance()
+                    val backcar = newBackCar(c)
                     val status = c.getMethod("getArm2Status", IntArray::class.java)
 
                     fun read(): Int {
@@ -98,6 +99,12 @@ object AtcHelper {
             val cause = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
             println("error=${cause.javaClass.simpleName}: ${cause.message}")
         }
+    }
+
+    /** app_process does not prepare a Looper, but BackCar constructs a Handler in its no-arg constructor. */
+    private fun newBackCar(c: Class<*>): Any {
+        if (Looper.myLooper() == null) Looper.prepare()
+        return c.getDeclaredConstructor().newInstance()
     }
 
     private fun cls(name: String): Class<*> = Class.forName(name)
