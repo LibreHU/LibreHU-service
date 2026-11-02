@@ -16,6 +16,40 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | `arm2` | `new BackCar().updateArm2MdpSetting()` (« generate MDP ») |
 | `logo <fichier>` | `AtcLogo.writelogo(2, 0, taille, données)` |
 
+## Passage de main de l'ARM2 au démarrage (hd2cam retiré : vidéo matérielle verte)
+Rapport de Reo Au In (01/11/2026 ; UJC201, noyau LibreHU, ROM allégée : `com.jancar.services` retiré ; essais du
+31/10).
+
+**Symptôme** : sans `com.jancar.hd2cam` (l'appli caméra / DVR de Jancar), toute vidéo **décodée par le matériel**
+(`OMX.MTK.VIDEO.DECODER.AVC` : Android Auto par Open Head Unit, VLC) est **verte unie**, alors que le décodeur annonce
+24 à 31 images par seconde ; le décodage logiciel s'affiche bien.
+
+**Cause** : au démarrage, hd2cam appelle `com.autochips.backcar.BackCar.sendReadyToArm2()`. Le pilote `backcar` du
+noyau (`drivers/misc/autochips/backcar/backcar.c`, `IOCTL_FSC_NOTIFY_APP_READY`) envoie alors `MSG_ANDROID_APP_READY`
+à l'ARM2, qui rend l'affichage à Android : statut ARM2 2, propriété `runtime.arm2.finish=y`. Sans cet appel, l'ARM2
+reste en place (statut 0) et le pilote d'affichage lui garde les couches 1 et 2 du mélangeur matériel OVL0 :
+`dispsys/ddp_ovl.c` (« arm2 not exist, so don't operate ovl0 layer 1,2 ») n'active que les couches 0 et 3, et
+`ovl_layer_num` en annonce 1 au lieu de 4 tant que `get_arm2_backcar_status()` vaut 0. La vidéo matérielle, placée
+par le compositeur sur l'une de ces couches, ne sort jamais : vert (image YUV à zéro).
+
+Constaté sur le même micrologiciel, seul hd2cam changeant :
+
+| Situation | Statut ARM2 | `runtime.arm2.finish` | Vidéo |
+|---|---|---|---|
+| hd2cam installé | 2 | `y` | normale |
+| hd2cam retiré (TWRP) | 0 | absente | verte |
+| même démarrage, un appel `sendReadyToArm2()` (root, `app_process`) | 0 → 2 | `y` | normale aussitôt, sans redémarrer |
+| appli de test au démarrage (`BOOT_COMPLETED`, UID système) | 0 → 2 en 1 s environ | `y` | normale |
+
+**En attendant un correctif dans LibreHU-service** : garder hd2cam installé ; ou appeler l'API une fois par
+démarrage en root (`app_process` avec une classe qui fait `new BackCar().sendReadyToArm2()` puis attend que
+`getArm2Status(int[])` rende 2). Une mise en veille la libère probablement aussi (`backcar_suspend` force l'arrêt de
+l'ARM2 puis envoie `APP_READY`) : non vérifié.
+
+**Correctif proposé (pas encore fait)** : une commande `arm2ready` de l'assistant root, lancée au démarrage du service
+quand le statut n'est pas 2 : `sendReadyToArm2()` une fois, puis attente du statut 2 (60 s au plus), résultat dans le
+journal. LibreHU-service s'occupe déjà de la vue de recul : c'est à lui de prendre la main après l'ARM2.
+
 ## Adresses metazone utilisées
 | Adresse | Valeur |
 |---|---|

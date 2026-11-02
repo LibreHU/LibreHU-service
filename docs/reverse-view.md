@@ -12,8 +12,10 @@ décalage), dans une couche à part composée par SurfaceFlinger. Avec une `Text
 guidage comprises) était recomposée à chaque image de la caméra
 ([TextureView](https://developer.android.com/reference/android/view/TextureView),
 [SurfaceView et GLSurfaceView](https://source.android.com/docs/core/graphics/arch-sv-glsv)). Les caméras en plus ont
-chacune la leur, au-dessus de la principale (`setZOrderMediaOverlay`) pour l'incrustation. Ni ivi-services ni l'appli DVR de Jancar (`com.jancar.hd2cam`) ne sont nécessaires. Le recul rapide
-de l'ARM2 (avant le démarrage d'Android) reste celui d'Autochips.
+chacune la leur, au-dessus de la principale (`setZOrderMediaOverlay`) pour l'incrustation. Ni ivi-services ni l'appli DVR de Jancar (`com.jancar.hd2cam`) ne sont nécessaires pour la vue de recul. Le recul
+rapide de l'ARM2 (avant le démarrage d'Android) reste celui d'Autochips. **Ne pas retirer hd2cam pour autant** : c'est
+lui qui rend la main à l'ARM2 au démarrage ; sans lui, la vidéo décodée par le matériel est verte (Android Auto,
+lecteurs vidéo), voir [atc.md](atc.md#passage-de-main-de-larm2-au-démarrage-hd2cam-retiré--vidéo-matérielle-verte).
 
 Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par-dessus les autres applis**.
 
