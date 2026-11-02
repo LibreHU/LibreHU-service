@@ -14,6 +14,7 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | `get <adresse>…` | `AtcMetazone.readval(adresse, int[4])` |
 | `set <adresse>=<valeur>…` | `AtcMetazone.writeval`, puis `AtcMetazone.flush(true)` |
 | `arm2` | `new BackCar().updateArm2MdpSetting()` (« generate MDP ») |
+| `arm2ready` | `getArm2Status(int[])`, puis si ≠ 2 `sendReadyToArm2()` et attente du statut 2 : `before=`, `ready=`, `after=` |
 | `logo <fichier>` | `AtcLogo.writelogo(2, 0, taille, données)` |
 
 ## Passage de main de l'ARM2 au démarrage (hd2cam retiré : vidéo matérielle verte)
@@ -41,14 +42,14 @@ Constaté sur le même micrologiciel, seul hd2cam changeant :
 | même démarrage, un appel `sendReadyToArm2()` (root, `app_process`) | 0 → 2 | `y` | normale aussitôt, sans redémarrer |
 | appli de test au démarrage (`BOOT_COMPLETED`, UID système) | 0 → 2 en 1 s environ | `y` | normale |
 
-**En attendant un correctif dans LibreHU-service** : garder hd2cam installé ; ou appeler l'API une fois par
-démarrage en root (`app_process` avec une classe qui fait `new BackCar().sendReadyToArm2()` puis attend que
-`getArm2Status(int[])` rende 2). Une mise en veille la libère probablement aussi (`backcar_suspend` force l'arrêt de
-l'ARM2 puis envoie `APP_READY`) : non vérifié.
-
-**Correctif proposé (pas encore fait)** : une commande `arm2ready` de l'assistant root, lancée au démarrage du service
-quand le statut n'est pas 2 : `sendReadyToArm2()` une fois, puis attente du statut 2 (60 s au plus), résultat dans le
-journal. LibreHU-service s'occupe déjà de la vue de recul : c'est à lui de prendre la main après l'ARM2.
+**Correctif (LibreHU service `cbd9d12`, versionCode 130 et plus)** : la commande `arm2ready` de l'assistant root lit
+`getArm2Status(int[])` ; si le statut n'est pas 2, elle envoie `sendReadyToArm2()` une fois puis attend le statut 2
+(20 s). `atc/Arm2Handover.kt` la lance **au démarrage du service et après une vraie veille** : rien si l'ARM2 a déjà
+rendu la main (hd2cam encore installé), **pas pendant une marche arrière** (l'ARM2 montre alors la caméra ; les caméras
+d'Android n'arrivent qu'après sa sortie), 3 essais à 10 s d'intervalle, chaque étape dans le journal du service
+(« ARM2: handed over to Android (status 0 -> 2) »). **hd2cam peut donc être retiré**, avec le root ; sans root,
+le garder. Une mise en veille libère probablement aussi l'ARM2 (`backcar_suspend` force son arrêt puis envoie
+`APP_READY`) : non vérifié.
 
 ## Adresses metazone utilisées
 | Adresse | Valeur |

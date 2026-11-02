@@ -23,6 +23,8 @@ Des copies d'origine existent dans `/system/etc/` (`ivi-config.ini`, `ivi-custom
 - `Settings.Global` : `accStatus`, `global_mcudatadebug` (journal des trames MCU), `KEY_EXTERNAL_AMP_SWITCH`…
 
 Schéma relevé sur l'unité [V] : table `settings` (`_id`, `name`, `value`), noms préfixés `global_` ou `network_`.
+LibreHU fournit la même autorité (module `jacsettings`, zip `jancar-settings-provider`) pour pouvoir retirer
+`com.jancar.settings`, dont la SystemUI d'origine dépend.
 Exemples : `global_brake = DISABLE`, `global_ccdcamera = true`, `global_backlight = 70`,
 `global_smartaccoff = 2880` (minutes), `global_deepsleep = ENABLE`, `global_ledlight = 50331648`,
 `global_defaultnavipackage`, `global_mcudatadebug = false`, `global_password = 1234`.
