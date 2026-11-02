@@ -187,7 +187,7 @@ Reste à faire pour se passer d'ivi-services, par ordre d'importance :
 Cette appli a besoin du root par SuperSU (installé dans la ROM) ; chaque demande doit être accordée avec « Se
 souvenir ». Pour que toutes les fenêtres SuperSU arrivent au même moment, l'assistant de premier démarrage de LibreHU
 Launcher (« Autoriser le root pour toutes les applis LibreHU ») interroge chaque appli LibreHU l'une après l'autre :
-`RootRequestReceiver`, sur `org.librehu.action.REQUEST_ROOT` envoyé à ce paquet, lance une fois `su -c id` (SuperSU
+`RootRequestReceiver`, sur `org.librehu.action.REQUEST_ROOT` envoyé à ce paquet, lance une fois `id` par `su` (SuperSU
 affiche alors la demande de cette appli), puis répond `org.librehu.action.ROOT_RESULT` (extras `package`, `granted`)
 au paquet indiqué dans `reply_to`. Rien d'autre que `id` n'est lancé ; une seconde demande dans les 20 s est ignorée.
 La demande n'est acceptée que d'une appli signée avec la clé LibreHU (permission de signature
@@ -195,8 +195,8 @@ La demande n'est acceptée que d'une appli signée avec la clé LibreHU (permiss
 d'installation).
 
 Vieux `su` d'Android (`/system/xbin/su` de certaines ROM : `su UID COMMANDE`, refuse `-c` avec « invalid uid/gid ») :
-`RootShell` relance chaque commande en `su 0 sh -c` (correctif de Reo Au In, versionCode 134) ; la demande groupée
-ci-dessus (`su -c id`) n'en profite pas. Avec le noyau LibreHU (KernelSU Next), accorder le root à LibreHU Service
+`RootShell` relance chaque commande en `su 0 sh -c` (correctif de Reo Au In, versionCode 134), la demande groupée
+ci-dessus aussi (versionCode 136). Avec le noyau LibreHU (KernelSU Next), accorder le root à LibreHU Service
 dans le gestionnaire (liste Superuser) : le noyau ne détourne `/system/bin/su` que pour les applis autorisées, les
 autres tombent sur le `su` de la ROM. Détail : [docs/atc.md](docs/atc.md#assistant-root).
 

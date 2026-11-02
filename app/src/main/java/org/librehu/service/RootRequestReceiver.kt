@@ -4,12 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
-import java.util.concurrent.TimeUnit
+import org.librehu.service.root.RootShell
 
 /**
  * LibreHU: root for every LibreHU app at once (LibreHU Launcher's first start assistant). On
- * `org.librehu.action.REQUEST_ROOT` sent to this package, runs `su -c id` once so that SuperSU shows this app's prompt
- * now (to grant with "Remember"), then answers `org.librehu.action.ROOT_RESULT` (extras `package`, `granted`) to the
+ * `org.librehu.action.REQUEST_ROOT` sent to this package, runs `id` once as root ([RootShell]: `su -c id`, or
+ * `su 0 sh -c id` with the old su of AOSP) so that SuperSU shows this app's prompt now (to grant with "Remember"), then
+ * answers `org.librehu.action.ROOT_RESULT` (extras `package`, `granted`) to the
  * package named in `reply_to`. Nothing but `id` is run; a second request within 20 s is ignored.
  */
 class RootRequestReceiver : BroadcastReceiver() {
@@ -25,17 +26,8 @@ class RootRequestReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         val pending = goAsync()
         Thread({
-            val granted =
-                try {
-                    val p = ProcessBuilder("su", "-c", "id").redirectErrorStream(true).start()
-                    p.outputStream.close()
-                    // SuperSU waits for the answer; a background broadcast may take up to a minute.
-                    val done = p.waitFor(WAIT_S, TimeUnit.SECONDS)
-                    if (!done) p.destroy()
-                    done && p.inputStream.bufferedReader().readText().contains("uid=0")
-                } catch (_: Exception) {
-                    false
-                }
+            // SuperSU waits for the answer; a background broadcast may take up to a minute.
+            val granted = RootShell.run("id", timeoutS = WAIT_S)?.contains("uid=0") == true
             try {
                 app.sendBroadcast(
                     Intent(ACTION_RESULT)

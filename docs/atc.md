@@ -21,8 +21,9 @@ Si `su -c` est refusé avec « invalid uid/gid », le `su` est le vieux `su` d'A
 ([celui d'AOSP](https://android.googlesource.com/platform/system/extras/+/refs/heads/main/su/su.cpp) :
 `su [UID [COMMANDE…]]`, sans option `-c`), comme `/system/xbin/su` sur l'autoradio de Reo Au In : `RootShell` relance
 alors la commande en `su 0 sh -c "…"` et garde cette forme (correctif de Reo Au In, `3ae4fef`, versionCode 134).
-Hors de `RootShell`, `TouchBoost` lance `su` sans argument (commandes sur l'entrée standard), ce que les deux
-syntaxes acceptent ; la demande groupée de `RootRequestReceiver` reste en `su -c id`. Avec KernelSU Next (noyau
+La demande groupée de `RootRequestReceiver` passe aussi par `RootShell` depuis la versionCode 136 ; hors de `RootShell`,
+seul `TouchBoost` lance `su`, sans argument (commandes sur l'entrée standard), ce que les deux syntaxes acceptent.
+Les autres applis LibreHU de l'autoradio, sauf MCU Toolkit, font de même (`Su.kt` : `su -v` reconnaît ce `su`). Avec KernelSU Next (noyau
 LibreHU), le noyau ne détourne `/system/bin/su` que pour les applis autorisées dans son gestionnaire (liste
 Superuser, [`sucompat.c`](https://github.com/KernelSU-Next/KernelSU-Next/blob/legacy/kernel/feature/sucompat.c)) :
 sans autorisation, `su` est cherché dans le `PATH` et c'est celui de la ROM qui répond.
