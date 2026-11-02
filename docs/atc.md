@@ -16,6 +16,7 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | `arm2` | `new BackCar().updateArm2MdpSetting()` (« generate MDP ») |
 | `arm2ready` | `getArm2Status(int[])`, puis si ≠ 2 `sendReadyToArm2()` et attente du statut 2 : `before=`, `ready=`, `after=` |
 | `logo <fichier>` | `AtcLogo.writelogo(2, 0, taille, données)` |
+| `pq [clé=index]…` | moteur d'image de MediaTek par la `libPQjni.so` de la ROM (`Filter.nativeSet…` / `nativeGet…`) : `set.<clé>=`, puis `<clé>=<index>/<plage>` ; voir [panel-picture.md](panel-picture.md) |
 
 Si `su -c` est refusé avec « invalid uid/gid », le `su` est le vieux `su` d'Android
 ([celui d'AOSP](https://android.googlesource.com/platform/system/extras/+/refs/heads/main/su/su.cpp) :
