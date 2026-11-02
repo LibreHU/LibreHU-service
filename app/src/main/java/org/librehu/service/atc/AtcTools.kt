@@ -125,15 +125,17 @@ object AtcTools {
             RootShell.isAvailable() && RootShell.run("am start -n ${c.flattenToShortString()}") != null
         }
 
-    /** Lines `key=value` of [AtcHelper]; null without root. */
+    /** Lines `key=value` of [AtcHelper]; null without root. [bits32]: in the 32-bit app_process (32-bit-only libraries). */
     private fun helper(
         context: Context,
         args: String,
+        bits32: Boolean = false,
     ): Map<String, String>? {
         if (!RootShell.isAvailable()) return null
         val apk = context.applicationInfo.sourceDir
+        val runtime = if (bits32) "app_process32" else "app_process"
         val out =
-            RootShell.run("CLASSPATH='$apk' app_process /system/bin ${AtcHelper::class.java.name} $args", timeoutS = 40) ?: return null
+            RootShell.run("CLASSPATH='$apk' $runtime /system/bin ${AtcHelper::class.java.name} $args", timeoutS = 40) ?: return null
         return out
             .lineSequence()
             .mapNotNull { line ->
@@ -200,6 +202,38 @@ object AtcTools {
         val r = helper(context, "set " + values.entries.joinToString(" ") { "${it.key}=${it.value}" }) ?: return "root"
         return r["error"]
     }
+
+    /** The 32-bit app_process loaded the ROM's libPQjni.so where the default one could not; null until known. */
+    @Volatile
+    private var pq32: Boolean? = null
+
+    /**
+     * MediaTek's picture quality engine ([AtcHelper] `pq`): sets [values] (key to index), then `<key>=<index>/<range>` of
+     * every setting, `set.<key>`, or `error`; null without root. The ROM may ship libPQjni.so for one ABI only: the
+     * 32-bit app_process is tried when the default one cannot load it, and remembered.
+     */
+    fun pq(
+        context: Context,
+        values: Map<String, Int> = emptyMap(),
+    ): Map<String, String>? {
+        if (!RootShell.isAvailable()) return null
+        val args = "pq" + values.entries.joinToString("") { " ${it.key}=${it.value}" }
+        pq32?.let { return helper(context, args, bits32 = it) ?: PQ_STOPPED }
+        val r = helper(context, args)
+        if (r != null && r["error"] == null) {
+            pq32 = false
+            return r
+        }
+        val r32 = helper(context, args, bits32 = true)
+        if (r32 != null && r32["error"] == null) {
+            pq32 = true
+            return r32
+        }
+        return r ?: r32 ?: PQ_STOPPED
+    }
+
+    /** The helper ended without a line (a crash in the native library, or a refusal of su after all). */
+    private val PQ_STOPPED = mapOf("error" to "the root helper stopped without an answer")
 
     /** The ARM2 (fast reverse before Android) takes the metazone settings. */
     fun applyArm2(context: Context): String? {

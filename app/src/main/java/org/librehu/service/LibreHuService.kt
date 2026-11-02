@@ -197,6 +197,9 @@ class LibreHuService : Service() {
         // The ARM2 fast reverse hands the display over to Android (what hd2cam does): else hardware video is green.
         org.librehu.service.atc.Arm2Handover
             .check(this, { lastState.reverse }, ::log)
+        // Picture of the panel chosen in Display (MediaTek's picture engine), as Jancar's TFT display app kept it.
+        org.librehu.service.display.PanelPicture
+            .restoreLater(this, ::log)
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
             handshake = { unit?.wake() }
@@ -528,6 +531,8 @@ class LibreHuService : Service() {
                     // The ARM2 may run again for a fast reverse at waking: hand it over again if so.
                     org.librehu.service.atc.Arm2Handover
                         .check(context, { lastState.reverse }, ::log)
+                    org.librehu.service.display.PanelPicture
+                        .restoreLater(context, ::log)
                 }
                 suspendedSince = suspended
                 // Ignition back on: the Clio 3 remote's phantom press at that moment is ignored

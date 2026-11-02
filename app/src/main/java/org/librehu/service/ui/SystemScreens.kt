@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import org.librehu.service.ServiceState
 import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DarkMode
 import org.librehu.service.display.DisplayController
+import org.librehu.service.display.PanelPicture
 import org.librehu.service.mcu.ProfileStore
 import org.librehu.service.overlay.OverlayKind
 
@@ -91,9 +93,65 @@ fun DisplayScreen(actions: AppActions) {
                 Actions { Pill(stringResource(R.string.display_grant), onClick = actions.openWriteSettings) }
             }
         }
+        PanelPictureCard()
         StatusOsdCard()
         LevelOverlayCard(OverlayKind.BRIGHTNESS) { o ->
             o.show(Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128), 255, force = true)
+        }
+    }
+}
+
+/** Settings of [PanelPicture], in the order shown. */
+private val PANEL_PICTURE =
+    listOf(
+        "brightness" to R.string.pq_brightness,
+        "contrast" to R.string.pq_contrast,
+        "hue" to R.string.pq_hue,
+        "saturation" to R.string.pq_saturation,
+        "sharpness" to R.string.pq_sharpness,
+        "skin_h" to R.string.pq_skin_h,
+        "skin_s" to R.string.pq_skin_s,
+        "grass_h" to R.string.pq_grass_h,
+        "grass_s" to R.string.pq_grass_s,
+        "sky_h" to R.string.pq_sky_h,
+        "sky_s" to R.string.pq_sky_s,
+    )
+
+/** Picture of the panel (MediaTek's picture quality engine), what Jancar's com.jancar.tftdisplay set. */
+@Composable
+private fun PanelPictureCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var state by remember { mutableStateOf<PanelPicture.State?>(null) }
+    var miraVision by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        miraVision = withContext(Dispatchers.IO) { PanelPicture.miraVisionInstalled(context) }
+        state = withContext(Dispatchers.IO) { PanelPicture.read(context) }
+    }
+    Card(stringResource(R.string.pq_title)) {
+        when (val s = state) {
+            null -> Hint(stringResource(R.string.pq_reading))
+            PanelPicture.State.NoRoot -> Hint(stringResource(R.string.pq_no_root))
+            is PanelPicture.State.Error -> Hint(stringResource(R.string.pq_error, s.message))
+            is PanelPicture.State.Ready -> {
+                for ((key, label) in PANEL_PICTURE) {
+                    val v = s.settings[key]?.takeIf { it.range >= 2 } ?: continue
+                    SliderRow(stringResource(label), v.index, 0..maxOf(v.range - 1, v.index)) { index ->
+                        scope.launch { state = withContext(Dispatchers.IO) { PanelPicture.set(context, key, index) } }
+                    }
+                }
+            }
+        }
+        Hint(stringResource(R.string.pq_hint))
+        Actions {
+            if (state is PanelPicture.State.Ready) {
+                Pill(stringResource(R.string.pq_original)) {
+                    scope.launch { state = withContext(Dispatchers.IO) { PanelPicture.restoreOriginal(context) } }
+                }
+            }
+            if (miraVision) {
+                Pill(stringResource(R.string.pq_miravision)) { scope.launch(Dispatchers.IO) { PanelPicture.openMiraVision(context) } }
+            }
         }
     }
 }

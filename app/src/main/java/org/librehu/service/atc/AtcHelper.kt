@@ -1,6 +1,7 @@
 package org.librehu.service.atc
 
 import android.os.Looper
+import com.mediatek.galleryfeature.pq.filter.Filter
 import java.io.File
 
 /**
@@ -15,6 +16,9 @@ import java.io.File
  *   `ready=<BackCar.sendReadyToArm2()>` and `after=<status>` once it is 2 or after [ARM2_WAIT_MS] (what Jancar's
  *   hd2cam does at start-up; without it hardware-decoded video stays green, docs/atc.md)
  * - `logo <file>` → `AtcLogo.writelogo(2, 0, size, data)` with the file's BGRA pixels (screen size, top row first)
+ * - `pq [<key>=<index>]…` → MediaTek's picture quality engine ([Filter], the ROM's libPQjni.so, what Jancar's
+ *   com.jancar.tftdisplay uses): `set.<key>=true|false` for each pair given, then `<key>=<index>/<range>` for each
+ *   setting ([PQ_KEYS])
  */
 object AtcHelper {
     private const val METAZONE = "com.autochips.metazone.AtcMetazone"
@@ -91,14 +95,59 @@ object AtcHelper {
                     println("logo=${write.invoke(null, 2, 0, data.size, data)}")
                 }
 
+                "pq" -> pq(args.drop(1))
+
                 else -> {
-                    println("error=usage: get|set|arm2|arm2ready|logo")
+                    println("error=usage: get|set|arm2|arm2ready|logo|pq")
                 }
             }
         } catch (e: Throwable) {
-            val cause = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
-            println("error=${cause.javaClass.simpleName}: ${cause.message}")
+            // A missing libPQjni.so comes as ExceptionInInitializerError (Filter's static block) around the link error.
+            val cause =
+                when (e) {
+                    is java.lang.reflect.InvocationTargetException -> e.targetException
+                    is ExceptionInInitializerError -> e.cause ?: e
+                    else -> e
+                }
+            println("error=${cause.javaClass.simpleName}: ${cause.message?.replace('\n', ' ')}")
         }
+    }
+
+    /** Keys of the `pq` settings, in the order they are printed. */
+    val PQ_KEYS =
+        listOf(
+            "brightness", "contrast", "hue", "saturation", "sharpness",
+            "skin_h", "skin_s", "grass_h", "grass_s", "sky_h", "sky_s",
+        )
+
+    private class PqSetting(
+        val index: () -> Int,
+        val range: () -> Int,
+        val set: (Int) -> Boolean,
+    )
+
+    private fun pq(pairs: List<String>) {
+        val f = Filter()
+        val settings =
+            mapOf(
+                "brightness" to PqSetting(f::nativeGetBrightnessAdjIndex, f::nativeGetBrightnessAdjRange, f::nativeSetBrightnessAdjIndex),
+                "contrast" to PqSetting(f::nativeGetContrastAdjIndex, f::nativeGetContrastAdjRange, f::nativeSetContrastAdjIndex),
+                "hue" to PqSetting(f::nativeGetHueAdjIndex, f::nativeGetHueAdjRange, f::nativeSetHueAdjIndex),
+                "saturation" to PqSetting(f::nativeGetSatAdjIndex, f::nativeGetSatAdjRange, f::nativeSetSatAdjIndex),
+                "sharpness" to PqSetting(f::nativeGetSharpAdjIndex, f::nativeGetSharpAdjRange, f::nativeSetSharpAdjIndex),
+                "skin_h" to PqSetting(f::nativeGetSkinToneHIndex, f::nativeGetSkinToneHRange, f::nativeSetSkinToneHIndex),
+                "skin_s" to PqSetting(f::nativeGetSkinToneSIndex, f::nativeGetSkinToneSRange, f::nativeSetSkinToneSIndex),
+                "grass_h" to PqSetting(f::nativeGetGrassToneHIndex, f::nativeGetGrassToneHRange, f::nativeSetGrassToneHIndex),
+                "grass_s" to PqSetting(f::nativeGetGrassToneSIndex, f::nativeGetGrassToneSRange, f::nativeSetGrassToneSIndex),
+                "sky_h" to PqSetting(f::nativeGetSkyToneHIndex, f::nativeGetSkyToneHRange, f::nativeSetSkyToneHIndex),
+                "sky_s" to PqSetting(f::nativeGetSkyToneSIndex, f::nativeGetSkyToneSRange, f::nativeSetSkyToneSIndex),
+            )
+        for (pair in pairs) {
+            val (key, value) = pair.split('=', limit = 2)
+            val index = value.toIntOrNull()
+            println("set.$key=${index != null && settings[key]?.set?.invoke(index) == true}")
+        }
+        for (key in PQ_KEYS) settings.getValue(key).let { println("$key=${it.index()}/${it.range()}") }
     }
 
     /** app_process does not prepare a Looper, but BackCar constructs a Handler in its no-arg constructor. */
