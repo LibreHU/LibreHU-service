@@ -208,6 +208,12 @@ object AtcTools {
     }
 
     /**
+     * Tells the ARM2 that Android is ready (`BackCar.sendReadyToArm2()`) when it has not handed the display over yet:
+     * `before`, `ready`, `after` (status 2 = handed over) or `error`; null without root. See [Arm2Handover].
+     */
+    fun arm2Ready(context: Context): Map<String, String>? = helper(context, "arm2ready")
+
+    /**
      * Data role files of the USB OTG port: the kernel's `dual_role_usb` class, as Jancar's settings write it
      * (`GlobalPresenter.setADBEnable`: "host" / "device"), then the musb path of the AC8227L boards.
      */

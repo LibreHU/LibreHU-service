@@ -194,6 +194,9 @@ class LibreHuService : Service() {
         registerReceiver(usbReceiver, IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED))
         // MTP with a computer: off by default (taken out of the USB functions), else its server started at each connection
         org.librehu.service.atc.MtpMode.start(this)
+        // The ARM2 fast reverse hands the display over to Android (what hd2cam does): else hardware video is green.
+        org.librehu.service.atc.Arm2Handover
+            .check(this, { lastState.reverse }, ::log)
         org.librehu.service.power.Standby.get(this).apply {
             sleepTimer = { units -> unit?.setSleepTimer(units) }
             handshake = { unit?.wake() }
@@ -522,6 +525,9 @@ class LibreHuService : Service() {
                 if (suspended - suspendedSince > SUSPENDED_REINIT_MS) {
                     log("Screen on after ${(suspended - suspendedSince) / 1000} s suspended: sound processor set up again")
                     unit?.reinitAudio()
+                    // The ARM2 may run again for a fast reverse at waking: hand it over again if so.
+                    org.librehu.service.atc.Arm2Handover
+                        .check(context, { lastState.reverse }, ::log)
                 }
                 suspendedSince = suspended
                 // Ignition back on: the Clio 3 remote's phantom press at that moment is ignored

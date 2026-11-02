@@ -10,12 +10,19 @@ import java.io.File
  * - `get <addr>…` → `<addr>=<value>` (`AtcMetazone.readval`)
  * - `set <addr>=<value>…` → writes them, then `AtcMetazone.flush(true)`
  * - `arm2` → `new BackCar().updateArm2MdpSetting()`: the ARM2 fast reverse takes the metazone settings
+ * - `arm2ready` → `before=<status>`, then when the ARM2 has not handed the display over (status 2):
+ *   `ready=<BackCar.sendReadyToArm2()>` and `after=<status>` once it is 2 or after [ARM2_WAIT_MS] (what Jancar's
+ *   hd2cam does at start-up; without it hardware-decoded video stays green, docs/atc.md)
  * - `logo <file>` → `AtcLogo.writelogo(2, 0, size, data)` with the file's BGRA pixels (screen size, top row first)
  */
 object AtcHelper {
     private const val METAZONE = "com.autochips.metazone.AtcMetazone"
     private const val BACKCAR = "com.autochips.backcar.BackCar"
     private const val LOGO = "com.autochips.logo.AtcLogo"
+
+    /** ARM2 status once it has exited and handed the display over to Android. */
+    private const val ARM2_HANDED_OVER = 2
+    private const val ARM2_WAIT_MS = 20_000L
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -47,6 +54,29 @@ object AtcHelper {
                     println("ok")
                 }
 
+                "arm2ready" -> {
+                    val c = cls(BACKCAR)
+                    val backcar = c.getDeclaredConstructor().newInstance()
+                    val status = c.getMethod("getArm2Status", IntArray::class.java)
+
+                    fun read(): Int {
+                        val v = intArrayOf(-1)
+                        return if (status.invoke(backcar, v) == true) v[0] else -1
+                    }
+                    var now = read()
+                    println("before=$now")
+                    if (now != ARM2_HANDED_OVER) {
+                        println("ready=${c.getMethod("sendReadyToArm2").invoke(backcar)}")
+                        val deadline = System.currentTimeMillis() + ARM2_WAIT_MS
+                        while (now != ARM2_HANDED_OVER && System.currentTimeMillis() < deadline) {
+                            Thread.sleep(500)
+                            now = read()
+                        }
+                    }
+                    println("after=$now")
+                    runCatching { c.getMethod("release").invoke(backcar) }
+                }
+
                 "logo" -> {
                     val data = File(args[1]).readBytes()
                     val write =
@@ -61,7 +91,7 @@ object AtcHelper {
                 }
 
                 else -> {
-                    println("error=usage: get|set|arm2|logo")
+                    println("error=usage: get|set|arm2|arm2ready|logo")
                 }
             }
         } catch (e: Throwable) {
