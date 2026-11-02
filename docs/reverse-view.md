@@ -15,7 +15,7 @@ guidage comprises) était recomposée à chaque image de la caméra
 chacune la leur, au-dessus de la principale (`setZOrderMediaOverlay`) pour l'incrustation. Ni ivi-services ni l'appli DVR de Jancar (`com.jancar.hd2cam`) ne sont nécessaires pour la vue de recul. Le recul
 rapide de l'ARM2 (avant le démarrage d'Android) reste celui d'Autochips. hd2cam rendait aussi la main à l'ARM2 au
 démarrage ; sans cela, la vidéo décodée par le matériel est verte (Android Auto, lecteurs vidéo). Le service le fait
-lui-même depuis la versionCode 130 (root nécessaire), voir
+lui-même depuis la versionCode 134 (root nécessaire ; correctifs et essai de Reo Au In), voir
 [atc.md](atc.md#passage-de-main-de-larm2-au-démarrage-hd2cam-retiré--vidéo-matérielle-verte) : hd2cam peut être retiré.
 
 Permissions : **Caméra** (bouton « Autoriser la caméra ») et **affichage par-dessus les autres applis**.

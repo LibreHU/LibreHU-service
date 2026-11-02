@@ -17,6 +17,16 @@ Les classes Autochips sont dans `/system/framework/autochips.jar` (dans le `BOOT
 | `arm2ready` | `getArm2Status(int[])`, puis si ≠ 2 `sendReadyToArm2()` et attente du statut 2 : `before=`, `ready=`, `after=` |
 | `logo <fichier>` | `AtcLogo.writelogo(2, 0, taille, données)` |
 
+Si `su -c` est refusé avec « invalid uid/gid », le `su` est le vieux `su` d'Android
+([celui d'AOSP](https://android.googlesource.com/platform/system/extras/+/refs/heads/main/su/su.cpp) :
+`su [UID [COMMANDE…]]`, sans option `-c`), comme `/system/xbin/su` sur l'autoradio de Reo Au In : `RootShell` relance
+alors la commande en `su 0 sh -c "…"` et garde cette forme (correctif de Reo Au In, `3ae4fef`, versionCode 134).
+Hors de `RootShell`, `TouchBoost` lance `su` sans argument (commandes sur l'entrée standard), ce que les deux
+syntaxes acceptent ; la demande groupée de `RootRequestReceiver` reste en `su -c id`. Avec KernelSU Next (noyau
+LibreHU), le noyau ne détourne `/system/bin/su` que pour les applis autorisées dans son gestionnaire (liste
+Superuser, [`sucompat.c`](https://github.com/KernelSU-Next/KernelSU-Next/blob/legacy/kernel/feature/sucompat.c)) :
+sans autorisation, `su` est cherché dans le `PATH` et c'est celui de la ROM qui répond.
+
 ## Passage de main de l'ARM2 au démarrage (hd2cam retiré : vidéo matérielle verte)
 Rapport de Reo Au In (01/11/2026 ; UJC201, noyau LibreHU, ROM allégée : `com.jancar.services` retiré ; essais du
 31/10).
@@ -42,13 +52,18 @@ Constaté sur le même micrologiciel, seul hd2cam changeant :
 | même démarrage, un appel `sendReadyToArm2()` (root, `app_process`) | 0 → 2 | `y` | normale aussitôt, sans redémarrer |
 | appli de test au démarrage (`BOOT_COMPLETED`, UID système) | 0 → 2 en 1 s environ | `y` | normale |
 
-**Correctif (LibreHU service `cbd9d12`, versionCode 130 et plus)** : la commande `arm2ready` de l'assistant root lit
-`getArm2Status(int[])` ; si le statut n'est pas 2, elle envoie `sendReadyToArm2()` une fois puis attend le statut 2
-(20 s). `atc/Arm2Handover.kt` la lance **au démarrage du service et après une vraie veille** : rien si l'ARM2 a déjà
+**Correctif (LibreHU service versionCode 134 et plus : `cbd9d12`, puis `3ae4fef` de Reo Au In)** : la commande
+`arm2ready` de l'assistant root lit `getArm2Status(int[])` ; si le statut n'est pas 2, elle envoie `sendReadyToArm2()`
+une fois puis attend le statut 2 (20 s). `atc/Arm2Handover.kt` la lance **au démarrage du service et après une vraie veille** : rien si l'ARM2 a déjà
 rendu la main (hd2cam encore installé), **pas pendant une marche arrière** (l'ARM2 montre alors la caméra ; les caméras
 d'Android n'arrivent qu'après sa sortie), 3 essais à 10 s d'intervalle, chaque étape dans le journal du service
-(« ARM2: handed over to Android (status 0 -> 2) »). **hd2cam peut donc être retiré**, avec le root ; sans root,
-le garder. Une mise en veille libère probablement aussi l'ARM2 (`backcar_suspend` force son arrêt puis envoie
+(« ARM2: handed over to Android (status 0 -> 2) »). Les versionCode 130 à 133 ne rendaient pas la main : quel que
+soit le `su`, `NullPointerException` (`Looper.mQueue`) dans le constructeur de `BackCar`, qui crée un `Handler` alors
+qu'`app_process` ne prépare pas de `Looper`, et sur l'autoradio de Reo Au In, `su -c` refusé par le `su` de la ROM
+(voir [Assistant root](#assistant-root)). L'assistant appelle maintenant `Looper.prepare()` avant de créer `BackCar`
+(`arm2ready` et `arm2`). Correctifs et essai sur l'autoradio : Reo Au In (« ARM2: handed over to Android
+(status 0 -> 2): hardware video and cameras free », `runtime.arm2.finish=y`). **hd2cam peut donc être retiré**, avec
+le root ; sans root, le garder. Une mise en veille libère probablement aussi l'ARM2 (`backcar_suspend` force son arrêt puis envoie
 `APP_READY`) : non vérifié.
 
 ## Adresses metazone utilisées
