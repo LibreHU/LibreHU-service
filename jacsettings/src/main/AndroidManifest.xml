@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Replacement for the settings provider of Jancar's settings app (com.jancar.settings), so that it can be removed:
+  the stock SystemUI (com.jancar.libsystemui) reads content://com.jancar.settings.provider/settings and watches it,
+  and crashed in a loop without it (SecurityException on registerContentObserver). Direct boot aware: SystemUI starts
+  before the user is unlocked.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:directBootAware="true"
+        android:label="LibreHU Jancar settings">
+        <provider
+            android:name=".JancarSettingsProvider"
+            android:authorities="com.jancar.settings.provider"
+            android:directBootAware="true"
+            android:exported="true" />
+    </application>
+</manifest>

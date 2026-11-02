@@ -45,7 +45,8 @@ jobs:
           fi
 
       - name: Build APK (release, R8)
-        run: ./gradlew --no-daemon :app:assembleRelease
+        # jacsettings: the replacement for the settings provider of Jancar's settings app (its own small APK).
+        run: ./gradlew --no-daemon :app:assembleRelease :jacsettings:assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -83,6 +84,10 @@ jobs:
           TAG="latest-$SLUG"
           OUT="$APP-$SLUG.apk"
           cp "$(ls app/build/outputs/apk/release/*.apk | head -n1)" "$OUT"
+          # The provider replacing Jancar's settings app, as a file of the same release (installed by the zip
+          # jancar-settings-provider of LibreHU-flashablesZips; LibreHU Apps reads release.txt, which names $OUT only).
+          JAC="LibreHU-JacSettings-$SLUG.apk"
+          cp "$(ls jacsettings/build/outputs/apk/release/*.apk | head -n1)" "$JAC"
           CODE=$(git rev-list --count HEAD)
           NAME="$(git describe --tags --always --exclude 'latest-*' --exclude 'build-*')-$BRANCH"
           # SHA-256 of the APK: LibreHU Apps checks the download against it.
@@ -99,7 +104,7 @@ jobs:
           # The same notes with the APK name and size, as a file of the release: LibreHU Apps reads it as a download,
           # which does not count against the GitHub API limit (60 requests per hour without an account).
           { printf 'apk=%s\nsize=%s\ndate=%s\n' "$OUT" "$(stat -c %s "$OUT")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; cat notes.txt; } > release.txt
-          gh release upload "$TAG" "$OUT" release.txt --clobber
+          gh release upload "$TAG" "$OUT" release.txt "$JAC" --clobber
           # Numbered copy of this build, so that LibreHU OTA can install an older version; the last 15 per branch kept.
           BTAG="build-$SLUG-$CODE"
           if ! gh release view "$BTAG" >/dev/null 2>&1; then

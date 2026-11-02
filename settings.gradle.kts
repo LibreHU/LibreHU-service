@@ -19,4 +19,8 @@ dependencyResolutionManagement {
 rootProject.name = "LibreHU-service"
 include(":core")
 // The Android module needs the Android SDK; `-PcoreOnly` builds and tests the pure Kotlin core without it.
-if (!providers.gradleProperty("coreOnly").isPresent) include(":app")
+if (!providers.gradleProperty("coreOnly").isPresent) {
+    include(":app")
+    // Replacement for the settings provider of Jancar's settings app (com.jancar.settings), a small APK of its own.
+    include(":jacsettings")
+}
