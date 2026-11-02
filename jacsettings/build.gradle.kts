@@ -41,9 +41,12 @@ android {
 
     buildTypes {
         getByName("debug") { signingConfig = signingConfigs.getByName("librehu") }
+        // R8: AGP 9 adds the Kotlin standard library to every module (2.3 MB of dex for a Java provider); the
+        // provider itself is kept through the manifest.
         getByName("release") {
             signingConfig = signingConfigs.getByName("librehu")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }
 
