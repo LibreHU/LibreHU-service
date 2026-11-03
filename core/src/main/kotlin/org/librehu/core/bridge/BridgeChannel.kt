@@ -161,8 +161,9 @@ class BridgeException(
 ) : IOException(message)
 
 /**
- * The encrypted channel once the handshake is done: [send] / [receive] JSON objects. Thread-safe for one sender and
- * one receiver at a time.
+ * The encrypted channel once the handshake is done: [send] / [receive] JSON objects, and binary frames ([sendBinary],
+ * [receiveAny]: the head unit's screen) whose clear text starts with a 0 byte, where a JSON one starts with `{`.
+ * Thread-safe for one sender and one receiver at a time.
  */
 class BridgeChannel private constructor(
     private val input: DataInputStream,
@@ -182,8 +183,16 @@ class BridgeChannel private constructor(
     private var receiveCounter = 0L
     private val sendLock = Any()
 
-    fun send(message: JsonObject) {
-        val plain = JSON.encodeToString(JsonObject.serializer(), message).toByteArray()
+    fun send(message: JsonObject) = seal(JSON.encodeToString(JsonObject.serializer(), message).toByteArray())
+
+    /** A binary frame: [data] after a 0 byte. */
+    fun sendBinary(data: ByteArray) {
+        val plain = ByteArray(data.size + 1)
+        System.arraycopy(data, 0, plain, 1, data.size)
+        seal(plain)
+    }
+
+    private fun seal(plain: ByteArray) {
         synchronized(sendLock) {
             val c = Cipher.getInstance("AES/GCM/NoPadding")
             c.init(Cipher.ENCRYPT_MODE, sendKey, GCMParameterSpec(128, nonce(sendTag, sendCounter++)))
@@ -191,7 +200,11 @@ class BridgeChannel private constructor(
         }
     }
 
-    fun receive(): JsonObject {
+    /** The next JSON object; a binary frame here is an error. */
+    fun receive(): JsonObject = receiveAny() as? JsonObject ?: throw BridgeException("not a JSON object")
+
+    /** The next frame: a [JsonObject], or the [ByteArray] of a binary frame (without its 0 byte). */
+    fun receiveAny(): Any {
         val frame = readFrame(input)
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.DECRYPT_MODE, receiveKey, GCMParameterSpec(128, nonce(receiveTag, receiveCounter++)))
@@ -201,7 +214,7 @@ class BridgeChannel private constructor(
             } catch (_: Exception) {
                 throw BridgeException("frame not authentic")
             }
-        return parse(plain)
+        return if (plain.isNotEmpty() && plain[0] == BINARY) plain.copyOfRange(1, plain.size) else parse(plain)
     }
 
     private fun nonce(
@@ -216,6 +229,7 @@ class BridgeChannel private constructor(
 
     companion object {
         const val MAX_FRAME = 4 * 1024 * 1024
+        private const val BINARY: Byte = 0
         private const val TAG_CLIENT = 0x50484F4E // "PHON"
         private const val TAG_SERVER = 0x554E4954 // "UNIT"
         private val JSON = Json { ignoreUnknownKeys = true }
@@ -224,8 +238,11 @@ class BridgeChannel private constructor(
             out: DataOutputStream,
             data: ByteArray,
         ) {
-            out.writeInt(data.size)
-            out.write(data)
+            // Length and data in one write: one TCP segment rather than five with TCP_NODELAY.
+            val b = ByteArray(4 + data.size)
+            for (i in 0 until 4) b[i] = (data.size ushr (24 - 8 * i)).toByte()
+            System.arraycopy(data, 0, b, 4, data.size)
+            out.write(b)
             out.flush()
         }
 

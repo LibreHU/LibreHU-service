@@ -30,6 +30,7 @@ import org.librehu.service.car.CarName
 import org.librehu.service.obd.BatteryWatch
 import org.librehu.service.obd.ObdManager
 import org.librehu.service.root.RootShell
+import org.librehu.service.screen.ScreenShare
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
 import java.io.File
@@ -71,7 +72,9 @@ data class BridgeRequest(
  * `subscribe` (topics: values), `key` (TouchAction name), `forget`; bridge level 2 ([BridgeTools]): `apps`,
  * `launch` (pkg), `reboot` (mode), `system`, `gps`, `gps.watch` (on), `fs.roots`, `fs.list` (path), `fs.read` (path,
  * offset, length), `fs.write` (path, offset, data), `fs.delete` / `fs.mkdir` (path), `fs.rename` (from, to), `logs`
- * (kind), `settings.list` (ns), `settings.put` (ns, key, value), `settings.delete` (ns, key).
+ * (kind), `settings.list` (ns), `settings.put` (ns, key, value), `settings.delete` (ns, key); the shared screen
+ * ([ScreenShare], Wi-Fi only): `screen.start` (max, bitrate), `screen.stop`, and without answer `screen.touch` (a, f),
+ * `screen.key` (code), `screen.sync`; video in binary frames, event `screen` when it stops.
  */
 class BridgeServer private constructor(
     context: Context,
@@ -275,6 +278,7 @@ class BridgeServer private constructor(
         close: () -> Unit,
     ) {
         var device: BridgeDevice? = null
+        var channel: BridgeChannel? = null
         var events: Thread? = null
         val gpsWatch = booleanArrayOf(false)
         // A connection that does not finish the key exchange and pairing in time is closed: it would keep its place.
@@ -294,6 +298,7 @@ class BridgeServer private constructor(
             }
         try {
             val ch = BridgeChannel.accept(input, output, identity)
+            channel = ch
             device = authenticate(ch, link)
             handshake.interrupt()
             _connected.value = _connected.value + device.name
@@ -303,6 +308,11 @@ class BridgeServer private constructor(
                 val id = req["id"]
                 val method = (req["m"] as? JsonPrimitive)?.contentOrNull ?: continue
                 val p = req["p"] as? JsonObject ?: JsonObject(emptyMap())
+                // Touches and keys of the shared screen: no answer, as many as the finger moves.
+                if (method in SCREEN_INPUT) {
+                    runCatching { screenInput(ch, method, p) }
+                    continue
+                }
                 val reply =
                     try {
                         if (method == "subscribe" && events == null) {
@@ -315,7 +325,15 @@ class BridgeServer private constructor(
                         }
                         buildJsonObject {
                             id?.let { put("id", it) }
-                            put("r", if (method == "gps.watch") watchGps(gpsWatch, p) else handle(method, p))
+                            put(
+                                "r",
+                                when (method) {
+                                    "gps.watch" -> watchGps(gpsWatch, p)
+                                    "screen.start" -> startScreen(ch, link, device.name, p)
+                                    "screen.stop" -> JsonPrimitive(true).also { ScreenShare.get(app).stop(ch) }
+                                    else -> handle(method, p)
+                                },
+                            )
                         }
                     } catch (e: Exception) {
                         buildJsonObject {
@@ -329,6 +347,7 @@ class BridgeServer private constructor(
             Log.i(TAG, "$link: ${e.message ?: e.javaClass.simpleName}")
         } finally {
             events?.interrupt()
+            channel?.let { ScreenShare.get(app).stop(it) }
             if (gpsWatch[0]) TimeController.get(app).watch(false)
             device?.let { d -> _connected.value = _connected.value - d.name }
             runCatching { close() }
@@ -508,6 +527,61 @@ class BridgeServer private constructor(
         return JsonPrimitive(on)
     }
 
+    /**
+     * The head unit's screen on this phone ([ScreenShare]), over Wi-Fi only (Bluetooth carries a few hundred kbit/s):
+     * `max` (largest side of the video, 1280 by default), `bitrate` (bit/s, 4 Mbit/s by default).
+     */
+    private fun startScreen(
+        ch: BridgeChannel,
+        link: String,
+        phone: String,
+        p: JsonObject,
+    ): JsonElement {
+        if (link != "wifi") throw BridgeException(app.getString(org.librehu.service.R.string.screen_wifi_only))
+        val max = (p["max"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()?.coerceIn(320, 1920) ?: 1280
+        val bitrate = (p["bitrate"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()?.coerceIn(500_000, 12_000_000) ?: 4_000_000
+        return json(ScreenShare.get(app).start(ch, phone, max, bitrate))
+    }
+
+    /**
+     * `screen.touch` (`a`: `d` down, `m` move, `u` up, `c` cancelled; `f`: id, x, y of each finger, x and y from 0 to
+     * 1 of the screen), `screen.key` (`code`: Android key code among [SCREEN_KEYS]), `screen.sync` (a key frame now,
+     * after a decoder reset). Numbers only reach the helper: no text of the phone goes into its lines.
+     */
+    private fun screenInput(
+        ch: BridgeChannel,
+        method: String,
+        p: JsonObject,
+    ) {
+        val share = ScreenShare.get(app)
+        when (method) {
+            "screen.touch" -> {
+                val a = (p["a"] as? JsonPrimitive)?.contentOrNull
+                if (a == "c") {
+                    share.input(ch, "c")
+                    return
+                }
+                if (a != "d" && a != "m" && a != "u") return
+                val nums = (p["f"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull } ?: return
+                if (nums.isEmpty() || nums.size % 3 != 0 || nums.size > 30) return
+                val line =
+                    StringBuilder(a).apply {
+                        for (k in nums.indices step 3) {
+                            append(' ').append(nums[k].toInt())
+                            append(' ').append("%.5f".format(java.util.Locale.ROOT, nums[k + 1].coerceIn(0.0, 1.0)))
+                            append(' ').append("%.5f".format(java.util.Locale.ROOT, nums[k + 2].coerceIn(0.0, 1.0)))
+                        }
+                    }
+                share.input(ch, line.toString())
+            }
+            "screen.key" -> {
+                val code = (p["code"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull() ?: return
+                if (code in SCREEN_KEYS) share.input(ch, "k $code")
+            }
+            "screen.sync" -> share.input(ch, "s")
+        }
+    }
+
     /** Live values: OBD, car battery, head unit name, system (temperatures, CPU, memory), GPS (fix, satellites). */
     private fun values(): JsonObject {
         val obd = ObdManager.get(app).state.value
@@ -599,7 +673,13 @@ class BridgeServer private constructor(
 
         /** Level of the bridge requests (1: pages and values; 2: [BridgeTools]). */
         const val BRIDGE_LEVEL = 2
-        private val FEATURES = listOf("pages", "values", "key", "apps", "reboot", "system", "gps", "files", "logs", "settings")
+        private val FEATURES = listOf("pages", "values", "key", "apps", "reboot", "system", "gps", "files", "logs", "settings", "screen")
+
+        /** Requests of the shared screen that get no answer. */
+        private val SCREEN_INPUT = setOf("screen.touch", "screen.key", "screen.sync")
+
+        /** Keys a phone may press on the shared screen: Home, Back, recent apps, menu, volume and media keys. */
+        private val SCREEN_KEYS = setOf(3, 4, 187, 82, 24, 25, 164, 85, 87, 88)
 
         /** Key exchange and pairing, a Bluetooth confirmation on the head unit included. */
         private const val HANDSHAKE_MS = (CONFIRM_S + 20) * 1000L

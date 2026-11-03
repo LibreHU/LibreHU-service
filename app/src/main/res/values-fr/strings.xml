@@ -1214,6 +1214,15 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="bridge_request_text">Téléphone appairé en Bluetooth : autoriser l\'accès aux réglages de l\'autoradio ?</string>
     <string name="bridge_root_files">Tout le système de fichiers pour les téléphones (root)</string>
     <string name="bridge_root_files_hint">Désactivé : l\'appli téléphone ne voit que le stockage interne et les clés USB / cartes SD. Activé : tous les dossiers, lus et écrits en root (fichiers système compris). Modifiable ici uniquement, jamais depuis un téléphone.</string>
+    <string name="screen_channel">Partage de l\'écran</string>
+    <string name="screen_shared">Écran partagé avec %1$s</string>
+    <string name="screen_shared_text">Le téléphone voit l\'écran et peut le toucher.</string>
+    <string name="screen_stop">Arrêter</string>
+    <string name="screen_taken">Repris par %1$s</string>
+    <string name="screen_no_root">Le partage de l\'écran de l\'autoradio demande le root</string>
+    <string name="screen_failed">Partage de l\'écran arrêté</string>
+    <string name="screen_stopped_here">Arrêté sur l\'autoradio</string>
+    <string name="screen_wifi_only">Le partage de l\'écran ne passe que par le Wi-Fi</string>
     <string name="bp_osd_hint">Les touches de volume ouvrent la liste des volumes</string>
     <string name="bp_backlight">Rétroéclairage des boutons selon les feux</string>
     <string name="bp_engine">Son moteur selon le régime</string>

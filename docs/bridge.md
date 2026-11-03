@@ -33,7 +33,8 @@ QR code : `librehu://pair?v=1&fp=<empreinte>&t=<jeton>&n=<nom>&ip=<IPv4,…>&p=4
 ## API (JSON chiffré)
 
 Requêtes `{"id":n,"m":"<méthode>","p":{…}}`, réponses `{"id":n,"r":…}` ou `{"id":n,"e":"<erreur>"}`, événements
-`{"ev":"values","d":…}` (1 par seconde après `subscribe`).
+`{"ev":"values","d":…}` (1 par seconde après `subscribe`). Trames binaires (texte clair qui commence par l'octet 0,
+où un JSON commence par `{`) : la vidéo de l'écran partagé (plus bas).
 
 | Méthode | Paramètres | Réponse |
 |---|---|---|
@@ -69,6 +70,38 @@ Requêtes `{"id":n,"m":"<méthode>","p":{…}}`, réponses `{"id":n,"r":…}` ou
 | `settings.delete` | `ns`, `key` | root |
 
 L'événement `values` contient aussi `system` et `gps`.
+
+## Écran de l'autoradio sur le téléphone (`screen/`)
+
+Pour le passager : l'appli du téléphone affiche l'écran de l'autoradio et le touche (plusieurs doigts ; touches
+Retour, Accueil, applis récentes) ; l'écran de l'autoradio reste tel quel pour le conducteur. **Root** et **Wi-Fi**
+seulement (le Bluetooth ne porte que quelques centaines de kbit/s).
+
+- `screen/ScreenHelper.kt`, lancé en root par `app_process` (comme `atc/AtcHelper`) : un écran de SurfaceFlinger
+  (`SurfaceControl.createDisplay`) montre les calques de l'écran principal dans la surface d'entrée de l'encodeur
+  **H.264** matériel (MediaCodec : 4 Mbit/s par défaut, 30 images/s au plus, image clé toutes les 10 s, image répétée
+  après 100 ms d'écran fixe) ; doigts et touches rejoués par `InputManager.injectInputEvent`. Même méthode que
+  [scrcpy](https://github.com/Genymobile/scrcpy) (Apache 2.0) sur Android 9.
+- `screen/ScreenShare.kt` : chaque paquet part dans une **trame binaire** du canal chiffré (mêmes clés et compteurs ;
+  texte clair = octet 0, puis le type `C` SPS / PPS, `K` image clé ou `P` autre image, le pts sur 8 octets en µs et le
+  H.264 en Annex B). Huit paquets en attente au plus : en retard (Wi-Fi lent), les images sont sautées jusqu'à la
+  prochaine image clé, demandée aussitôt.
+- Un téléphone à la fois : un autre le reprend (le premier reçoit l'événement `screen` avec la raison). Pendant le
+  partage, une notification sur l'autoradio (« Écran partagé avec … ») a un bouton **Arrêter**.
+- Seuls des nombres vont du téléphone à l'aide root (doigts, codes de touche d'une liste fixe) : aucun texte du
+  téléphone n'y entre.
+
+| Méthode | Paramètres | Réponse |
+|---|---|---|
+| `screen.start` | `max` (plus grand côté de la vidéo, 1280 par défaut), `bitrate` (bit/s, 4 000 000 par défaut) | `w`, `h` (vidéo), `sw`, `sh` (écran) |
+| `screen.stop` | — | — |
+| `screen.touch` (sans réponse) | `a` : `d` posé, `m` déplacé, `u` levé, `c` annulé ; `f` : id, x, y de chaque doigt (x et y de 0 à 1) | — |
+| `screen.key` (sans réponse) | `code` : Accueil 3, Retour 4, applis récentes 187, menu 82, volume 24 / 25 / 164, médias 85 / 87 / 88 | — |
+| `screen.sync` (sans réponse) | — | une image clé tout de suite (décodeur relancé) |
+
+Événement `{"ev":"screen","d":{"on":false,"e":"<raison>"}}` quand le partage s'arrête sans que le téléphone l'ait
+demandé (repris par un autre téléphone, arrêté sur l'autoradio, encodeur en erreur). `hello` liste `screen` dans
+`features`.
 
 **Fichiers** : sans réglage, le téléphone ne voit que le stockage interne et les volumes amovibles (chemins absolus,
 `..` refusé, liens résolus avant contrôle). L'interrupteur **Tout le système de fichiers pour les téléphones (root)**

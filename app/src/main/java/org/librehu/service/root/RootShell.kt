@@ -166,6 +166,22 @@ object RootShell {
         return run("cat > '$path'", stdin = text.toByteArray()) != null
     }
 
+    /**
+     * Long-running root process (a helper run by app_process): the caller keeps its stdin, stdout and stderr, binary;
+     * null when root is refused.
+     */
+    fun spawn(command: String): Process? =
+        try {
+            if (!isAvailable()) {
+                null
+            } else {
+                ProcessBuilder(*(if (uidStyleSu) arrayOf("su", "0", "sh", "-c", command) else arrayOf("su", "-c", command))).start()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "spawn: ${e.message}")
+            null
+        }
+
     /** Long-running root reader of a binary file (`/dev/input/eventN`); null when root is refused. */
     fun stream(path: String): Pair<Process, InputStream>? =
         try {

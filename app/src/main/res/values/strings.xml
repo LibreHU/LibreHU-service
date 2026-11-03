@@ -1214,6 +1214,15 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="bridge_request_text">Phone paired in Bluetooth: allow access to the head unit\'s settings?</string>
     <string name="bridge_root_files">Whole file system for the phones (root)</string>
     <string name="bridge_root_files_hint">Off: the phone app only sees the internal storage and the USB keys / SD cards. On: every folder, read and written as root (system files included). Only changeable here, never from a phone.</string>
+    <string name="screen_channel">Screen sharing</string>
+    <string name="screen_shared">Screen shared with %1$s</string>
+    <string name="screen_shared_text">The phone sees the screen and can touch it.</string>
+    <string name="screen_stop">Stop</string>
+    <string name="screen_taken">Taken over by %1$s</string>
+    <string name="screen_no_root">Sharing the head unit\'s screen needs root</string>
+    <string name="screen_failed">Screen sharing stopped</string>
+    <string name="screen_stopped_here">Stopped on the head unit</string>
+    <string name="screen_wifi_only">Screen sharing works over Wi-Fi only</string>
     <string name="bp_osd_hint">The volume keys open the list of volumes</string>
     <string name="bp_backlight">Button backlight following the headlights</string>
     <string name="bp_engine">Engine sound following the RPM</string>

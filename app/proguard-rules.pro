@@ -12,3 +12,6 @@
 -keep class org.librehu.service.atc.AtcHelper {
     public static void main(java.lang.String[]);
 }
+-keep class org.librehu.service.screen.ScreenHelper {
+    public static void main(java.lang.String[]);
+}

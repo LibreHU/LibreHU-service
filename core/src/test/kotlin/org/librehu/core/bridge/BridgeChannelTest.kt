@@ -45,6 +45,28 @@ class BridgeChannelTest {
     }
 
     @Test
+    fun binaryFramesBetweenJson() {
+        val (client, server) = pair(BridgeCrypto.fingerprint(static.public))
+        val video = ByteArray(200_000) { (it * 31).toByte() }
+        server.send(buildJsonObject { put("ev", "screen") })
+        server.sendBinary(video)
+        server.sendBinary(ByteArray(0))
+        server.send(buildJsonObject { put("id", 7) })
+        assertEquals(JsonPrimitive("screen"), (client.receiveAny() as kotlinx.serialization.json.JsonObject)["ev"])
+        assertTrue((client.receiveAny() as ByteArray).contentEquals(video))
+        assertEquals(0, (client.receiveAny() as ByteArray).size)
+        assertEquals(JsonPrimitive(7), client.receive()["id"])
+        // A binary frame where a JSON object is expected is an error, never parsed as JSON.
+        server.sendBinary(byteArrayOf('{'.code.toByte(), '}'.code.toByte()))
+        try {
+            client.receive()
+            fail("binary frame read as JSON")
+        } catch (e: BridgeException) {
+            assertTrue(e.message!!.contains("JSON"))
+        }
+    }
+
+    @Test
     fun wrongUnitRefused() {
         val other = BridgeCrypto.fingerprint(BridgeCrypto.newKeyPair().public)
         try {

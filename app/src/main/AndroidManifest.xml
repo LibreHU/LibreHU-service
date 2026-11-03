@@ -227,6 +227,11 @@
             android:name=".bridge.BridgeAnswerReceiver"
             android:exported="false" />
 
+        <!-- Stop of the screen shared with a phone (screen/ScreenShare). -->
+        <receiver
+            android:name=".screen.ScreenStopReceiver"
+            android:exported="false" />
+
         <!-- Front panel LEDs blinking on notifications (car/FrontLed). -->
         <service
             android:name=".car.NotificationBlinkService"
