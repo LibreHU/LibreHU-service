@@ -801,6 +801,7 @@ class LibreHuService : Service() {
                 val v = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1)
                 if (v < 0 || v == lastBrightness) return
                 lastBrightness = v
+                display.onBrightnessChanged(v)
                 LevelOverlay.brightness(this@LibreHuService).show(v, 255)
             }
         }

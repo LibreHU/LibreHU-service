@@ -160,9 +160,41 @@ class DisplayController private constructor(
             return
         }
         _brightnessAllowed.value = true
+        val v = value.coerceIn(MIN_BRIGHTNESS, 255)
         val r = app.contentResolver
+        if (Settings.System.getInt(r, Settings.System.SCREEN_BRIGHTNESS, -1) == v) return
+        android.util.Log.i(TAG, "brightness $v for the headlights ${if (_headlights.value == true) "on" else "off"}")
+        ownWrite = v
         Settings.System.putInt(r, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
-        Settings.System.putInt(r, Settings.System.SCREEN_BRIGHTNESS, value.coerceIn(MIN_BRIGHTNESS, 255))
+        Settings.System.putInt(r, Settings.System.SCREEN_BRIGHTNESS, v)
+    }
+
+    /** Last brightness written for the headlights, to tell it from a change made by the user. */
+    @Volatile
+    private var ownWrite = -1
+
+    /**
+     * Android's brightness changed (brightness panel, Android settings, touch keys, launcher, phone app). With the
+     * brightness following the headlights, the user's value becomes the day or night one, whichever is in use: before,
+     * 100 % set by hand came back as the saved day / night value after a restart (the service applies it when the MCU
+     * reports the headlights), as seen in a LibreHU Helper report (02/11: Android read 255, the service wrote over it).
+     */
+    fun onBrightnessChanged(value: Int) {
+        if (value == ownWrite) {
+            ownWrite = -1
+            return
+        }
+        val s = _settings.value
+        val night = _headlights.value ?: return
+        if (!s.dimWithHeadlights || value < 0) return
+        val updated = if (night) s.copy(nightBrightness = value) else s.copy(dayBrightness = value)
+        if (updated == s) return
+        prefs
+            .edit()
+            .putInt("day", updated.dayBrightness)
+            .putInt("night", updated.nightBrightness)
+            .apply()
+        _settings.value = updated
     }
 
     private fun load(): DisplaySettings {
