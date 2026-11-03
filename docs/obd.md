@@ -170,3 +170,23 @@ connexions qui tombent. Maintenant chaque session vérifie qu'elle est celle en 
 liaison (une attente s'arrête tout de suite) et la lecture USB s'arrête à l'interruption ; une session arrêtée
 n'affiche plus d'erreur.
 
+
+### Adaptateur USB partagé avec le TPMS du launcher (rapport Helper du 02/11/2026)
+
+Le même message revenait toutes les 15 s même avec une seule session : le TPMS de LibreHU Launcher ouvrait le
+premier adaptateur USB-série trouvé, donc la FT232R de l'ELM327, et le service la lui reprenait. usb-serial-for-android
+réclame les interfaces **de force** (`UsbDeviceConnection.claimInterface(…, true)`), ce qui les retire à la connexion
+de l'autre appli : chacune échouait à son tour (`LibreHU-TPMS: TPMS read: Queueing USB request failed`, puis
+`LibreHU-OBD: Error writing 5 bytes … rc=-1`), et le noyau notait `usbfs: process … (obd) did not claim interface 0
+before use`.
+
+Maintenant (`obd/ObdLinks.kt`, `UsbObdLink.open`) :
+- chaque interface est d'abord réclamée **sans force** ; un refus veut dire qu'une autre appli tient l'adaptateur (aucun
+  pilote du noyau ne prend ces adaptateurs sur cette ROM : `CONFIG_USB_SERIAL` est absent), le service le lui laisse
+  (« … used by another app (TPMS of the launcher?) ») et passe au suivant, ou réessaie plus tard ;
+- en choix automatique de l'adaptateur, celui qui ne répond pas `ELM…` à `ATZ` (récepteur TPMS, GPS…) est mis de côté
+  jusqu'à son débranchement et l'adaptateur suivant est essayé ; quand tous sont de côté, ils sont réessayés chacun
+  leur tour.
+
+Le launcher fait de même de son côté (TPMS : plus d'activation automatique, réclamation sans force, adaptateur
+abandonné s'il n'envoie aucune trame TPMS).

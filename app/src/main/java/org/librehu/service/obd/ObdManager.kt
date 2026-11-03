@@ -127,6 +127,12 @@ class ObdManager private constructor(
      * ("Error writing 5 bytes … rc=-1", Bluetooth failing too) after a reconnect or a change of the settings.
      */
     private val active: Boolean get() = running && thread === Thread.currentThread()
+
+    /**
+     * USB adapters that did not answer as an ELM327 (a TPMS receiver, a GPS…), skipped by the automatic choice of the
+     * adapter until they are unplugged; forgotten when every adapter is in it (tried again in turn).
+     */
+    private val notElm = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private var lastPublish = 0L
 
     private val usbReceiver =
@@ -293,17 +299,24 @@ class ObdManager private constructor(
         val s = _settings.value
         return when (s.transport) {
             ObdTransport.BLUETOOTH -> BluetoothObdLink.open(s.bluetoothAddress)
-            ObdTransport.USB -> UsbObdLink.open(usb, s.usbDevice, s.usbBaud)
+            ObdTransport.USB -> {
+                // Unplugged adapters leave the list (their device name is not used again before a while).
+                notElm.retainAll(usb.deviceList.keys)
+                UsbObdLink.open(usb, s.usbDevice, s.usbBaud, notElm)
+            }
         }
     }
 
     private fun session(link: ObdLink) {
         for (cmd in Elm327.INIT) {
             val answer = link.ask(cmd, if (cmd == "ATZ") 3_000 else 1_500)
-            if (cmd == "ATZ" && !answer.contains("ELM", ignoreCase = true) &&
-                answer.isBlank()
-            ) {
-                throw IOException("No answer from the adapter")
+            if (cmd == "ATZ" && !answer.contains("ELM", ignoreCase = true)) {
+                // Adapter chosen automatically that is not an ELM327: the next one is tried at the next attempt.
+                if (link is UsbObdLink && _settings.value.usbDevice.isEmpty()) {
+                    notElm += link.deviceName
+                    throw IOException("${link.description}: not an ELM327 adapter (ATZ: ${answer.trim().take(24).ifEmpty { "silence" }})")
+                }
+                if (answer.isBlank()) throw IOException("No answer from the adapter")
             }
         }
         // The car's own adapter commands (protocol…), before the protocol search.

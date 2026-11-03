@@ -105,6 +105,8 @@ internal class BluetoothObdLink private constructor(
 internal class UsbObdLink private constructor(
     private val port: UsbSerialPort,
     override val description: String,
+    /** `UsbDevice.getDeviceName()` of the adapter. */
+    val deviceName: String,
 ) : ObdLink {
     override fun send(command: String) {
         port.write((command + "\r").toByteArray(Charsets.US_ASCII), WRITE_TIMEOUT_MS)
@@ -135,25 +137,58 @@ internal class UsbObdLink private constructor(
     companion object {
         private const val WRITE_TIMEOUT_MS = 500
 
-        /** [deviceName] = `UsbDevice.getDeviceName()` chosen in the settings, empty = first adapter found. */
+        /**
+         * [deviceName] = `UsbDevice.getDeviceName()` chosen in the settings, empty = the first adapter found that is not
+         * in [skip] (adapters that did not answer as an ELM327). An adapter another app holds (the TPMS receiver of
+         * LibreHU Launcher…) is left to it: usb-serial-for-android claims the interfaces by force, which takes them from
+         * the other app's connection and makes both fail in a loop ("Error writing 5 bytes … rc=-1"). So each interface
+         * is first claimed without force on our connection; no kernel driver binds these adapters on this ROM
+         * (CONFIG_USB_SERIAL off), so a refusal means another app has it.
+         */
         fun open(
             usb: UsbManager,
             deviceName: String,
             baud: Int,
+            skip: Set<String> = emptySet(),
         ): UsbObdLink {
             val drivers = UsbSerialProber.getDefaultProber().findAllDrivers(usb)
-            val driver =
-                drivers.firstOrNull { deviceName.isEmpty() || it.device.deviceName == deviceName }
-                    ?: throw IOException("USB adapter not plugged in")
-            if (!usb.hasPermission(driver.device)) throw UsbPermissionNeeded(driver.device.deviceName)
-            val connection = usb.openDevice(driver.device) ?: throw IOException("USB adapter refused")
-            val port = driver.ports.first()
-            port.open(connection)
-            port.setParameters(baud, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
-            return UsbObdLink(port, "USB ${driver.device.productName ?: driver.device.deviceName} @ $baud")
+            val candidates =
+                if (deviceName.isNotEmpty()) {
+                    drivers.filter { it.device.deviceName == deviceName }
+                } else {
+                    drivers.filter { it.device.deviceName !in skip }.ifEmpty { drivers }
+                }
+            if (candidates.isEmpty()) throw IOException("USB adapter not plugged in")
+            var busy: String? = null
+            for (driver in candidates) {
+                val device = driver.device
+                if (!usb.hasPermission(device)) throw UsbPermissionNeeded(device.deviceName)
+                val connection = usb.openDevice(device) ?: continue
+                val free = (0 until device.interfaceCount).all { connection.claimInterface(device.getInterface(it), false) }
+                if (!free) {
+                    connection.close()
+                    busy = device.productName ?: device.deviceName
+                    continue
+                }
+                try {
+                    val port = driver.ports.first()
+                    port.open(connection)
+                    port.setParameters(baud, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                    return UsbObdLink(port, "USB ${device.productName ?: device.deviceName} @ $baud", device.deviceName)
+                } catch (e: IOException) {
+                    connection.close()
+                    throw e
+                }
+            }
+            throw UsbAdapterBusy(busy ?: "USB adapter")
         }
     }
 }
+
+/** The adapter is used by another app (the TPMS of LibreHU Launcher, a terminal…): not taken from it. */
+class UsbAdapterBusy(
+    adapter: String,
+) : IOException("$adapter used by another app (TPMS of the launcher?)")
 
 class UsbPermissionNeeded(
     val deviceName: String,
