@@ -114,3 +114,15 @@ La reconnexion automatique n'essaie plus un autre téléphone tant qu'une connex
 téléphone connecté en musique seule comme connecté, et ne déconnecte les autres téléphones que sur un choix explicite
 (« Connecter »). Si `com.jancar.btservice` est encore activé, il gère lui aussi le Bluetooth : le désactiver avec
 ivi-services (`adb shell pm disable-user --user 0 com.jancar.btservice`), sinon le module reste passif.
+
+## Appels sans son ni micro : ce que journalise le service
+
+Le son d'un appel ne passe pas par le service : quand le téléphone ouvre la liaison audio (SCO), le client mains libres
+d'Android 9 (`HeadsetClientStateMachine`) envoie lui-même `hfp_set_sampling_rate`, `hfp_enable=true` et
+`hfp_volume` (tiré du volume « appel vocal ») à la couche audio, qui relie la liaison Bluetooth au haut-parleur et au
+micro. Android Auto passe aussi par ce chemin : ses appels utilisent le mains libres Bluetooth, pas l'USB.
+
+Pour les rapports de LibreHU Helper, le service écrit une ligne `LibreHU-BT` à chaque changement de cette liaison :
+`Call audio connected|connecting|disconnected: mode …, voice call volume …/…, microphone muted …, music active …`.
+Appel test : appeler ~30 s, puis faire le rapport tout de suite (le journal tourne vite) ; pendant l'appel, Avancé →
+Diag audio montre le niveau de sortie d'Android, le mode audio et l'état de la puce.

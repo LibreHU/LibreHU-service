@@ -87,10 +87,18 @@ class CanWheelKeys private constructor(
 
     /** Only with a profile that has the steering wheel key in `0x11` (Hiworld LNP002 and alike). */
     fun onFrame(f: CanboxFrame) {
-        val m = CanMonitor.vehicle.messages[HiworldWheelKeys.CMD] ?: return
-        if (m.signals.none { it.name == "wheel_key" }) return
+        val m = CanMonitor.vehicle.messages[HiworldWheelKeys.CMD]
+        if (m == null || m.signals.none { it.name == "wheel_key" }) {
+            if (f.cmd == HiworldWheelKeys.CMD && !profileWarned) {
+                profileWarned = true
+                android.util.Log.w(TAG, "key frames 0x11 received, but the car profile ${CanMonitor.vehicle.id} has no steering wheel key: ignored")
+            }
+            return
+        }
         detector.onFrame(f)
     }
+
+    private var profileWarned = false
 
     private val _claims = MutableStateFlow(loadClaims())
 
@@ -135,9 +143,16 @@ class CanWheelKeys private constructor(
         val now = SystemClock.elapsedRealtime()
         _lastKey.value = code
         _seen.value = _seen.value + code
+        // One line per press in the log (LibreHU Helper reports): what the box sent and what became of it.
+        val name = HiworldWheelKeys.name(code) ?: "?"
+        when {
+            !_enabled.value -> android.util.Log.i(TAG, "wheel key $code ($name): steering wheel keys off in the CAN tab")
+            claimed(code) -> android.util.Log.i(TAG, "wheel key $code ($name): handled by ${_claims.value.filterValues { "can:$code" in it }.keys.joinToString()}")
+            else -> android.util.Log.i(TAG, "wheel key $code ($name): ${(longOf(code) ?: click(code))?.action ?: "no action set"}")
+        }
         if (!_enabled.value || claimed(code)) return
         if (now < ignoreUntil) {
-            android.util.Log.i("LibreHU-CAN", "wheel key $code ignored (car just started)")
+            android.util.Log.i(TAG, "wheel key $code ignored (car just started)")
             return
         }
         if (longOf(code) == null) {
@@ -243,6 +258,8 @@ class CanWheelKeys private constructor(
     }
 
     companion object {
+        private const val TAG = "LibreHU-CAN"
+
         private const val KEY_ENABLED = "enabled"
         private const val KEY_MAP = "map"
         private const val KEY_CLAIMS = "claims"

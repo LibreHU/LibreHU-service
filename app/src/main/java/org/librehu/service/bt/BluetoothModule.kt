@@ -164,6 +164,29 @@ class BluetoothModule(
         callbacks.kill()
     }
 
+    /**
+     * Call audio in the car (SCO, routed by Android's hands-free client with the HAL's `hfp_enable`): one log line per
+     * change with what decides whether the call is heard and the microphone used, for the reports of LibreHU Helper.
+     */
+    private fun logCallAudio(intent: Intent) {
+        val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+        val name =
+            when (state) {
+                AUDIO_CONNECTED -> "connected"
+                1 -> "connecting"
+                0 -> "disconnected"
+                else -> state.toString()
+            }
+        val am = context.getSystemService(android.media.AudioManager::class.java)
+        val voice = am.getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+        val voiceMax = am.getStreamMaxVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+        Log.i(
+            TAG,
+            "Call audio $name: mode ${am.mode}, voice call volume $voice/$voiceMax, microphone muted ${am.isMicrophoneMute}, " +
+                "music active ${am.isMusicActive}",
+        )
+    }
+
     private fun register() {
         val filter =
             IntentFilter().apply {
@@ -253,7 +276,11 @@ class BluetoothModule(
                         each { it.onDevicesChanged() }
                     }
 
-                    CarProfiles.ACTION_PBAP_CONNECTION, CarProfiles.ACTION_HFP_AUDIO -> {
+                    CarProfiles.ACTION_HFP_AUDIO -> {
+                        logCallAudio(intent)
+                    }
+
+                    CarProfiles.ACTION_PBAP_CONNECTION -> {
                         Unit
                     }
                 }
