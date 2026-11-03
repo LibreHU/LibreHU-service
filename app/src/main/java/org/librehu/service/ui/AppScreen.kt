@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,6 +154,8 @@ fun AppScreen(
     actions: AppActions,
 ) {
     val section = Section.of(tab)
+    // Search of the menus and settings: typed text replaces the page with the results.
+    var query by rememberSaveable { mutableStateOf("") }
     val content: @Composable () -> Unit = {
         when (tab) {
             Tab.HOME -> HomeScreen(client, onTab)
@@ -181,7 +184,7 @@ fun AppScreen(
         }
     }
     // LibreHU Launcher's car styles (the launcher asks the app for them): the sections as soft keys or tabs.
-    if (carStyled) return StyledAppScreen(section, tab, onTab, content)
+    if (carStyled) return StyledAppScreen(section, tab, onTab, query, { query = it }, content)
     Row(Modifier.fillMaxSize().background(CarColors.Background)) {
         Column(
             modifier =
@@ -196,6 +199,11 @@ fun AppScreen(
             for (s in Section.entries) RailItem(s.icon, s.label, s == section) { if (s != section) onTab(s.tabs.first()) }
         }
         Column(Modifier.weight(1f).fillMaxHeight().padding(top = 12.dp, end = 12.dp, bottom = 12.dp)) {
+            SearchField(query, { query = it }, Modifier.padding(bottom = 12.dp))
+            if (query.isNotBlank()) {
+                SearchResults(query, onTab, { query = "" }, Modifier.weight(1f))
+                return@Column
+            }
             if (section.tabs.size > 1) {
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 12.dp),
@@ -474,10 +482,13 @@ private fun StyledAppScreen(
     section: Section,
     tab: Tab,
     onTab: (Tab) -> Unit,
+    query: String,
+    onQuery: (String) -> Unit,
     content: @Composable () -> Unit,
 ) {
     val pages: @Composable () -> Unit = {
-        if (section.tabs.size > 1) {
+        SearchField(query, onQuery, Modifier.padding(bottom = 10.dp))
+        if (query.isBlank() && section.tabs.size > 1) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -494,7 +505,7 @@ private fun StyledAppScreen(
         ) {
             Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
                 pages()
-                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                Box(Modifier.weight(1f).fillMaxWidth()) { if (query.isBlank()) content() else SearchResults(query, onTab, { onQuery("") }) }
             }
         }
     } else {
@@ -506,7 +517,7 @@ private fun StyledAppScreen(
                 }
                 Column(Modifier.fillMaxSize().padding(10.dp)) {
                     pages()
-                    Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                    Box(Modifier.weight(1f).fillMaxWidth()) { if (query.isBlank()) content() else SearchResults(query, onTab, { onQuery("") }) }
                 }
             }
         }
