@@ -192,3 +192,22 @@ class TwrpCanConfTest {
         assertTrue(!c.contains("keys"))
     }
 }
+
+class CanVariantsTest {
+    @Test
+    fun lnp002CarsSetTheCarType() {
+        val p = CanVehicles.RENAULT_CLIO3_HIWORLD
+        assertEquals(94, p.variants.size)
+        // Default and Clio 3: car code 0 (HdRenaultProtocolLNP002.buildCarTypePacket, renault.xml).
+        assertEquals(listOf(0x00, 0x31), p.link.send.single().data)
+        assertEquals(listOf(0x00, 0x31), p.withVariant("Renault Clio3 2005-2014, all trims").link.send.single().data)
+        // LADA Priora: series 112, model 2 → 34 (0x22).
+        assertEquals(listOf(0x22, 0x31), p.withVariant("LADA priora 2012-now, all trims").link.send.single().data)
+        // Unknown name: unchanged.
+        assertEquals(p.link, p.withVariant("nope").link)
+        // Through JSON and TWRP's file.
+        val again = CanVehicles.fromJson(CanVehicles.toJson(p))
+        assertEquals(p.variants, again.variants)
+        assertTrue(TwrpCanConf.of(p.withVariant("LADA priora 2012-now, all trims")).contains("send 1000 30000 5A A5 02 24 22 31 78"))
+    }
+}

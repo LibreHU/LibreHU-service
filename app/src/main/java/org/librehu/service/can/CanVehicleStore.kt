@@ -30,11 +30,11 @@ class CanVehicleStore private constructor(
     val selected: StateFlow<String> = _selected.asStateFlow()
 
     init {
-        apply()
+        applySelected()
     }
 
     /** The selected profile decodes the box now, and TWRP answers the box and reads its keys the same way. */
-    private fun apply() {
+    private fun applySelected() {
         val v = current()
         CanMonitor.vehicle = v
         Thread({ writeTwrpConf(v) }, "twrp-can-conf").start()
@@ -63,12 +63,29 @@ class CanVehicleStore private constructor(
 
     fun isBuiltIn(id: String) = CanVehicles.BUILT_IN.any { it.id == id }
 
-    fun current(): CanVehicle = _vehicles.value.firstOrNull { it.id == _selected.value } ?: CanVehicles.RENAULT_CLIO3_HIWORLD
+    /** The selected profile as stored (all its cars). */
+    fun profile(): CanVehicle = _vehicles.value.firstOrNull { it.id == _selected.value } ?: CanVehicles.RENAULT_CLIO3_HIWORLD
+
+    /** The selected profile for the car chosen among its variants (the car type the box needs). */
+    fun current(): CanVehicle = profile().let { it.withVariant(prefs.getString(KEY_VARIANT + it.id, null)) }
+
+    private val _variant = MutableStateFlow(prefs.getString(KEY_VARIANT + profile().id, null))
+
+    /** The car chosen in the selected profile ([CanVehicle.variants]); null: the profile's default. */
+    val variant: StateFlow<String?> = _variant.asStateFlow()
+
+    fun selectVariant(name: String?) {
+        val id = profile().id
+        prefs.edit().apply { if (name == null) remove(KEY_VARIANT + id) else putString(KEY_VARIANT + id, name) }.apply()
+        _variant.value = name
+        applySelected()
+    }
 
     fun select(id: String) {
         prefs.edit().putString(KEY_SELECTED, id).apply()
         _selected.value = id
-        apply()
+        _variant.value = prefs.getString(KEY_VARIANT + id, null)
+        applySelected()
     }
 
     /** Validates and stores a profile file; returns it, or throws [CanVehicleException]. Same id = replaced. */
@@ -81,7 +98,7 @@ class CanVehicleStore private constructor(
         if (isBuiltIn(v.id)) throw CanVehicleException("\"${v.id}\" is a built-in profile: change the id")
         File(dir, "${v.id}.json").writeText(CanVehicles.toJson(v))
         _vehicles.value = load()
-        if (v.id == _selected.value) apply()
+        if (v.id == _selected.value) applySelected()
         return v
     }
 
@@ -115,6 +132,7 @@ class CanVehicleStore private constructor(
 
     companion object {
         private const val KEY_SELECTED = "selected_vehicle"
+        private const val KEY_VARIANT = "variant."
         private const val MAX_SIZE = 256 * 1024
 
         @Volatile

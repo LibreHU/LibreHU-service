@@ -518,6 +518,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="overlay_size_xs">Extra small</string>
     <string name="overlay_size_xl">Extra large</string>
     <string name="overlay_opacity">Background opacity</string>
+    <string name="can_variant">Car: %1$s</string>
+    <string name="can_variant_default">default (Clio 3)</string>
+    <string name="can_variant_hint">This box protocol serves %1$d models: choose yours, its box needs its car type.</string>
+    <string name="can_variant_title">Your car</string>
+    <string name="can_variant_search">Search a car</string>
     <string name="can_talk">Dialogue with the box</string>
     <string name="can_talk_hint">As the box\'s own app does: each message of the box is acknowledged, and the car profile sends the box its messages (Clio 3: the car type, command 0x24, every 30 s). Without them a Hiworld box waits: it sends its messages one a second and no steering wheel key.</string>
     <string name="can_talk_enable">Answer the box</string>

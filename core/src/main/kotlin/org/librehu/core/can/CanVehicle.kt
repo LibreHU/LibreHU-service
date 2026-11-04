@@ -81,6 +81,15 @@ data class CanSend(
 )
 
 /**
+ * One car among those a profile covers (a box protocol serves many models): its [send] overrides the data of the
+ * profile's messages of the same name (the car type the box needs for this model).
+ */
+data class CanVariant(
+    val name: String,
+    val send: Map<String, List<Int>>,
+)
+
+/**
  * The head unit's side of the link: [ack] each message of the box (as its family does: Hiworld acknowledges every
  * message), and the profile's [send] messages (a Hiworld box waits for its car type, command 0x24).
  */
@@ -105,7 +114,15 @@ data class CanVehicle(
     val wheelKeys: WheelKeySpec? = null,
     /** Speed of the box's serial link, set on the MCU when the link starts (as the box's app does); null: left as it is. */
     val baud: Int? = null,
+    /** The cars of this profile, chosen in the CAN tab; none chosen: [link] as it is. */
+    val variants: List<CanVariant> = emptyList(),
 ) {
+    /** This profile for the car [name] (one of [variants]); unknown or null: unchanged. */
+    fun withVariant(name: String?): CanVehicle {
+        val v = variants.firstOrNull { it.name == name } ?: return this
+        return copy(link = link.copy(send = link.send.map { s -> v.send[s.name]?.let { s.copy(data = it) } ?: s }))
+    }
+
     /** The box family named by [box] (checked when the profile is read). */
     val family: CanBoxFamily get() = CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
 
@@ -254,6 +271,14 @@ object CanVehicles {
             messages = messages.toMap(),
             link = (root["link"] as? JsonObject)?.let(::link) ?: CanLink(),
             wheelKeys = (root["wheel_keys"] as? JsonObject)?.let(::wheelKeys),
+            variants =
+                ((root["variants"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
+                    val o = e as? JsonObject ?: throw CanVehicleException("variants[$i] is not an object")
+                    CanVariant(
+                        o.str("name")?.ifBlank { null } ?: throw CanVehicleException("variants[$i]: name missing"),
+                        (o["send"] as? JsonObject).orEmpty().map { (k, v) -> k to bytes((v as? JsonPrimitive)?.contentOrNull.orEmpty(), "variants[$i].$k") }.toMap(),
+                    )
+                },
             baud =
                 root.int("baud")?.also {
                     if (it !in CanBoxFamilies.BAUDS) throw CanVehicleException("baud $it (one of ${CanBoxFamilies.BAUDS.joinToString()})")
@@ -307,17 +332,7 @@ object CanVehicles {
             ((o["send"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                 val m = e as? JsonObject ?: throw CanVehicleException("link.send[$i] is not an object")
                 val cmd = m.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("link.send[$i]: cmd missing")
-                val data =
-                    m
-                        .str("data")
-                        .orEmpty()
-                        .split(Regex("[\\s,]+"))
-                        .filter { it.isNotEmpty() }
-                        .map { b ->
-                            b.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 0..0xFF }
-                                ?: throw CanVehicleException("link.send[$i]: bad data byte \"$b\"")
-                        }
-                if (data.size > MAX_SEND_BYTES) throw CanVehicleException("link.send[$i]: more than $MAX_SEND_BYTES data bytes")
+                val data = bytes(m.str("data").orEmpty(), "link.send[$i]")
                 val first = m.long("first_ms") ?: 1_000
                 val every = m.long("every_ms") ?: 0
                 if (first !in 0..60_000) throw CanVehicleException("link.send[$i]: first_ms 0..60000")
@@ -325,6 +340,20 @@ object CanVehicles {
                 CanSend(m.str("name")?.ifBlank { null } ?: "0x%02X".format(cmd), cmd, data, first, every)
             }
         return CanLink(ack = (o["ack"] as? JsonPrimitive)?.booleanOrNull ?: true, send = sends)
+    }
+
+    /** Hex bytes "00 31" (spaces or commas). */
+    private fun bytes(
+        text: String,
+        where: String,
+    ): List<Int> {
+        val data =
+            text.split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.map { b ->
+                b.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 0..0xFF }
+                    ?: throw CanVehicleException("$where: bad data byte \"$b\"")
+            }
+        if (data.size > MAX_SEND_BYTES) throw CanVehicleException("$where: more than $MAX_SEND_BYTES data bytes")
+        return data
     }
 
     private fun linkJson(l: CanLink) =
@@ -363,6 +392,19 @@ object CanVehicles {
                 v.baud?.let { put("baud", it) }
                 put("link", linkJson(v.link))
                 v.wheelKeys?.let { put("wheel_keys", wheelKeysJson(it)) }
+                if (v.variants.isNotEmpty()) {
+                    put(
+                        "variants",
+                        kotlinx.serialization.json.JsonArray(
+                            v.variants.map { c ->
+                                buildJsonObject {
+                                    put("name", c.name)
+                                    put("send", buildJsonObject { c.send.forEach { (k, d) -> put(k, d.joinToString(" ") { "%02X".format(it) }) } })
+                                }
+                            },
+                        ),
+                    )
+                }
                 put(
                     "messages",
                     buildJsonObject {
@@ -472,16 +514,112 @@ object CanVehicles {
         {
           "format": "librehu-can-vehicle", "version": 1,
           "id": "renault-clio3-hiworld",
-          "name": "Renault Clio 3 (Hiworld LNP002)",
-          "description": "Clio 3 2005-2014, Hiworld box, protocol LNP002, from Hiworld's own app (HdRenaultProtocolLNP002).",
+          "name": "Renault, Dacia, LADA, Samsung, Nissan, Mercedes (Hiworld LNP002)",
+          "description": "Hiworld box, protocol LNP002 (Renault / LADA / Samsung full compatible): Clio 3 by default, the other models in the list (car type from Hiworld's own app, HdRenaultProtocolLNP002).",
           "box": "hiworld",
           "baud": 38400,
           "link": {
             "ack": true,
             "send": [
-              { "name": "car type (Clio 3, car code 0)", "cmd": "0x24", "data": "00 31", "first_ms": 1000, "every_ms": 30000 }
+              { "name": "car type", "cmd": "0x24", "data": "00 31", "first_ms": 1000, "every_ms": 30000 }
             ]
           },
+          "variants": [
+            { "name": "LADA priora 2012-now, all trims", "send": { "car type": "22 31" } },
+            { "name": "LADA vesta 2015-2022, high trim", "send": { "car type": "21 31" } },
+            { "name": "LADA vesta 2015-2022, low trim", "send": { "car type": "1F 31" } },
+            { "name": "LADA vesta 2015-2022, medium", "send": { "car type": "20 31" } },
+            { "name": "LADA vesta 2023~Present, all trims", "send": { "car type": "1E 31" } },
+            { "name": "Mercedes-Benz smart 2017-now, high trim", "send": { "car type": "00 31" } },
+            { "name": "Nissan Magnite 2020-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Arkana 2019-2023, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Arkana 2024-now, high trim", "send": { "car type": "07 31" } },
+            { "name": "Renault Arkana 2024-now, low trim", "send": { "car type": "05 31" } },
+            { "name": "Renault Arkana 2024-now, medium", "send": { "car type": "06 31" } },
+            { "name": "Renault brilliancerenaultgoldencupview 2019-now, all trims", "send": { "car type": "1D 31" } },
+            { "name": "Renault captur 20132018, low trim", "send": { "car type": "00 31" } },
+            { "name": "Renault Captur_II 2019-now, high trim", "send": { "car type": "16 31" } },
+            { "name": "Renault Captur_II 2019-now, low trim", "send": { "car type": "14 31" } },
+            { "name": "Renault Captur_II 2019-now, mid trim", "send": { "car type": "15 31" } },
+            { "name": "Renault Clio3 2005-2014, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Clio4 2012-2019, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault clio5 2019-now, high trim", "send": { "car type": "16 31" } },
+            { "name": "Renault clio5 2019-now, low trim", "send": { "car type": "14 31" } },
+            { "name": "Renault clio5 2019-now, mid trim", "send": { "car type": "15 31" } },
+            { "name": "Renault duster 2010-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Express 2021-now, high trim", "send": { "car type": "16 31" } },
+            { "name": "Renault Express 2021-now, low trim", "send": { "car type": "14 31" } },
+            { "name": "Renault Express 2021-now, medium", "send": { "car type": "15 31" } },
+            { "name": "Renault fluence 2009-2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault jogger 2021-now, high trim", "send": { "car type": "1C 31" } },
+            { "name": "Renault jogger 2021-now, low trim", "send": { "car type": "1A 31" } },
+            { "name": "Renault jogger 2021-now, mid trim", "send": { "car type": "1B 31" } },
+            { "name": "Renault kadjar 2015-2022, high trim", "send": { "car type": "10 31" } },
+            { "name": "Renault kadjar 2015-2022, low trim", "send": { "car type": "0E 31" } },
+            { "name": "Renault kadjar 2015-2022, mid trim", "send": { "car type": "0F 31" } },
+            { "name": "Renault Kangoo_II 2007-2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Kangoo_III 2021-now, high trim", "send": { "car type": "16 31" } },
+            { "name": "Renault Kangoo_III 2021-now, low trim", "send": { "car type": "14 31" } },
+            { "name": "Renault Kangoo_III 2021-now, medium", "send": { "car type": "15 31" } },
+            { "name": "Renault Kiger_I 2021-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault koleos 2006-2015, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault koleos 20162023, high p", "send": { "car type": "19 31" } },
+            { "name": "Renault koleos 20162023, low p", "send": { "car type": "17 31" } },
+            { "name": "Renault koleos 20162023, medium p", "send": { "car type": "18 31" } },
+            { "name": "Renault krebbin 2019, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Kwid 2015-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault latitude 2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Lodgy 2012-2022, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Logan_II 2012-2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Logan_III 2020-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Master 2004-2009, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Master 2010-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault megane 2003-2007, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault megane 2008-2015, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault megane 4 2017-2020, high p", "send": { "car type": "10 31" } },
+            { "name": "Renault megane 4 2017-2020, low p", "send": { "car type": "0E 31" } },
+            { "name": "Renault megane 4 2017-2020, medium p", "send": { "car type": "0F 31" } },
+            { "name": "Renault megane 4 2021-2023, high p", "send": { "car type": "13 31" } },
+            { "name": "Renault megane 4 2021-2023, low p", "send": { "car type": "11 31" } },
+            { "name": "Renault megane 4 2021-2023, medium p", "send": { "car type": "12 31" } },
+            { "name": "Renault Megane2 2002-2009, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Megane3 2008-2016, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault None", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung None", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung qm3 2019-2023, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung qm5 2007-2016, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung sm3 2009-2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung sm5 2009-2019, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung sm6 2016~now, high trim", "send": { "car type": "10 31" } },
+            { "name": "Renault Samsung sm6 2016~now, low trim", "send": { "car type": "0E 31" } },
+            { "name": "Renault Samsung sm6 2016~now, medium", "send": { "car type": "0F 31" } },
+            { "name": "Renault Samsung sm7 2012-2019, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Samsung xm3 2009-Persent, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault sandero 2008-2012, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault sandero 2008-2012, high p", "send": { "car type": "00 31" } },
+            { "name": "Renault sandero 2008-2012, low p", "send": { "car type": "00 31" } },
+            { "name": "Renault sandero 2008-2012, medium p", "send": { "car type": "00 31" } },
+            { "name": "Renault Sandero_II 2012-2020, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Sandero_III 2020-now, high trim", "send": { "car type": "1C 31" } },
+            { "name": "Renault Sandero_III 2020-now, low trim", "send": { "car type": "1A 31" } },
+            { "name": "Renault Sandero_III 2020-now, medium", "send": { "car type": "1B 31" } },
+            { "name": "Renault Scenic_II 2003-2009, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Scenic_III 2009-2015, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Scenic_IV 2016-2022, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault smart 2017, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Symbol_II 2008-2013, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Symbol_III 2012-2021, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Taliant 2021-now, high trim", "send": { "car type": "16 31" } },
+            { "name": "Renault Taliant 2021-now, low trim", "send": { "car type": "14 31" } },
+            { "name": "Renault Taliant 2021-now, medium", "send": { "car type": "15 31" } },
+            { "name": "Renault talisman 2016-now, high trim", "send": { "car type": "13 31" } },
+            { "name": "Renault talisman 2016-now, low trim", "send": { "car type": "11 31" } },
+            { "name": "Renault talisman 2016-now, med", "send": { "car type": "12 31" } },
+            { "name": "Renault Traffic_II 2007-2015, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Traffic_III 2014-now, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Twingo_II 2007-2013, all trims", "send": { "car type": "00 31" } },
+            { "name": "Renault Twingo_III 2014-now, all trims", "send": { "car type": "00 31" } }
+          ],
           "wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08",
             "names": { "1": "volume +", "2": "volume -", "3": "mute", "4": "navigation", "5": "previous / answer",
               "6": "next / hang up", "8": "right", "9": "left", "10": "mode", "13": "previous", "14": "next", "15": "OK",

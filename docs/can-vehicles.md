@@ -10,8 +10,13 @@ dépend du protocole du boîtier pour la marque (Renault : LNP002). Le profil de
 messages ; on le choisit dans l'onglet **CAN** et il s'applique tout de suite.
 
 Profils intégrés :
-- `renault-clio3-hiworld` : Clio 3 2005-2014, protocole Hiworld LNP002 (état ACC / feux / marche AR / frein,
-  touche volant, angle de volant, portes, température extérieure, radar, version du boîtier) ;
+- `renault-clio3-hiworld` : **Renault, Dacia, LADA, Samsung, Nissan, Mercedes (Hiworld LNP002)**, le protocole
+  « Renault / LADA / Samsung tout compatible » de Hiworld (état ACC / feux / marche AR / frein, touche volant, angle de
+  volant, portes, ordinateur de bord, température extérieure, radar, pneus, version du boîtier). Il sert **94 voitures
+  (55 modèles)** : choisir la sienne dans l'onglet CAN (« Voiture : … », recherche) ; par défaut la Clio 3. Seul le
+  **type de voiture** envoyé au boîtier change (`0x24 [code, 0x31]`, 25 codes) : codes relevés dans « Car Info »
+  1.0.3991 (`assets/protocol/*.xml` et `HdRenaultProtocolLNP002.buildCarTypePacket`, relu en instructions brutes). Le
+  décodage des messages est celui de la Clio 3 (même classe de décodage) : à confirmer sur les autres modèles ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 ## Familles de boîtiers
@@ -63,6 +68,8 @@ qui porte la même information. Pour les données moteur (régime, vitesse, temp
 }
 ```
 `link` (facultatif) : ce que l'autoradio envoie au boîtier, voir [Dialogue avec le boîtier](#dialogue-avec-le-boîtier-link).
+`variants` (facultatif) : les voitures d'un même protocole, `[{ "name": "…", "send": { "<nom d'un message de link.send>": "<octets>" } }]` ;
+la voiture choisie remplace les données des messages de ce nom (le type de voiture), aussi dans le fichier de TWRP.
 Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans CliOS (`src/signal_processor.py`) :
 
 | Champ | Défaut | Rôle |

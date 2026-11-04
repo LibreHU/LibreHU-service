@@ -3,9 +3,11 @@ package org.librehu.service.ui
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.OutlinedTextField
@@ -101,6 +103,7 @@ fun CanScreen(actions: AppActions) {
                 }
             }
             Actions { Pill(stringResource(R.string.mcu_import), icon = Icons.Default.FileDownload, onClick = actions.importCanVehicle) }
+            CanVariantRow(store)
         }
         CanBoxTalkCard()
         CanWheelKeysCard()
@@ -189,6 +192,59 @@ fun exportCanVehicle(
     }
 
 /** Steering wheel keys of the CAN box → actions (same list as the touch keys). */
+/** The car of the selected profile, when it covers several (the car type its box needs): shown and changed. */
+@Composable
+internal fun CanVariantRow(store: CanVehicleStore) {
+    val selected by store.selected.collectAsStateWithLifecycle()
+    val variant by store.variant.collectAsStateWithLifecycle()
+    val profile = remember(selected) { store.profile() }
+    if (profile.variants.isEmpty()) return
+    var choosing by remember { mutableStateOf(false) }
+    ListRow(
+        stringResource(R.string.can_variant, variant ?: stringResource(R.string.can_variant_default)),
+        stringResource(R.string.can_variant_hint, profile.variants.size),
+        onClick = { choosing = true },
+    ) { Pill(stringResource(R.string.can_keys_change)) { choosing = true } }
+    if (choosing) {
+        CanVariantDialog(profile.variants.map { it.name }, variant, onDismiss = { choosing = false }) {
+            store.selectVariant(it)
+            choosing = false
+        }
+    }
+}
+
+/** The profile's cars, searchable; the default (none chosen) first. */
+@Composable
+internal fun CanVariantDialog(
+    names: List<String>,
+    chosen: String?,
+    onDismiss: () -> Unit,
+    onChoose: (String?) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val shown = remember(query) { names.filter { query.isBlank() || SettingsIndex.normalise(it).contains(SettingsIndex.normalise(query.trim())) } }
+    CarAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.can_variant_title)) },
+        text = {
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SearchField(query, { query = it }, hint = stringResource(R.string.can_variant_search))
+                val check: @Composable (Boolean) -> Unit = { on ->
+                    if (on) androidx.compose.material3.Icon(Icons.Default.Check, null, tint = CarColors.Accent)
+                }
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    if (query.isBlank()) {
+                        item { ListRow(stringResource(R.string.can_variant_default), onClick = { onChoose(null) }) { check(chosen == null) } }
+                    }
+                    items(shown.size) { i -> ListRow(shown[i], onClick = { onChoose(shown[i]) }) { check(shown[i] == chosen) } }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+    )
+}
+
 /** The service's answers to the box: on / off, acknowledgements sent, the profile's messages, the box's acknowledgements. */
 @Composable
 internal fun CanBoxTalkCard() {

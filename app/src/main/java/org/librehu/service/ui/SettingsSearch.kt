@@ -146,12 +146,13 @@ internal fun SearchField(
     query: String,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
+    hint: String? = null,
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQuery,
         singleLine = true,
-        placeholder = { Text(stringResource(R.string.search_hint)) },
+        placeholder = { Text(hint ?: stringResource(R.string.search_hint)) },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = CarColors.TextDim) },
         trailingIcon = {
             if (query.isNotEmpty()) {

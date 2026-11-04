@@ -518,6 +518,11 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="overlay_size_xs">Très petit</string>
     <string name="overlay_size_xl">Très grand</string>
     <string name="overlay_opacity">Opacité du fond</string>
+    <string name="can_variant">Voiture : %1$s</string>
+    <string name="can_variant_default">par défaut (Clio 3)</string>
+    <string name="can_variant_hint">Ce protocole de boîtier sert %1$d modèles : choisir le vôtre, son boîtier a besoin de son type de voiture.</string>
+    <string name="can_variant_title">Votre voiture</string>
+    <string name="can_variant_search">Rechercher une voiture</string>
     <string name="can_talk">Dialogue avec le boîtier</string>
     <string name="can_talk_hint">Comme l\'appli d\'origine du boîtier : chaque message du boîtier est acquitté, et le profil de voiture lui envoie ses messages (Clio 3 : le type de voiture, commande 0x24, toutes les 30 s). Sans eux, un boîtier Hiworld attend : il envoie un message par seconde et aucune touche du volant.</string>
     <string name="can_talk_enable">Répondre au boîtier</string>
