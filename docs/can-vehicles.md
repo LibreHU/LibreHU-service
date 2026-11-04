@@ -60,7 +60,8 @@ renvoie à la famille de la plupart de ses protocoles. Relevé dans l'appli Hiwo
 Non pris en charge : Klyde (`55 AA 20 11 …`), Gobetter, et la variante CYT `55` à longueur fixe (quelques modèles).
 Dans « Car Info », Raise et Hiworld couvrent l'essentiel du catalogue (6 352 entrées, 129 marques : Raise 2 298,
 Hiworld 1 633, Oudi 792, Simple 777, Binary 265, Luzheng 191, Daojun 144…) ; **la trame est lue et acquittée** pour
-tous ces boîtiers, mais **le décodage d'une voiture demande son profil** (seule la Clio 3 + Hiworld est intégrée).
+tous ces boîtiers, mais **le décodage d'une voiture demande son profil** (intégrés : Hiworld LNP002, HYP001, TYP001,
+HDP004, 467 voitures ; voir plus haut).
 
 `"baud"` (facultatif) : vitesse de la liaison série du boîtier, réglée sur la MCU au départ du dialogue
 (`0F 00 <index>`, comme l'appli d'origine) : 9600, 19200, **38400** (le plus courant), 57600, 115200, 230400, 460800.
