@@ -18,6 +18,10 @@ object TwrpCanConf {
             append("# ${v.name.replace('\n', ' ')}; box ${v.family.name}. Written again when the profile changes.\n")
             append("ack ${if (hiworld && v.link.ack) 1 else 0}\n")
             for (s in v.link.send) {
+                if (s.data.isEmpty()) {
+                    append("# ${s.name}: set by the car chosen in the CAN tab, none yet\n")
+                    continue
+                }
                 val frame = v.family.encode(s.cmd, ByteArray(s.data.size) { s.data[it].toByte() })
                 if (frame.size > MAX_FRAME) {
                     append("# ${s.name}: ${frame.size} bytes, more than TWRP sends\n")

@@ -341,7 +341,8 @@ class CanBoxLink(
     @Synchronized
     fun tick(now: Long) {
         for ((i, s) in link.send.withIndex()) {
-            if (due[i] < 0 || now < due[i]) continue
+            // No data: set by the car to choose (the box gets no car type until then).
+            if (s.data.isEmpty() || due[i] < 0 || now < due[i]) continue
             send(family.encode(s.cmd, ByteArray(s.data.size) { s.data[it].toByte() }), s.name)
             due[i] = if (s.everyMs > 0) now + s.everyMs else -1
         }

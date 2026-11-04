@@ -17,7 +17,29 @@ Profils intégrés :
   **type de voiture** envoyé au boîtier change (`0x24 [code, 0x31]`, 25 codes) : codes relevés dans « Car Info »
   1.0.3991 (`assets/protocol/*.xml` et `HdRenaultProtocolLNP002.buildCarTypePacket`, relu en instructions brutes). Le
   décodage des messages est celui de la Clio 3 (même classe de décodage) : à confirmer sur les autres modèles ;
+- `hyundai-kia-hiworld` : **Hyundai, Kia (Hiworld HYP001)**, 152 voitures (`HdKoreaProtocol`) : état ACC / feux /
+  marche AR / P, touches et angle du volant, portes et capot, température extérieure, régime / vitesse / kilométrage,
+  radar, version. **Pas d'accusé** (ce décodeur n'en envoie pas : `acknowledge()` = null) ; type de voiture
+  `0x24 [code, 0x09]` ;
+- `toyota-hiworld` : **Toyota, Lexus ES (Hiworld TYP001)**, 142 voitures (`HdToyotaProtocol`) : message `0x11` découpé
+  (état D0, touche D2 / D3, portes D4, volant D6-D7), radar, version ; accusés ; type `0x24 [code, 0x01]` ;
+- `honda-hiworld` : **Honda, Acura (Hiworld HDP004)**, 79 voitures (`HdHondaDAProtocol`) : `0x11` découpé (feux / marche
+  AR / frein D0, vitesse D1, touche D2 / D3, volant D6-D7), portes, radar, version ; accusés ; type `0x24 [code, 0x02]`.
+  Pas encore listées (type de voiture calculé par des règles par modèle non relues) : Accord 2018, Odyssey 2004-2008,
+  Crosstour, Civic 2016-, CR-V 2017 ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
+
+Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
+pas choisie dans l'onglet CAN (un boîtier ne doit pas recevoir le type d'une autre voiture). **Pas encore essayés sur une
+voiture** : retours et captures bienvenus. Les profils intégrés sont des fichiers JSON
+(`core/src/main/resources/org/librehu/core/can/vehicles/`).
+
+**Types de voiture** : relevés dans « Car Info » 1.0.3991 sans l'exécuter : la méthode `buildCarTypePacket` de chaque
+décodeur, listée en instructions brutes (`jadx -m fallback`), est **rejouée** sur chaque voiture du catalogue
+(`assets/protocol/*.xml` : identifiants de série / modèle / année / finition, code voiture) par un petit interpréteur qui
+ne suit que des entiers (affectations, comparaisons, sauts) ; validé sur LNP002 contre un calcul fait à la main
+(58 800 cas, aucun écart). Couverture : le dialogue (trame lue et acquittée) vaut pour 1 542 modèles du catalogue sur
+1 546 ; le décodage intégré pour 190 (12 %), lot par lot.
 
 ## Familles de boîtiers
 
@@ -68,6 +90,7 @@ qui porte la même information. Pour les données moteur (régime, vitesse, temp
 }
 ```
 `link` (facultatif) : ce que l'autoradio envoie au boîtier, voir [Dialogue avec le boîtier](#dialogue-avec-le-boîtier-link).
+`"data": ""` dans `link.send` : données données par la voiture choisie, rien n'est envoyé avant.
 `variants` (facultatif) : les voitures d'un même protocole, `[{ "name": "…", "send": { "<nom d'un message de link.send>": "<octets>" } }]` ;
 la voiture choisie remplace les données des messages de ce nom (le type de voiture), aussi dans le fichier de TWRP.
 Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans CliOS (`src/signal_processor.py`) :

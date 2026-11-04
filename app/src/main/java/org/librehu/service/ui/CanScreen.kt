@@ -200,13 +200,15 @@ internal fun CanVariantRow(store: CanVehicleStore) {
     val profile = remember(selected) { store.profile() }
     if (profile.variants.isEmpty()) return
     var choosing by remember { mutableStateOf(false) }
+    // A profile with no car type of its own sends none until a car is chosen.
+    val defaultLabel = stringResource(if (profile.link.send.any { it.data.isEmpty() }) R.string.can_variant_none else R.string.can_variant_default)
     ListRow(
-        stringResource(R.string.can_variant, variant ?: stringResource(R.string.can_variant_default)),
+        stringResource(R.string.can_variant, variant ?: defaultLabel),
         stringResource(R.string.can_variant_hint, profile.variants.size),
         onClick = { choosing = true },
     ) { Pill(stringResource(R.string.can_keys_change)) { choosing = true } }
     if (choosing) {
-        CanVariantDialog(profile.variants.map { it.name }, variant, onDismiss = { choosing = false }) {
+        CanVariantDialog(profile.variants.map { it.name }, variant, defaultLabel, onDismiss = { choosing = false }) {
             store.selectVariant(it)
             choosing = false
         }
@@ -218,6 +220,7 @@ internal fun CanVariantRow(store: CanVehicleStore) {
 internal fun CanVariantDialog(
     names: List<String>,
     chosen: String?,
+    defaultLabel: String,
     onDismiss: () -> Unit,
     onChoose: (String?) -> Unit,
 ) {
@@ -234,7 +237,7 @@ internal fun CanVariantDialog(
                 }
                 androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     if (query.isBlank()) {
-                        item { ListRow(stringResource(R.string.can_variant_default), onClick = { onChoose(null) }) { check(chosen == null) } }
+                        item { ListRow(defaultLabel, onClick = { onChoose(null) }) { check(chosen == null) } }
                     }
                     items(shown.size) { i -> ListRow(shown[i], onClick = { onChoose(shown[i]) }) { check(shown[i] == chosen) } }
                 }

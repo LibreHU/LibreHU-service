@@ -519,7 +519,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="overlay_size_xl">Très grand</string>
     <string name="overlay_opacity">Opacité du fond</string>
     <string name="can_variant">Voiture : %1$s</string>
-    <string name="can_variant_default">par défaut (Clio 3)</string>
+    <string name="can_variant_default">par défaut du profil</string>
+    <string name="can_variant_none">aucune : rien n\'est envoyé au boîtier</string>
     <string name="can_variant_hint">Ce protocole de boîtier sert %1$d modèles : choisir le vôtre, son boîtier a besoin de son type de voiture.</string>
     <string name="can_variant_title">Votre voiture</string>
     <string name="can_variant_search">Rechercher une voiture</string>

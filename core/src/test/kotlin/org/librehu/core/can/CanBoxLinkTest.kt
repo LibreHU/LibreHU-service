@@ -211,3 +211,50 @@ class CanVariantsTest {
         assertTrue(TwrpCanConf.of(p.withVariant("LADA priora 2012-now, all trims")).contains("send 1000 30000 5A A5 02 24 22 31 78"))
     }
 }
+
+class Batch1ProfilesTest {
+    private fun hex(b: ByteArray) = b.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+
+    @Test
+    fun builtInsLoad() {
+        val ids = CanVehicles.BUILT_IN.map { it.id }
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "hiworld-generic"), ids)
+        assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
+        assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
+        assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
+        assertEquals(79, CanVehicles.HONDA_HIWORLD.variants.size)
+        // HdKoreaProtocol.acknowledge() is null; Toyota and Honda keep Hiworld's acknowledgement.
+        assertEquals(false, CanVehicles.HYUNDAI_KIA_HIWORLD.link.ack)
+        assertEquals(true, CanVehicles.TOYOTA_HIWORLD.link.ack)
+        assertEquals(true, CanVehicles.HONDA_HIWORLD.link.ack)
+    }
+
+    @Test
+    fun noCarTypeBeforeACarIsChosen() {
+        val out = mutableListOf<String>()
+        val l = CanBoxLink(CanBoxFamilies.HIWORLD, CanVehicles.TOYOTA_HIWORLD.link.copy(ack = false), { b, _ -> out += hex(b) })
+        l.start(0)
+        l.tick(60_000)
+        assertTrue(out.isEmpty())
+        assertTrue(!TwrpCanConf.of(CanVehicles.TOYOTA_HIWORLD).contains("\nsend "))
+        // A car chosen: its car type, as its decoder builds it (getPacket(0x24, [code, 0x01])).
+        val v = CanVehicles.TOYOTA_HIWORLD.variants.first()
+        val withCar = CanVehicles.TOYOTA_HIWORLD.withVariant(v.name)
+        assertEquals(0x01, withCar.link.send.single().data[1])
+        val l2 = CanBoxLink(CanBoxFamilies.HIWORLD, withCar.link, { b, _ -> out += hex(b) })
+        l2.start(0)
+        l2.tick(1_000)
+        assertTrue(out.single().startsWith("5A A5 02 24 "))
+    }
+
+    @Test
+    fun carTypesOfEachProtocol() {
+        assertEquals(listOf(0x0A, 0x09), CanVehicles.HYUNDAI_KIA_HIWORLD.withVariant("Hyundai Accent 2010-2019, all trims").link.send.single().data)
+        assertTrue(CanVehicles.HONDA_HIWORLD.variants.all { it.send.getValue("car type").let { d -> d[1] == 0x02 && d[0] != 0 } })
+        assertTrue(CanVehicles.HYUNDAI_KIA_HIWORLD.variants.all { it.send.getValue("car type")[1] == 0x09 })
+        // Keys: same layout (0x11, D2 code, D3 = 1 pressed) without LNP002's event bit.
+        val k = CanVehicles.HONDA_HIWORLD.keys!!
+        assertEquals(null, k.eventByte)
+        assertEquals("volume +", k.name(1))
+    }
+}
