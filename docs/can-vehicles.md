@@ -145,6 +145,10 @@ tour de ~17 s, octets de touche toujours à 0). Le service fait donc comme l'app
   1,5 s après le départ puis toutes les 10 s) et l'état Bluetooth `0xCD` (`getBtInfo` : `6` = non connecté, une fois).
   Hypothèse à vérifier : l'écran de la Renault ne transmet les touches du satellite qu'à une « radio » qui lui
   envoie sa source.
+- **demande de version** (profil LNP002, depuis v154, test) : la requête Hiworld `0x6A [5, 1, cmd]`
+  (`HdProtocol.txRequestCmdId`, `getInquiryInfoPackets`) pour `0xF0`, 3 s après le départ puis toutes les 30 s. Un
+  message `F0` aussitôt après chaque demande (hors de son tour d'environ 17 s) montre que le boîtier reçoit
+  l'autoradio ; sinon, rien n'arrive jusqu'à lui.
 
 Envoi par la trame MCU `10`, que la MCU recopie telle quelle sur la liaison série du boîtier
 (`core/.../can/CanBox.kt`, `can/CanBoxTalk.kt`). Seulement quand le service tient la MCU (jamais avec ivi-services,

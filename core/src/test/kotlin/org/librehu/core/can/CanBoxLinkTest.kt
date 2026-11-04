@@ -70,6 +70,16 @@ class CanBoxLinkTest {
     }
 
     @Test
+    fun clio3AsksTheBoxItsVersion() {
+        val out = mutableListOf<Sent>()
+        val l = link(CanVehicles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
+        l.start(0)
+        l.tick(3_000)
+        // Hiworld request (HdProtocol.txRequestCmdId 0x6A, data [5, 1, cmd]): the box sends message F0 again.
+        assertEquals("5A A5 03 6A 05 01 F0 62", out.single { it.what == "version request" }.bytes)
+    }
+
+    @Test
     fun boxBackAfterSilenceGetsTheMessagesAgain() {
         val out = mutableListOf<Sent>()
         val once = CanLink(ack = false, send = listOf(CanSend("init", 0x24, listOf(0, 0x31), firstMs = 100, everyMs = 0)))
