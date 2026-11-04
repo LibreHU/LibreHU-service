@@ -156,6 +156,9 @@ tour de ~17 s, octets de touche toujours à 0). Le service fait donc comme l'app
   boîtier ne reçoit pas le satellite. Sur la Clio 3 à afficheur déporté, la commande sous volant passe par
   l'afficheur, relié en CAN au connecteur jaune (C1) de la radio (forum Planète Renault) ; le message `14`
   (ordinateur de bord) reste à `FF` : piste, le boîtier n'est pas sur le bus de l'afficheur.
+  **Cause trouvée** : l'afficheur (l'horloge du tableau de bord) était débranché, sa place servant à essayer un
+  lecteur CD. Sur la Clio 3, la commande sous volant passe par lui : **afficheur débranché = aucune touche** (et
+  ordinateur de bord vide). Il peut rester branché ailleurs, caché, s'il faut sa place.
   Depuis v155, la carte *Dialogue avec le boîtier* et l'en-tête de l'export comptent les **demandes auxquelles le
   boîtier a répondu** (message demandé reçu moins de 400 ms après la demande) : « 11 sur 11 (il entend l'autoradio) » ou
   « aucune (rien ne lui arrive) », au lieu d'attendre un accusé que certains boîtiers n'envoient jamais.
