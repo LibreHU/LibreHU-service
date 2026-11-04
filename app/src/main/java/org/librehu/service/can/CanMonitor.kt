@@ -76,6 +76,25 @@ object CanMonitor {
     /** All messages since the start, for the export (bounded). */
     private val history = ArrayDeque<CanLine>()
 
+    /** What the service sent to the box (acknowledgements, profile messages, box speed), for the export. */
+    private class SentLine(
+        val at: Long,
+        val hex: String,
+        val what: String,
+    )
+
+    private val sent = ArrayDeque<SentLine>()
+
+    /** A message sent to the box ([CanBoxTalk]): in the export, between the box's messages, marked →. */
+    @Synchronized
+    fun recordSent(
+        hex: String,
+        what: String,
+    ) {
+        sent.addLast(SentLine(System.currentTimeMillis(), hex, what))
+        while (sent.size > 20_000) sent.removeFirst()
+    }
+
     @Synchronized
     fun feed(bytes: ByteArray) {
         _rawBytes.value += bytes.size
@@ -111,6 +130,7 @@ object CanMonitor {
         _lines.value = emptyList()
         _values.value = emptyMap()
         history.clear()
+        sent.clear()
     }
 
     /** Writes every message received since the start to a text file; returns it. */
@@ -123,14 +143,35 @@ object CanMonitor {
         file.bufferedWriter().use { w ->
             w.write("# LibreHU CAN box log (Hiworld framing), $stamp, ${_rawBytes.value} bytes, $skipped skipped\n")
             w.write("# Car profile: ${vehicle.name} (${vehicle.id})\n")
+            val talk = CanBoxTalk.status.value
+            w.write(
+                "# Dialogue with the box: " +
+                    (if (!talk.running) "not running" else "${talk.acks} acknowledgements sent") +
+                    talk.sent.entries.joinToString("") { (k, v) -> ", $k ${v.first} at ${time.format(Date(v.second))}" } +
+                    ", acknowledged by the box: " +
+                    (if (talk.acked.isEmpty()) "nothing" else talk.acked.joinToString(" ") { "0x%02X".format(it) }) + "\n",
+            )
+            w.write("# Lines with → : sent by the head unit to the box\n")
+            val out = sent.toList()
+            var i = 0
             for (l in history) {
+                while (i < out.size && out[i].at <= l.at) writeSent(w, time, out[i++])
                 w.write(time.format(Date(l.at)))
                 w.write("  ")
                 w.write(l.frame.toString())
                 vehicle.describe(l.frame)?.let { w.write("  # $it") }
                 w.write("\n")
             }
+            while (i < out.size) writeSent(w, time, out[i++])
         }
         return file
+    }
+
+    private fun writeSent(
+        w: java.io.Writer,
+        time: SimpleDateFormat,
+        s: SentLine,
+    ) {
+        w.write("${time.format(Date(s.at))}  → ${s.hex}  # ${s.what}\n")
     }
 }

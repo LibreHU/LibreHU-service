@@ -146,6 +146,12 @@ Envoi par la trame MCU `10`, que la MCU recopie telle quelle sur la liaison sér
 qui le fait déjà). Onglet CAN, carte **Dialogue avec le boîtier** : interrupteur, accusés envoyés, messages du
 profil envoyés (octets, heure), commandes accusées par le boîtier. Journal `LibreHU-CAN` : « box link … »,
 « → box: … », « box acknowledged 0x24 ».
+**Export CAN** (onglet CAN → exporter) : une ligne d'en-tête « Dialogue with the box » (en marche ou non, accusés
+envoyés, messages du profil avec leurs octets et leur heure, commandes accusées par le boîtier) et, entre les messages
+du boîtier, chaque envoi de l'autoradio marqué `→` (accusés, type de voiture, vitesse `MCU 0F 00 xx`). Un boîtier
+Hiworld accuse le type de voiture par `FF: 24` ; s'il n'apparaît jamais, les envois n'atteignent pas le boîtier. La
+vitesse du boîtier est envoyée au départ du dialogue puis 5 s plus tard (l'appli d'origine rouvre le port 5 à 10 s
+après sa connexion).
 
 **TWRP** (recovery LibreHU, branche bêta du dépôt `android_device_alps_ac8257_demo`, `tools/touchfix`) fait de même
 pour lire les touches du volant hors d'Android : le service écrit **`/sdcard/TWRP/ujc201_can.conf`** d'après le profil

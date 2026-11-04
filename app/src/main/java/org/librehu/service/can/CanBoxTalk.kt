@@ -51,6 +51,10 @@ object CanBoxTalk {
     private var linkFor: CanVehicle? = null
 
     private var timer: ScheduledExecutorService? = null
+
+    /** The box speed again, a few seconds after the start (the box's own app opens its port again, 5 to 10 s later). */
+    @Volatile
+    private var baudAgain: Pair<Long, Int>? = null
     private var prefs: android.content.SharedPreferences? = null
 
     private val _enabled = MutableStateFlow(true)
@@ -91,6 +95,7 @@ object CanBoxTalk {
     @Synchronized
     fun stop() {
         sender = null
+        baudAgain = null
         link = null
         linkFor = null
         timer?.shutdownNow()
@@ -107,7 +112,14 @@ object CanBoxTalk {
     private fun tick() {
         try {
             if (CanMonitor.vehicle !== linkFor) rebuild()
-            link?.tick(SystemClock.elapsedRealtime())
+            val now = SystemClock.elapsedRealtime()
+            baudAgain?.let { (at, i) ->
+                if (now >= at) {
+                    baudAgain = null
+                    sendBaud(i, "again")
+                }
+            }
+            link?.tick(now)
         } catch (e: Exception) {
             Log.w(TAG, "box link: ${e.message}")
         }
@@ -135,11 +147,8 @@ object CanBoxTalk {
             val i = org.librehu.core.mcu.JacDebug.CAN_BAUDS
                 .indexOf(b)
             if (i >= 0) {
-                mcu?.invoke(
-                    org.librehu.core.mcu.JacDebug
-                        .canBaud(i),
-                )
-                Log.i(TAG, "box serial link: $b bit/s (MCU 0F 00 %02X)".format(i))
+                sendBaud(i, "$b bit/s")
+                baudAgain = SystemClock.elapsedRealtime() + BAUD_AGAIN_MS to i
             }
         }
         _status.value = Status(running = true)
@@ -155,20 +164,35 @@ object CanBoxTalk {
             ).also { it.start(SystemClock.elapsedRealtime()) }
     }
 
+    /** MCU `0F 00 <index>`: speed of the box's serial link. */
+    private fun sendBaud(
+        i: Int,
+        why: String,
+    ) {
+        mcu?.invoke(
+            org.librehu.core.mcu.JacDebug
+                .canBaud(i),
+        )
+        CanMonitor.recordSent("MCU 0F 00 %02X".format(i), "box serial speed ($why)")
+        Log.i(TAG, "box serial link: MCU 0F 00 %02X ($why)".format(i))
+    }
+
     private fun send(
         out: (ByteArray) -> Unit,
         bytes: ByteArray,
         what: String,
     ) {
         out(bytes)
+        val hex = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+        CanMonitor.recordSent(hex, what)
         if (what == "ack") {
             _status.update { it.copy(acks = it.acks + 1) }
             return
         }
-        val hex = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
         if (what !in _status.value.sent) Log.i(TAG, "→ box: $what $hex") else Log.d(TAG, "→ box: $what $hex")
         _status.update { it.copy(sent = it.sent + (what to (hex to System.currentTimeMillis()))) }
     }
 
     private const val KEY_ENABLED = "talk"
+    private const val BAUD_AGAIN_MS = 5_000L
 }
