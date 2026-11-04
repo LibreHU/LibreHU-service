@@ -34,6 +34,19 @@ pas choisie dans l'onglet CAN (un boîtier ne doit pas recevoir le type d'une au
 voiture** : retours et captures bienvenus. Les profils intégrés sont des fichiers JSON
 (`core/src/main/resources/org/librehu/core/can/vehicles/`).
 
+**Voitures décodées** (résumé ; liste par marque et modèle, tenue à jour seule depuis les profils de la dernière
+version publiée : <https://librehu.github.io/docs.html#can-cars>) :
+
+| Protocole (profil) | Marques | Voitures | Depuis (service) |
+|---|---|---|---|
+| Hiworld LNP002 (`renault-clio3-hiworld`) | Renault, Renault Samsung, LADA, Nissan, Mercedes-Benz (Smart) | 94 | v147 ; Clio 3 : v23 |
+| Hiworld HYP001 (`hyundai-kia-hiworld`) | Hyundai, Kia | 152 | v148 |
+| Hiworld TYP001 (`toyota-hiworld`) | Toyota, Lexus (ES) | 142 | v148 |
+| Hiworld HDP004 (`honda-hiworld`) | Honda, Acura | 79 | v148 |
+
+Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
+un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.
+
 **Types de voiture** : relevés dans « Car Info » 1.0.3991 sans l'exécuter : la méthode `buildCarTypePacket` de chaque
 décodeur, listée en instructions brutes (`jadx -m fallback`), est **rejouée** sur chaque voiture du catalogue
 (`assets/protocol/*.xml` : identifiants de série / modèle / année / finition, code voiture) par un petit interpréteur qui
