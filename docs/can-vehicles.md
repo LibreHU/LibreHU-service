@@ -149,6 +149,13 @@ tour de ~17 s, octets de touche toujours à 0). Le service fait donc comme l'app
   (`HdProtocol.txRequestCmdId`, `getInquiryInfoPackets`) pour `0xF0`, 3 s après le départ puis toutes les 30 s. Un
   message `F0` aussitôt après chaque demande (hors de son tour d'environ 17 s) montre que le boîtier reçoit
   l'autoradio ; sinon, rien n'arrive jusqu'à lui.
+  **Résultat sur la Clio 3 (04/11/2026, v154)** : le boîtier répond à chaque demande en ~90 ms : il **reçoit**
+  l'autoradio. Il n'envoie **jamais d'accusé** (`FF`) : ce boîtier LNP002 n'en envoie pas, l'absence de `FF` ne prouve
+  rien. Le message `26` est le type de voiture que garde le boîtier, octets inversés (`26: 31 00` pour `[00, 31]` ;
+  un type Honda `[40, 02]` envoyé par erreur → `26: 02 40` aussitôt, et `11` D9 = `40`). Touches toujours à 0 : le
+  boîtier ne reçoit pas le satellite. Sur la Clio 3 à afficheur déporté, la commande sous volant passe par
+  l'afficheur, relié en CAN au connecteur jaune (C1) de la radio (forum Planète Renault) ; le message `14`
+  (ordinateur de bord) reste à `FF` : piste, le boîtier n'est pas sur le bus de l'afficheur.
 
 Envoi par la trame MCU `10`, que la MCU recopie telle quelle sur la liaison série du boîtier
 (`core/.../can/CanBox.kt`, `can/CanBoxTalk.kt`). Seulement quand le service tient la MCU (jamais avec ivi-services,
