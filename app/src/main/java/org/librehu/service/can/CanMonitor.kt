@@ -149,7 +149,8 @@ object CanMonitor {
                     (if (!talk.running) "not running" else "${talk.acks} acknowledgements sent") +
                     talk.sent.entries.joinToString("") { (k, v) -> ", $k ${v.first} at ${time.format(Date(v.second))}" } +
                     ", acknowledged by the box: " +
-                    (if (talk.acked.isEmpty()) "nothing" else talk.acked.joinToString(" ") { "0x%02X".format(it) }) + "\n",
+                    (if (talk.acked.isEmpty()) "nothing" else talk.acked.joinToString(" ") { "0x%02X".format(it) }) +
+                    (if (talk.requests > 0) ", requests answered by the box: ${talk.answers} of ${talk.requests}" else "") + "\n",
             )
             w.write("# Lines with → : sent by the head unit to the box\n")
             val out = sent.toList()

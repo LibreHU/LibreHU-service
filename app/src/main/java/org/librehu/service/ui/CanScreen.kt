@@ -261,13 +261,21 @@ internal fun CanBoxTalkCard() {
         if (enabled && st.running) {
             Hint(stringResource(R.string.can_talk_acks, st.acks))
             for ((name, v) in st.sent) Hint(stringResource(R.string.can_talk_sent, name, v.first, time.format(Date(v.second))))
-            Hint(
-                if (st.acked.isEmpty()) {
-                    stringResource(R.string.can_talk_no_ack)
-                } else {
-                    stringResource(R.string.can_talk_acked, st.acked.sorted().joinToString { "0x%02X".format(it) })
-                },
-            )
+            if (st.acked.isNotEmpty()) {
+                Hint(stringResource(R.string.can_talk_acked, st.acked.sorted().joinToString { "0x%02X".format(it) }))
+            } else if (st.requests == 0) {
+                Hint(stringResource(R.string.can_talk_no_ack))
+            }
+            // Some boxes never acknowledge (Hiworld LNP002): an answer to a request shows that the box hears us.
+            if (st.requests > 0) {
+                Hint(
+                    if (st.answers > 0) {
+                        stringResource(R.string.can_talk_answers, st.answers, st.requests)
+                    } else {
+                        stringResource(R.string.can_talk_no_answer, st.requests)
+                    },
+                )
+            }
         }
     }
 }

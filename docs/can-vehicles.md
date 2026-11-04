@@ -156,6 +156,9 @@ tour de ~17 s, octets de touche toujours à 0). Le service fait donc comme l'app
   boîtier ne reçoit pas le satellite. Sur la Clio 3 à afficheur déporté, la commande sous volant passe par
   l'afficheur, relié en CAN au connecteur jaune (C1) de la radio (forum Planète Renault) ; le message `14`
   (ordinateur de bord) reste à `FF` : piste, le boîtier n'est pas sur le bus de l'afficheur.
+  Depuis v155, la carte *Dialogue avec le boîtier* et l'en-tête de l'export comptent les **demandes auxquelles le
+  boîtier a répondu** (message demandé reçu moins de 400 ms après la demande) : « 11 sur 11 (il entend l'autoradio) » ou
+  « aucune (rien ne lui arrive) », au lieu d'attendre un accusé que certains boîtiers n'envoient jamais.
 
 Envoi par la trame MCU `10`, que la MCU recopie telle quelle sur la liaison série du boîtier
 (`core/.../can/CanBox.kt`, `can/CanBoxTalk.kt`). Seulement quand le service tient la MCU (jamais avec ivi-services,

@@ -525,13 +525,15 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_variant_title">Votre voiture</string>
     <string name="can_variant_search">Rechercher une voiture</string>
     <string name="can_talk">Dialogue avec le boîtier</string>
-    <string name="can_talk_hint">Comme l\'appli d\'origine du boîtier : chaque message du boîtier est acquitté, et le profil de voiture lui envoie ses messages (Clio 3 : le type de voiture, commande 0x24, toutes les 30 s). Sans eux, un boîtier Hiworld attend : il envoie un message par seconde et aucune touche du volant.</string>
+    <string name="can_talk_hint">Comme l\'appli d\'origine du boîtier : chaque message du boîtier est acquitté, et le profil de voiture lui envoie ses messages (Clio 3 : type de voiture 0x24, source audio, demande de version). Un boîtier qui répond à une demande entend l\'autoradio ; certains n\'envoient jamais d\'accusé.</string>
     <string name="can_talk_enable">Répondre au boîtier</string>
     <string name="can_talk_idle">Inactif : le service ne tient pas la MCU (ivi-services actif, ou autre MCU).</string>
     <string name="can_talk_acks">Accusés envoyés : %1$d</string>
     <string name="can_talk_sent">%1$s : %2$s, envoyé à %3$s</string>
     <string name="can_talk_no_ack">Pas encore d\'accusé du boîtier.</string>
     <string name="can_talk_acked">Accusé par le boîtier : %1$s</string>
+    <string name="can_talk_answers">Demandes auxquelles le boîtier a répondu : %1$d sur %2$d (il entend l\'autoradio)</string>
+    <string name="can_talk_no_answer">Demandes auxquelles le boîtier a répondu : aucune sur %1$d (rien ne lui arrive)</string>
     <string name="can_keys">Commandes au volant</string>
     <string name="can_keys_hint">Touches de la commande au volant relayées par le boîtier CAN (message 0x11), transformées en actions comme les touches tactiles. Appuyer sur un bouton pour voir son code, puis choisir son action.</string>
     <string name="can_keys_enable">Utiliser les commandes au volant</string>

@@ -525,13 +525,15 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_variant_title">Your car</string>
     <string name="can_variant_search">Search a car</string>
     <string name="can_talk">Dialogue with the box</string>
-    <string name="can_talk_hint">As the box\'s own app does: each message of the box is acknowledged, and the car profile sends the box its messages (Clio 3: the car type, command 0x24, every 30 s). Without them a Hiworld box waits: it sends its messages one a second and no steering wheel key.</string>
+    <string name="can_talk_hint">As the box\'s own app does: each message of the box is acknowledged, and the car profile sends the box its messages (Clio 3: car type 0x24, audio source, version request). A box that answers a request hears the head unit; some boxes never acknowledge.</string>
     <string name="can_talk_enable">Answer the box</string>
     <string name="can_talk_idle">Not running: the service does not hold the MCU (ivi-services running, or another MCU).</string>
     <string name="can_talk_acks">Acknowledgements sent: %1$d</string>
     <string name="can_talk_sent">%1$s: %2$s, sent at %3$s</string>
     <string name="can_talk_no_ack">No acknowledgement from the box yet.</string>
     <string name="can_talk_acked">Acknowledged by the box: %1$s</string>
+    <string name="can_talk_answers">Requests answered by the box: %1$d of %2$d (it hears the head unit)</string>
+    <string name="can_talk_no_answer">Requests answered by the box: none of %1$d (nothing reaches it)</string>
     <string name="can_keys">Steering wheel keys</string>
     <string name="can_keys_hint">Keys of the steering wheel remote relayed by the CAN box (message 0x11), turned into actions like the touch keys. Press a button to see its code, then pick its action.</string>
     <string name="can_keys_enable">Use the steering wheel keys</string>

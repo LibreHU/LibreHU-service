@@ -32,6 +32,9 @@ object CanBoxTalk {
         val sent: Map<String, Pair<String, Long>> = emptyMap(),
         /** Commands the box acknowledged. */
         val acked: Set<Int> = emptySet(),
+        /** Requests sent (Hiworld 0x6A [5, 1, cmd]) and those the box answered at once: it hears the head unit. */
+        val requests: Int = 0,
+        val answers: Int = 0,
     )
 
     private val _status = MutableStateFlow(Status())
@@ -49,6 +52,10 @@ object CanBoxTalk {
 
     @Volatile
     private var linkFor: CanVehicle? = null
+
+    /** Message asked for by the last request, and when (elapsed ms). */
+    @Volatile
+    private var asked: Pair<Int, Long>? = null
 
     private var timer: ScheduledExecutorService? = null
 
@@ -106,7 +113,15 @@ object CanBoxTalk {
     /** Every message of the box (MCU thread). */
     fun onFrame(f: CanboxFrame) {
         if (changed(CanMonitor.vehicle)) rebuild()
-        link?.onFrame(f, SystemClock.elapsedRealtime())
+        val now = SystemClock.elapsedRealtime()
+        asked?.let { (cmd, at) ->
+            if (f.cmd == cmd && now - at <= ANSWER_MS) {
+                asked = null
+                if (_status.value.answers == 0) Log.i(TAG, "box answered the request for 0x%02X in %d ms: it hears the head unit".format(cmd, now - at))
+                _status.update { it.copy(answers = it.answers + 1) }
+            }
+        }
+        link?.onFrame(f, now)
     }
 
     private fun tick() {
@@ -197,6 +212,13 @@ object CanBoxTalk {
         out(bytes)
         val hex = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
         CanMonitor.recordSent(hex, what)
+        // Hiworld request 5A A5 03 6A 05 01 <cmd> CS: the box sends that message at once.
+        if (bytes.size == 8 && (bytes[0].toInt() and 0xFF) == 0x5A && (bytes[1].toInt() and 0xFF) == 0xA5 && bytes[2].toInt() == 3 &&
+            (bytes[3].toInt() and 0xFF) == 0x6A && bytes[4].toInt() == 5 && bytes[5].toInt() == 1
+        ) {
+            asked = (bytes[6].toInt() and 0xFF) to SystemClock.elapsedRealtime()
+            _status.update { it.copy(requests = it.requests + 1) }
+        }
         if (what == "ack") {
             _status.update { it.copy(acks = it.acks + 1) }
             return
@@ -207,4 +229,7 @@ object CanBoxTalk {
 
     private const val KEY_ENABLED = "talk"
     private const val BAUD_AGAIN_MS = 5_000L
+
+    /** An answer comes within this after the request (~90 ms seen on a Clio 3 box). */
+    private const val ANSWER_MS = 400L
 }
