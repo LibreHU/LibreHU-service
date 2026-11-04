@@ -40,6 +40,10 @@ object CanBoxTalk {
     @Volatile
     private var sender: ((ByteArray) -> Unit)? = null
 
+    /** MCU configuration frames (`0F 00 <speed>`). */
+    @Volatile
+    private var mcu: ((org.librehu.core.mcu.McuFrame) -> Unit)? = null
+
     @Volatile
     private var link: CanBoxLink? = null
 
@@ -67,10 +71,14 @@ object CanBoxTalk {
         rebuild()
     }
 
-    /** The MCU link is up (Jancar MCU): [send] writes the bytes to the box. */
+    /** The MCU link is up (Jancar MCU): [send] writes the bytes to the box, [mcuFrame] sends an MCU frame (cmd, data). */
     @Synchronized
-    fun start(send: (ByteArray) -> Unit) {
+    fun start(
+        mcuFrame: (org.librehu.core.mcu.McuFrame) -> Unit,
+        send: (ByteArray) -> Unit,
+    ) {
         sender = send
+        mcu = mcuFrame
         rebuild()
         if (timer == null) {
             timer =
@@ -122,6 +130,18 @@ object CanBoxTalk {
             "box link (${v.family.name}, ${v.id}): acknowledgements ${if (l.ack) "on" else "off"}" +
                 l.send.joinToString("") { ", ${it.name} 0x%02X every ${it.everyMs} ms".format(it.cmd) },
         )
+        // The box's speed, as its app sets it at each start (CanBusService.sendBaudRateData): MCU 0F 00 <index>.
+        v.baud?.let { b ->
+            val i = org.librehu.core.mcu.JacDebug.CAN_BAUDS
+                .indexOf(b)
+            if (i >= 0) {
+                mcu?.invoke(
+                    org.librehu.core.mcu.JacDebug
+                        .canBaud(i),
+                )
+                Log.i(TAG, "box serial link: $b bit/s (MCU 0F 00 %02X)".format(i))
+            }
+        }
         _status.value = Status(running = true)
         link =
             CanBoxLink(

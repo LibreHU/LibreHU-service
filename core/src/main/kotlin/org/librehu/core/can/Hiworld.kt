@@ -16,9 +16,12 @@ class CanboxFrame(
 /**
  * Rebuilds the CAN box messages from the bytes relayed by the MCU (frames `10`, cut every ~128 bytes / 20 ms, so a
  * message can span two chunks). Hiworld framing (ivi-canbus, docs/ivi-services/12-canbus.md):
- * `5A A5 LEN CMD D0..Dn-1 CS`, LEN = n, CS = ((LEN + CMD + ΣD) & 0xFF) - 1.
+ * `5A A5 LEN CMD D0..Dn-1 CS`, LEN = n, CS = ((LEN + CMD + ΣD) & 0xFF) - 1; the same with the header `AA 55` for
+ * Hiworld's other family ([head1], [head2]).
  */
 class HiworldParser(
+    private val head1: Int = 0x5A,
+    private val head2: Int = 0xA5,
     private val onFrame: (CanboxFrame) -> Unit,
 ) : CanBoxParser {
     private var state = 0
@@ -37,14 +40,14 @@ class HiworldParser(
     private fun feed(v: Int) {
         when (state) {
             0 -> {
-                if (v == 0x5A) state = 1 else skipped++
+                if (v == head1) state = 1 else skipped++
             }
 
             1 -> {
                 state =
-                    if (v == 0xA5) {
+                    if (v == head2) {
                         2
-                    } else if (v == 0x5A) {
+                    } else if (v == head1) {
                         1
                     } else {
                         0.also { skipped += 2 }
@@ -82,9 +85,11 @@ class HiworldParser(
         fun encode(
             cmd: Int,
             data: ByteArray,
+            head1: Int = 0x5A,
+            head2: Int = 0xA5,
         ): ByteArray {
             val sum = data.size + cmd + data.sumOf { it.toInt() and 0xFF }
-            return byteArrayOf(0x5A, 0xA5.toByte(), data.size.toByte(), cmd.toByte()) + data + (((sum and 0xFF) - 1) and 0xFF).toByte()
+            return byteArrayOf(head1.toByte(), head2.toByte(), data.size.toByte(), cmd.toByte()) + data + (((sum and 0xFF) - 1) and 0xFF).toByte()
         }
     }
 }

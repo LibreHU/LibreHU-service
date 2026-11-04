@@ -368,7 +368,7 @@ class LibreHuService : Service() {
         }
         headUnit.start(t::send)
         // Talking back to the CAN box (MCU 10, copied to its serial link): Jancar MCU only.
-        if (jancar) CanBoxTalk.start { headUnit.sendToMcu(McuFrame(0x10, it)) }
+        if (jancar) CanBoxTalk.start(headUnit::sendToMcu) { headUnit.sendToMcu(McuFrame(0x10, it)) }
         // Front panel LEDs: Jancar MCU only (0F 04).
         org.librehu.service.car.FrontLed
             .get(this)

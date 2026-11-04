@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import org.librehu.core.can.CanboxFrame
 import org.librehu.core.can.HiworldWheelKeys
+import org.librehu.core.can.WheelKeySpec
 import org.librehu.core.can.WheelHold
 import org.librehu.core.touch.TouchAction
 import org.librehu.core.touch.ZoneAction
@@ -58,11 +59,23 @@ class CanWheelKeys private constructor(
     /** Last press of a key with a long press: its frames (↓ press, ↑ release, ms from the first) and what it gave. */
     val lastTimeline: StateFlow<String?> = _timeline.asStateFlow()
 
-    private val detector =
-        HiworldWheelKeys(
-            { d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) },
-            { code -> main.post { onUp(code) } },
-        ) { code -> main.post { onPress(code) } }
+    /** Reads the keys where the car profile says the box puts them (rebuilt when the profile changes). */
+    private var detectorFor: WheelKeySpec? = null
+    private var detector: HiworldWheelKeys? = null
+
+    private fun detector(spec: WheelKeySpec): HiworldWheelKeys =
+        detector?.takeIf { detectorFor == spec }
+            ?: HiworldWheelKeys(
+                { d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) },
+                { code -> main.post { onUp(code) } },
+                spec,
+            ) { code -> main.post { onPress(code) } }.also {
+                detector = it
+                detectorFor = spec
+            }
+
+    /** Name of a button code in the car profile, "?" when it has none. */
+    fun name(code: Int): String = (CanMonitor.vehicle.keys ?: WheelKeySpec.HIWORLD_LNP002).name(code) ?: "?"
 
     /** Short / long press of the keys that have a long action, on the frames' timing ([WheelHold]). */
     private var hold = WheelHold(longMs().toLong(), GAP_MS)
@@ -85,17 +98,17 @@ class CanWheelKeys private constructor(
 
     fun setIgnoreAfterOnS(s: Int) = prefs.edit().putInt(KEY_IGNORE_S, s.coerceIn(0, 30)).apply()
 
-    /** Only with a profile that has the steering wheel key in `0x11` (Hiworld LNP002 and alike). */
+    /** Only with a car profile that says where the keys are (`wheel_keys`, or Hiworld LNP002's `0x11`). */
     fun onFrame(f: CanboxFrame) {
-        val m = CanMonitor.vehicle.messages[HiworldWheelKeys.CMD]
-        if (m == null || m.signals.none { it.name == "wheel_key" }) {
-            if (f.cmd == HiworldWheelKeys.CMD && !profileWarned) {
+        val spec = CanMonitor.vehicle.keys
+        if (spec == null) {
+            if (!profileWarned) {
                 profileWarned = true
-                android.util.Log.w(TAG, "key frames 0x11 received, but the car profile ${CanMonitor.vehicle.id} has no steering wheel key: ignored")
+                android.util.Log.w(TAG, "the car profile ${CanMonitor.vehicle.id} says nothing of the steering wheel keys: none read")
             }
             return
         }
-        detector.onFrame(f)
+        detector(spec).onFrame(f)
     }
 
     private var profileWarned = false
@@ -144,7 +157,7 @@ class CanWheelKeys private constructor(
         _lastKey.value = code
         _seen.value = _seen.value + code
         // One line per press in the log (LibreHU Helper reports): what the box sent and what became of it.
-        val name = HiworldWheelKeys.name(code) ?: "?"
+        val name = name(code)
         when {
             !_enabled.value -> android.util.Log.i(TAG, "wheel key $code ($name): steering wheel keys off in the CAN tab")
             claimed(code) -> android.util.Log.i(TAG, "wheel key $code ($name): handled by ${_claims.value.filterValues { "can:$code" in it }.keys.joinToString()}")
@@ -182,7 +195,7 @@ class CanWheelKeys private constructor(
     }
 
     private fun done(p: WheelHold.Press) {
-        _timeline.value = "${HiworldWheelKeys.name(p.code) ?: p.code} : ${p.frames}"
+        _timeline.value = "${name(p.code)} : ${p.frames}"
         run(if (p.result == WheelHold.Result.LONG) longOf(p.code) else click(p.code))
     }
 

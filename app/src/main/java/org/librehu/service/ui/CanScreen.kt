@@ -27,7 +27,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.librehu.core.can.HiworldWheelKeys
+import org.librehu.core.can.WheelKeySpec
 import org.librehu.core.touch.TouchAction
 import org.librehu.core.touch.ZoneAction
 import org.librehu.service.R
@@ -83,6 +83,7 @@ fun CanScreen(actions: AppActions) {
                     v.name,
                     listOfNotNull(
                         v.id,
+                        v.family.name + (v.baud?.let { " · $it bit/s" } ?: ""),
                         stringResource(R.string.can_vehicle_messages, v.messages.values.count { it.signals.isNotEmpty() }),
                         if (builtIn) stringResource(R.string.mcu_builtin) else null,
                         v.description.ifEmpty { null },
@@ -276,7 +277,7 @@ fun CanWheelKeysCard() {
 }
 
 @Composable
-private fun keyName(code: Int): String = HiworldWheelKeys.name(code) ?: "?"
+private fun keyName(code: Int): String = (CanMonitor.vehicle.keys ?: WheelKeySpec.HIWORLD_LNP002).name(code) ?: "?"
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable

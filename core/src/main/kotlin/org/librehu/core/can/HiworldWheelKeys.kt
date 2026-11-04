@@ -14,21 +14,23 @@ package org.librehu.core.can
 class HiworldWheelKeys(
     private val onRaw: ((Int, Int, Int) -> Unit)? = null,
     private val onRelease: (Int) -> Unit = {},
+    /** Where the box puts the keys (the car profile's `wheel_keys`); Hiworld LNP002 by default. */
+    private val spec: WheelKeySpec = WheelKeySpec.HIWORLD_LNP002,
     private val onPress: (Int) -> Unit,
 ) {
     private var pressed = 0
     private var lastRaw = -1
 
     fun onFrame(f: CanboxFrame) {
-        if (f.cmd != CMD || f.data.size < 4) return
-        val d1 = f.u(1)
-        val key = f.u(2)
-        val d3 = f.u(3)
-        val raw = (d1 shl 16) or (key shl 8) or d3
-        if (raw != lastRaw) onRaw?.invoke(d1, key, d3)
+        if (f.cmd != spec.cmd || f.data.size <= maxOf(spec.codeByte, spec.stateByte ?: 0, spec.eventByte ?: 0)) return
+        val ev = spec.eventByte?.let { f.u(it) } ?: 0
+        val key = f.u(spec.codeByte) and spec.codeMask
+        val st = spec.stateByte?.let { f.u(it) } ?: 0
+        val raw = (ev shl 16) or (key shl 8) or st
+        if (raw != lastRaw) onRaw?.invoke(ev, key, st)
         lastRaw = raw
-        val event = d1 and 0x08 != 0
-        val down = event && key != 0 && d3 == 1
+        val event = spec.eventByte == null || ev and spec.eventMask != 0
+        val down = event && key != 0 && (spec.stateByte == null || st in spec.pressed)
         if (pressed != 0 && (!down || pressed != key)) onRelease(pressed)
         if (down && pressed != key) onPress(key)
         pressed = if (down) key else 0
@@ -64,6 +66,40 @@ class HiworldWheelKeys(
                 20 to "hang up",
                 21 to "scan",
                 24 to "voice",
+            )
+    }
+}
+
+/**
+ * Where a box puts the steering wheel keys (car profile, `"wheel_keys"`): message [cmd], key code at [codeByte] (masked
+ * by [codeMask]), pressed while the byte at [stateByte] is one of [pressed] (no [stateByte]: while the code is not 0),
+ * and only when the byte at [eventByte] has a bit of [eventMask] (Hiworld LNP002: D1 bit 3). Bytes count from D0.
+ * [names]: the buttons' names, for the CAN tab.
+ */
+data class WheelKeySpec(
+    val cmd: Int,
+    val codeByte: Int,
+    val codeMask: Int = 0xFF,
+    val stateByte: Int? = null,
+    val pressed: Set<Int> = setOf(1),
+    val eventByte: Int? = null,
+    val eventMask: Int = 0xFF,
+    val names: Map<Int, String> = emptyMap(),
+) {
+    /** Name of a code: the profile's, else its low 5 bits' (codes read before the whole byte was). */
+    fun name(code: Int): String? = names[code] ?: names[code and 0x1F]?.takeIf { code > 0x1F }?.let { "$it (0x%02X)".format(code) }
+
+    companion object {
+        /** Hiworld LNP002 (Renault…): `0x11`, D1 bit 3 = key event, D2 = code, D3 = 1 on the press. */
+        val HIWORLD_LNP002 =
+            WheelKeySpec(
+                cmd = HiworldWheelKeys.CMD,
+                codeByte = 2,
+                stateByte = 3,
+                pressed = setOf(1),
+                eventByte = 1,
+                eventMask = 0x08,
+                names = HiworldWheelKeys.NAMES,
             )
     }
 }

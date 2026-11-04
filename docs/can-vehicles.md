@@ -1,10 +1,11 @@
 # Profils de voiture pour le décodage CAN
 
 ## Pourquoi un profil par voiture
-Le boîtier CAN (Hiworld sur l'UJC201) est branché sur le CAN-H / CAN-L de la voiture. Il **ne relaie pas les trames
-du bus** : son firmware, réglé pour un modèle de voiture, les traduit en ses propres messages
-`5A A5 LEN CMD D0..Dn-1 CS`, que le MCU recopie dans ses trames `10` (voir
-[ivi-services/12-canbus.md](ivi-services/12-canbus.md)). Le sens de chaque commande (`0x11` état, `0x12` portes…)
+Le boîtier CAN (Hiworld sur l'UJC201 de l'auteur ; Raise, Simple, Oudi… sur d'autres) est branché sur le CAN-H /
+CAN-L de la voiture. Il **ne relaie pas les trames du bus** : son firmware, réglé pour un modèle de voiture, les traduit
+en ses propres messages (Hiworld `5A A5 LEN CMD D0..Dn-1 CS`, Raise `2E CMD LEN D0..Dn-1 CS`…), que le MCU recopie
+dans ses trames `10` (voir [ivi-services/12-canbus.md](ivi-services/12-canbus.md) et
+[Familles de boîtiers](#familles-de-boîtiers)). Le sens de chaque commande (`0x11` état, `0x12` portes…)
 dépend du protocole du boîtier pour la marque (Renault : LNP002). Le profil de voiture dit comment lire ces
 messages ; on le choisit dans l'onglet **CAN** et il s'applique tout de suite.
 
@@ -12,6 +13,30 @@ Profils intégrés :
 - `renault-clio3-hiworld` : Clio 3 2005-2014, protocole Hiworld LNP002 (état ACC / feux / marche AR / frein,
   touche volant, angle de volant, portes, température extérieure, radar, version du boîtier) ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
+
+## Familles de boîtiers
+
+Le profil nomme son boîtier (`"box"`) : une **famille** (trame, somme de contrôle, accusé) ou le **fabricant**, qui
+renvoie à la famille de la plupart de ses protocoles. Relevé dans l'appli Hiworld « Car Info » 1.0.3991
+(`com.can.activity`, lue sans être exécutée : classes de base `HdProtocol`, `HdAA55Protocol`, `ReBaseProtocol`,
+`ReFDProtocol`, `ReFD2Protocol`, `BnrProtocol`, `LzProtocol`, `KcyProtocol` ; fabricants de la table `canbox` de
+`assets/canbus.db`). `core/.../can/CanBox.kt`, testé (`CanBoxFamiliesTest`).
+
+| `box` | Trame | Somme | L'autoradio répond | Fabricants (`box` accepté aussi) |
+|---|---|---|---|---|
+| `hiworld` | `5A A5 LEN CMD D… CS` | (LEN + CMD + ΣD) & 0xFF − 1 | `5A A5 01 FF <cmd> CS` à chaque message | `hiworld`, `wy` |
+| `hiworld-aa55` | `AA 55 LEN CMD D… CS` | idem | rien | — |
+| `raise` | `2E CMD LEN D… CS` | (CMD + LEN + ΣD) XOR 0xFF | l'octet `FF` à chaque message (le boîtier répond aussi par un octet : FF, F0, F3, FC) | `raise`, `simple`, `bagoo`, `binary`, `oudi`, `luzheng`, `keyichuang`, `xinbas`, `dogen`, `hcy`, `bsj`, `cyt`, `autoai`, `rcw`, `hechi`, `xfy`, `hangdao` |
+| `raise-fd` | `FD LEN CMD D… CS` (LEN = n + 3) | (LEN + CMD + ΣD) & 0xFF | rien | — |
+| `raise-fd2` | `FD LEN CMD D… CSH CSL` (LEN = n + 4) | somme sur 16 bits | rien | — |
+
+Non pris en charge : Klyde (`55 AA 20 11 …`), Gobetter, et la variante CYT `55` à longueur fixe (quelques modèles).
+Dans « Car Info », Raise et Hiworld couvrent l'essentiel du catalogue (6 352 entrées, 129 marques : Raise 2 298,
+Hiworld 1 633, Oudi 792, Simple 777, Binary 265, Luzheng 191, Daojun 144…) ; **la trame est lue et acquittée** pour
+tous ces boîtiers, mais **le décodage d'une voiture demande son profil** (seule la Clio 3 + Hiworld est intégrée).
+
+`"baud"` (facultatif) : vitesse de la liaison série du boîtier, réglée sur la MCU au départ du dialogue
+(`0F 00 <index>`, comme l'appli d'origine) : 9600, 19200, **38400** (le plus courant), 57600, 115200, 230400, 460800.
 
 ## Et les dictionnaires CAN de CliOS ?
 [CliOS](https://github.com/Tanchouteur/CliOS) lit le bus **directement** (SocketCAN) : ses dictionnaires
@@ -91,8 +116,16 @@ de données au plus, mis en trame par la famille du boîtier (`box`).
 
 ## Touches du volant
 
-Avec un profil dont le message `0x11` a un signal `wheel_key` (Clio 3 LNP002, profils Hiworld semblables), le
-service lit les touches du volant relayées par le boîtier : D1 bit 3 = événement touche, D2 = code, D3 = 1 à
+Le profil dit où le boîtier met les touches du volant :
+```json
+"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08",
+                "names": { "1": "volume +", "2": "volume -" } }
+```
+Message `cmd`, code à `code_byte` (masqué par `code_mask`), appuyé tant que l'octet `state_byte` vaut une des valeurs
+de `pressed` (sans `state_byte` : tant que le code n'est pas 0), et seulement si l'octet `event_byte` a un bit de
+`event_mask` ; octets comptés depuis D0 ; `names` : noms affichés. Exemple Raise courant :
+`{ "cmd": "0x20", "code_byte": 0, "state_byte": 1, "pressed": [1, 2] }`. Un profil Hiworld sans `wheel_keys` mais avec
+un signal `wheel_key` dans `0x11` garde la lecture LNP002 : D1 bit 3 = événement touche, D2 = code, D3 = 1 à
 l'appui (`core/.../can/HiworldWheelKeys.kt`). Chaque code reçoit une action comme les touches de façade (onglet CAN,
 carte Touches du volant). Codes par défaut, d'après `HdRenaultProtocolLNP002` de l'appli Hiworld : 1 volume +,
 2 volume −, 3 sourdine, 5 / 13 précédent, 6 / 14 suivant, 18 sourdine. Les codes 4 et 17 arrivent aussi d'une

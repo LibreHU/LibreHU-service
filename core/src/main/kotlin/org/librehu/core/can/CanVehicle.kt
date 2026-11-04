@@ -101,9 +101,24 @@ data class CanVehicle(
     val messages: Map<Int, CanMessage> = emptyMap(),
     /** What the head unit sends to the box (acknowledgements, car type). */
     val link: CanLink = CanLink(),
+    /** Where the box puts the steering wheel keys; null: see [keys]. */
+    val wheelKeys: WheelKeySpec? = null,
+    /** Speed of the box's serial link, set on the MCU when the link starts (as the box's app does); null: left as it is. */
+    val baud: Int? = null,
 ) {
     /** The box family named by [box] (checked when the profile is read). */
     val family: CanBoxFamily get() = CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
+
+    /**
+     * The steering wheel keys of this profile: its [wheelKeys], else Hiworld LNP002's when the profile names a
+     * `wheel_key` signal in `0x11` (profiles written before `wheel_keys`), else none.
+     */
+    val keys: WheelKeySpec?
+        get() =
+            wheelKeys
+                ?: WheelKeySpec.HIWORLD_LNP002.takeIf {
+                    family === CanBoxFamilies.HIWORLD && messages[HiworldWheelKeys.CMD]?.signals?.any { s -> s.name == "wheel_key" } == true
+                }
 
     /** Every value of [f] this profile knows; empty when the command is unknown. */
     fun decode(f: CanboxFrame): List<CanValue> {
@@ -217,7 +232,9 @@ object CanVehicles {
         if (!Regex("[a-z0-9][a-z0-9._-]{1,63}").matches(id)) throw CanVehicleException("Invalid id \"$id\" (a-z, 0-9, . _ -)")
         val box = root.str("box") ?: CanVehicle.BOX_HIWORLD
         if (CanBoxFamilies.byId(box) == null) {
-            throw CanVehicleException("Unknown box \"$box\" (supported: ${CanBoxFamilies.ALL.joinToString { it.id }})")
+            throw CanVehicleException(
+                "Unknown box \"$box\" (supported: ${(CanBoxFamilies.ALL.map { it.id } + CanBoxFamilies.MAKERS.keys).distinct().joinToString()})",
+            )
         }
         val messages =
             (root["messages"] as? JsonObject).orEmpty().map { (key, e) ->
@@ -236,8 +253,53 @@ object CanVehicles {
             box = box,
             messages = messages.toMap(),
             link = (root["link"] as? JsonObject)?.let(::link) ?: CanLink(),
+            wheelKeys = (root["wheel_keys"] as? JsonObject)?.let(::wheelKeys),
+            baud =
+                root.int("baud")?.also {
+                    if (it !in CanBoxFamilies.BAUDS) throw CanVehicleException("baud $it (one of ${CanBoxFamilies.BAUDS.joinToString()})")
+                },
         )
     }
+
+    /** `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`. */
+    private fun wheelKeys(o: JsonObject): WheelKeySpec {
+        val cmd = o.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("wheel_keys: cmd missing")
+        val code = o.int("code_byte") ?: throw CanVehicleException("wheel_keys: code_byte missing")
+        fun byte(k: String): Int? = o.int(k)?.also { if (it !in 0..63) throw CanVehicleException("wheel_keys: $k 0..63") }
+        fun mask(k: String): Int? =
+            o.str(k)?.let { m ->
+                m.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 1..0xFF } ?: throw CanVehicleException("wheel_keys: bad $k $m")
+            }
+        if (code !in 0..63) throw CanVehicleException("wheel_keys: code_byte 0..63")
+        return WheelKeySpec(
+            cmd = cmd,
+            codeByte = code,
+            codeMask = mask("code_mask") ?: 0xFF,
+            stateByte = byte("state_byte"),
+            pressed =
+                ((o["pressed"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.intOrNull }?.toSet())
+                    ?.takeIf { it.isNotEmpty() } ?: setOf(1),
+            eventByte = byte("event_byte"),
+            eventMask = mask("event_mask") ?: 0xFF,
+            names =
+                (o["names"] as? JsonObject)
+                    ?.mapNotNull { (k, v) -> k.toIntOrNull()?.let { it to ((v as? JsonPrimitive)?.contentOrNull ?: "") } }
+                    ?.toMap()
+                    .orEmpty(),
+        )
+    }
+
+    private fun wheelKeysJson(w: WheelKeySpec) =
+        buildJsonObject {
+            put("cmd", "0x%02X".format(w.cmd))
+            put("code_byte", w.codeByte)
+            if (w.codeMask != 0xFF) put("code_mask", "0x%02X".format(w.codeMask))
+            w.stateByte?.let { put("state_byte", it) }
+            put("pressed", kotlinx.serialization.json.JsonArray(w.pressed.sorted().map { JsonPrimitive(it) }))
+            w.eventByte?.let { put("event_byte", it) }
+            if (w.eventMask != 0xFF) put("event_mask", "0x%02X".format(w.eventMask))
+            if (w.names.isNotEmpty()) put("names", buildJsonObject { w.names.toSortedMap().forEach { (k, v) -> put(k.toString(), v) } })
+        }
 
     /** `"link": { "ack": true, "send": [ { "name", "cmd": "0x24", "data": "00 31", "first_ms", "every_ms" } ] }`. */
     private fun link(o: JsonObject): CanLink {
@@ -298,7 +360,9 @@ object CanVehicles {
                 put("name", v.name)
                 put("description", v.description)
                 put("box", v.box)
+                v.baud?.let { put("baud", it) }
                 put("link", linkJson(v.link))
+                v.wheelKeys?.let { put("wheel_keys", wheelKeysJson(it)) }
                 put(
                     "messages",
                     buildJsonObject {
@@ -411,12 +475,17 @@ object CanVehicles {
           "name": "Renault Clio 3 (Hiworld LNP002)",
           "description": "Clio 3 2005-2014, Hiworld box, protocol LNP002, from Hiworld's own app (HdRenaultProtocolLNP002).",
           "box": "hiworld",
+          "baud": 38400,
           "link": {
             "ack": true,
             "send": [
               { "name": "car type (Clio 3, car code 0)", "cmd": "0x24", "data": "00 31", "first_ms": 1000, "every_ms": 30000 }
             ]
           },
+          "wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08",
+            "names": { "1": "volume +", "2": "volume -", "3": "mute", "4": "navigation", "5": "previous / answer",
+              "6": "next / hang up", "8": "right", "9": "left", "10": "mode", "13": "previous", "14": "next", "15": "OK",
+              "16": "phone", "18": "mute", "19": "answer", "20": "hang up", "21": "scan", "24": "voice" } },
           "messages": {
             "0x11": { "name": "State", "signals": {
               "status": { "start_byte": 0, "bits": { "ACC": 0, "lights": 1, "reverse": 2, "handbrake": 3, "SOS mute": 7 } },
