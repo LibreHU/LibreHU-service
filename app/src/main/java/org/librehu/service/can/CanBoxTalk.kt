@@ -105,13 +105,13 @@ object CanBoxTalk {
 
     /** Every message of the box (MCU thread). */
     fun onFrame(f: CanboxFrame) {
-        if (CanMonitor.vehicle !== linkFor) rebuild()
+        if (changed(CanMonitor.vehicle)) rebuild()
         link?.onFrame(f, SystemClock.elapsedRealtime())
     }
 
     private fun tick() {
         try {
-            if (CanMonitor.vehicle !== linkFor) rebuild()
+            if (changed(CanMonitor.vehicle)) rebuild()
             val now = SystemClock.elapsedRealtime()
             baudAgain?.let { (at, i) ->
                 if (now >= at) {
@@ -123,6 +123,18 @@ object CanBoxTalk {
         } catch (e: Exception) {
             Log.w(TAG, "box link: ${e.message}")
         }
+    }
+
+    /**
+     * The profile changed what is said to the box: another profile, box, speed or messages (another car). The same
+     * profile set again (the CAN screen, TWRP's file) keeps the link running: no box speed sent again, no restart.
+     */
+    private fun changed(v: CanVehicle): Boolean {
+        val l = linkFor ?: return true
+        if (v === l) return false
+        if (v.id != l.id || v.family !== l.family || v.baud != l.baud || v.link != l.link) return true
+        linkFor = v
+        return false
     }
 
     /** A new link for the profile selected now (or none: off, MCU not held). */
