@@ -31,6 +31,7 @@ import org.librehu.core.can.HiworldWheelKeys
 import org.librehu.core.touch.TouchAction
 import org.librehu.core.touch.ZoneAction
 import org.librehu.service.R
+import org.librehu.service.can.CanBoxTalk
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.can.CanVehicleStore
 import org.librehu.service.can.CanWheelKeys
@@ -100,6 +101,7 @@ fun CanScreen(actions: AppActions) {
             }
             Actions { Pill(stringResource(R.string.mcu_import), icon = Icons.Default.FileDownload, onClick = actions.importCanVehicle) }
         }
+        CanBoxTalkCard()
         CanWheelKeysCard()
         Card(stringResource(R.string.can_values)) {
             if (values.isEmpty()) Hint(stringResource(R.string.can_values_none))
@@ -186,6 +188,30 @@ fun exportCanVehicle(
     }
 
 /** Steering wheel keys of the CAN box → actions (same list as the touch keys). */
+/** The service's answers to the box: on / off, acknowledgements sent, the profile's messages, the box's acknowledgements. */
+@Composable
+internal fun CanBoxTalkCard() {
+    val enabled by CanBoxTalk.enabled.collectAsStateWithLifecycle()
+    val st by CanBoxTalk.status.collectAsStateWithLifecycle()
+    val time = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    Card(stringResource(R.string.can_talk)) {
+        Hint(stringResource(R.string.can_talk_hint))
+        SwitchRow(stringResource(R.string.can_talk_enable), enabled) { CanBoxTalk.setEnabled(it) }
+        if (enabled && !st.running) Hint(stringResource(R.string.can_talk_idle))
+        if (enabled && st.running) {
+            Hint(stringResource(R.string.can_talk_acks, st.acks))
+            for ((name, v) in st.sent) Hint(stringResource(R.string.can_talk_sent, name, v.first, time.format(Date(v.second))))
+            Hint(
+                if (st.acked.isEmpty()) {
+                    stringResource(R.string.can_talk_no_ack)
+                } else {
+                    stringResource(R.string.can_talk_acked, st.acked.sorted().joinToString { "0x%02X".format(it) })
+                },
+            )
+        }
+    }
+}
+
 @Composable
 fun CanWheelKeysCard() {
     val context = LocalContext.current

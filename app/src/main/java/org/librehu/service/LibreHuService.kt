@@ -37,6 +37,7 @@ import org.librehu.core.unit.VehicleInput
 import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
+import org.librehu.service.can.CanBoxTalk
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.can.CanVehicleStore
 import org.librehu.service.can.CanWheelKeys
@@ -182,7 +183,12 @@ class LibreHuService : Service() {
         }
         // Steering wheel keys of the CAN box (Hiworld 0x11) → the same actions as the touch keys.
         val wheelKeys = CanWheelKeys.get(this)
-        CanMonitor.frameListener = wheelKeys::onFrame
+        // The box's messages: acknowledged and answered (car type) while the service holds the MCU, then the keys.
+        CanBoxTalk.init(this)
+        CanMonitor.frameListener = { f ->
+            CanBoxTalk.onFrame(f)
+            wheelKeys.onFrame(f)
+        }
         // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
         Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
         // Host name of the car (not kept by Android across reboots), as root.
@@ -361,6 +367,8 @@ class LibreHuService : Service() {
             headUnit.simulate(f)
         }
         headUnit.start(t::send)
+        // Talking back to the CAN box (MCU 10, copied to its serial link): Jancar MCU only.
+        if (jancar) CanBoxTalk.start { headUnit.sendToMcu(McuFrame(0x10, it)) }
         // Front panel LEDs: Jancar MCU only (0F 04).
         org.librehu.service.car.FrontLed
             .get(this)
@@ -371,6 +379,7 @@ class LibreHuService : Service() {
     }
 
     private fun stopHardware() {
+        CanBoxTalk.stop()
         org.librehu.service.car.FrontLed
             .get(this)
             .sender = null

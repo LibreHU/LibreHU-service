@@ -69,6 +69,27 @@ data class CanValue(
 }
 
 /**
+ * A message the head unit sends to the box ([CanLink]): [firstMs] after the link starts (or after the box comes back
+ * from a silence), then every [everyMs] (0: once). [data] = D0..Dn-1, framed by the box's family.
+ */
+data class CanSend(
+    val name: String,
+    val cmd: Int,
+    val data: List<Int>,
+    val firstMs: Long = 1_000,
+    val everyMs: Long = 0,
+)
+
+/**
+ * The head unit's side of the link: [ack] each message of the box (as its family does: Hiworld acknowledges every
+ * message), and the profile's [send] messages (a Hiworld box waits for its car type, command 0x24).
+ */
+data class CanLink(
+    val ack: Boolean = true,
+    val send: List<CanSend> = emptyList(),
+)
+
+/**
  * How to read the messages of one car's CAN box. The box (Hiworld here) is set for a car model and translates its
  * CAN bus into its own messages, so the decoding depends on the car: one profile per car, selectable and importable.
  */
@@ -78,7 +99,12 @@ data class CanVehicle(
     val description: String = "",
     val box: String = BOX_HIWORLD,
     val messages: Map<Int, CanMessage> = emptyMap(),
+    /** What the head unit sends to the box (acknowledgements, car type). */
+    val link: CanLink = CanLink(),
 ) {
+    /** The box family named by [box] (checked when the profile is read). */
+    val family: CanBoxFamily get() = CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
+
     /** Every value of [f] this profile knows; empty when the command is unknown. */
     fun decode(f: CanboxFrame): List<CanValue> {
         val m = messages[f.cmd] ?: return emptyList()
@@ -190,7 +216,9 @@ object CanVehicles {
         val id = root.str("id")?.trim().orEmpty()
         if (!Regex("[a-z0-9][a-z0-9._-]{1,63}").matches(id)) throw CanVehicleException("Invalid id \"$id\" (a-z, 0-9, . _ -)")
         val box = root.str("box") ?: CanVehicle.BOX_HIWORLD
-        if (box != CanVehicle.BOX_HIWORLD) throw CanVehicleException("Unknown box \"$box\" (supported: hiworld)")
+        if (CanBoxFamilies.byId(box) == null) {
+            throw CanVehicleException("Unknown box \"$box\" (supported: ${CanBoxFamilies.ALL.joinToString { it.id }})")
+        }
         val messages =
             (root["messages"] as? JsonObject).orEmpty().map { (key, e) ->
                 val cmd = hexKey(key)
@@ -207,8 +235,58 @@ object CanVehicles {
             description = root.str("description").orEmpty(),
             box = box,
             messages = messages.toMap(),
+            link = (root["link"] as? JsonObject)?.let(::link) ?: CanLink(),
         )
     }
+
+    /** `"link": { "ack": true, "send": [ { "name", "cmd": "0x24", "data": "00 31", "first_ms", "every_ms" } ] }`. */
+    private fun link(o: JsonObject): CanLink {
+        val sends =
+            ((o["send"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
+                val m = e as? JsonObject ?: throw CanVehicleException("link.send[$i] is not an object")
+                val cmd = m.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("link.send[$i]: cmd missing")
+                val data =
+                    m
+                        .str("data")
+                        .orEmpty()
+                        .split(Regex("[\\s,]+"))
+                        .filter { it.isNotEmpty() }
+                        .map { b ->
+                            b.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 0..0xFF }
+                                ?: throw CanVehicleException("link.send[$i]: bad data byte \"$b\"")
+                        }
+                if (data.size > MAX_SEND_BYTES) throw CanVehicleException("link.send[$i]: more than $MAX_SEND_BYTES data bytes")
+                val first = m.long("first_ms") ?: 1_000
+                val every = m.long("every_ms") ?: 0
+                if (first !in 0..60_000) throw CanVehicleException("link.send[$i]: first_ms 0..60000")
+                if (every != 0L && every !in MIN_EVERY_MS..3_600_000) throw CanVehicleException("link.send[$i]: every_ms 0 or $MIN_EVERY_MS..3600000")
+                CanSend(m.str("name")?.ifBlank { null } ?: "0x%02X".format(cmd), cmd, data, first, every)
+            }
+        return CanLink(ack = (o["ack"] as? JsonPrimitive)?.booleanOrNull ?: true, send = sends)
+    }
+
+    private fun linkJson(l: CanLink) =
+        buildJsonObject {
+            put("ack", l.ack)
+            put(
+                "send",
+                kotlinx.serialization.json.JsonArray(
+                    l.send.map { s ->
+                        buildJsonObject {
+                            put("name", s.name)
+                            put("cmd", "0x%02X".format(s.cmd))
+                            put("data", s.data.joinToString(" ") { "%02X".format(it) })
+                            put("first_ms", s.firstMs)
+                            put("every_ms", s.everyMs)
+                        }
+                    },
+                ),
+            )
+        }
+
+    /** Bytes of one message sent to the box, and its shortest interval (a box is not flooded). */
+    private const val MAX_SEND_BYTES = 64
+    private const val MIN_EVERY_MS = 500L
 
     fun toJson(v: CanVehicle): String =
         json.encodeToString(
@@ -220,6 +298,7 @@ object CanVehicles {
                 put("name", v.name)
                 put("description", v.description)
                 put("box", v.box)
+                put("link", linkJson(v.link))
                 put(
                     "messages",
                     buildJsonObject {
@@ -318,6 +397,8 @@ object CanVehicles {
 
     private fun JsonObject.int(k: String): Int? = (this[k] as? JsonPrimitive)?.intOrNull
 
+    private fun JsonObject.long(k: String): Long? = (this[k] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+
     private fun JsonObject.dbl(k: String): Double? = (this[k] as? JsonPrimitive)?.doubleOrNull
 
     private fun JsonObject?.orEmpty(): Map<String, JsonElement> = this ?: emptyMap()
@@ -330,6 +411,12 @@ object CanVehicles {
           "name": "Renault Clio 3 (Hiworld LNP002)",
           "description": "Clio 3 2005-2014, Hiworld box, protocol LNP002, from Hiworld's own app (HdRenaultProtocolLNP002).",
           "box": "hiworld",
+          "link": {
+            "ack": true,
+            "send": [
+              { "name": "car type (Clio 3, car code 0)", "cmd": "0x24", "data": "00 31", "first_ms": 1000, "every_ms": 30000 }
+            ]
+          },
           "messages": {
             "0x11": { "name": "State", "signals": {
               "status": { "start_byte": 0, "bits": { "ACC": 0, "lights": 1, "reverse": 2, "handbrake": 3, "SOS mute": 7 } },

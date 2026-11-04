@@ -8,7 +8,7 @@ import org.librehu.core.can.CanValue
 import org.librehu.core.can.CanVehicle
 import org.librehu.core.can.CanVehicles
 import org.librehu.core.can.CanboxFrame
-import org.librehu.core.can.HiworldParser
+import org.librehu.core.can.CanBoxParser
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -56,6 +56,8 @@ object CanMonitor {
     @Volatile
     var vehicle: CanVehicle = CanVehicles.RENAULT_CLIO3_HIWORLD
         set(value) {
+            // Another box family frames its messages its own way.
+            if (value.family !== field.family) synchronized(this) { parser = value.family.parser(::onFrame) }
             field = value
             _values.value = emptyMap()
         }
@@ -65,7 +67,7 @@ object CanMonitor {
     /** Last value of each decoded signal, keyed by message and signal. */
     val values: StateFlow<Map<String, CanValue>> = _values.asStateFlow()
 
-    private val parser = HiworldParser(::onFrame)
+    private var parser: CanBoxParser = vehicle.family.parser(::onFrame)
 
     /** Every message, before the viewer (steering wheel keys, see CanWheelKeys); called on the MCU thread. */
     @Volatile

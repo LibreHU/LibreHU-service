@@ -70,8 +70,15 @@ Confirmé par l'app Hiworld elle-même (`com.can.activity` v1.0.3924, classe `Hd
 décodeur que celui d'ivi-canbus).
 
 ## 12.5 Trames envoyées au boîtier [A]
-- Type de véhicule : `buildCarTypePacket` (type 0x00 pour la Clio 3 d'après le logcat ; la trame est probablement
-  `CMD 0x24`, comme pour les autres séries, mais cette branche est mal décompilée), répété au démarrage.
+- Type de véhicule : `buildCarTypePacket` = `getPacket(0x24, 0, [code voiture, 0x31])` → pour la Clio 3 (code 0)
+  `5A A5 02 24 00 31 56` ; envoyé 1 s après le démarrage puis toutes les 30 s pour un boîtier Hiworld
+  (`CanBusService`, `isContinuouslySendCarType` vrai par défaut). Confirmé dans « Car Info » 1.0.3991 (jadx en mode
+  `simple`, la décompilation normale échoue sur cette méthode). Le code voiture vient de
+  `assets/protocol/<marque>.xml` (`<CanBox name="hiworld">0</CanBox>` pour Clio3 2005_2014), puis d'un `switch` par
+  modèle (Clio 5 : 20, 21, 22…).
+- **Accusés** : chaque message reçu avec une somme juste reçoit `5A A5 01 FF <cmd> CS` (`HdProtocol.acknowledge`,
+  `shouldSendAck` vrai pour toutes les familles Hiworld, envoyé par `JancarRx.onHandlerOkData`), sauf les accusés
+  du boîtier (`isAckPacket` : commande `0xFF` ou `0xFE`). Repris par LibreHU-service : [can-vehicles.md](../can-vehicles.md#dialogue-avec-le-boîtier-link).
 - `buildTxPacket(7, v)` → `CMD 0xF2 [0x10, v]`.
 - Commandes de clim et réglages (`buildHvacPackets`, `buildCarsetPackets`), infos média, téléphone et heure vers
   l'écran d'origine (`buildMediaInfoPackets`, `buildTimePacket`).

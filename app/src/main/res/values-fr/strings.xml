@@ -518,6 +518,14 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="overlay_size_xs">Très petit</string>
     <string name="overlay_size_xl">Très grand</string>
     <string name="overlay_opacity">Opacité du fond</string>
+    <string name="can_talk">Dialogue avec le boîtier</string>
+    <string name="can_talk_hint">Comme l\'appli d\'origine du boîtier : chaque message du boîtier est acquitté, et le profil de voiture lui envoie ses messages (Clio 3 : le type de voiture, commande 0x24, toutes les 30 s). Sans eux, un boîtier Hiworld attend : il envoie un message par seconde et aucune touche du volant.</string>
+    <string name="can_talk_enable">Répondre au boîtier</string>
+    <string name="can_talk_idle">Inactif : le service ne tient pas la MCU (ivi-services actif, ou autre MCU).</string>
+    <string name="can_talk_acks">Accusés envoyés : %1$d</string>
+    <string name="can_talk_sent">%1$s : %2$s, envoyé à %3$s</string>
+    <string name="can_talk_no_ack">Pas encore d\'accusé du boîtier.</string>
+    <string name="can_talk_acked">Accusé par le boîtier : %1$s</string>
     <string name="can_keys">Commandes au volant</string>
     <string name="can_keys_hint">Touches de la commande au volant relayées par le boîtier CAN (message 0x11), transformées en actions comme les touches tactiles. Appuyer sur un bouton pour voir son code, puis choisir son action.</string>
     <string name="can_keys_enable">Utiliser les commandes au volant</string>

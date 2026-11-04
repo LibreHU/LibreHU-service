@@ -20,18 +20,17 @@ class CanboxFrame(
  */
 class HiworldParser(
     private val onFrame: (CanboxFrame) -> Unit,
-) {
+) : CanBoxParser {
     private var state = 0
     private var len = 0
     private var cmd = 0
     private var buf = ByteArray(0)
     private var pos = 0
 
-    /** Bytes that did not belong to a message (other framing, noise). */
-    var skipped = 0L
+    override var skipped = 0L
         private set
 
-    fun feed(bytes: ByteArray) {
+    override fun feed(bytes: ByteArray) {
         for (b in bytes) feed(b.toInt() and 0xFF)
     }
 

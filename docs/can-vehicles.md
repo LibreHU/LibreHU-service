@@ -37,6 +37,7 @@ qui porte la même information. Pour les données moteur (régime, vitesse, temp
   }
 }
 ```
+`link` (facultatif) : ce que l'autoradio envoie au boîtier, voir [Dialogue avec le boîtier](#dialogue-avec-le-boîtier-link).
 Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans CliOS (`src/signal_processor.py`) :
 
 | Champ | Défaut | Rôle |
@@ -56,6 +57,37 @@ Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans Cl
 
 Pour une nouvelle voiture : choisir `hiworld-generic`, capturer (onglet CAN, export) en actionnant chaque commande,
 repérer les octets qui changent (en orange), écrire le profil, l'importer.
+
+## Dialogue avec le boîtier (`link`)
+
+Un boîtier Hiworld attend que l'autoradio lui réponde : sans réponse, il envoie ses messages **un par seconde en
+boucle** et **aucune touche du volant** (journaux CAN d'une Clio 3 des 02 et 04/11/2026 : 14 types de messages en
+tour de ~17 s, octets de touche toujours à 0). Le service fait donc comme l'appli d'origine du boîtier
+(« Car Info » `com.can.activity` 1.0.3991, analysée sans être exécutée) :
+
+- **accusé de chaque message** reçu avec une somme juste : `5A A5 01 FF <cmd> CS` (`HdProtocol.acknowledge`,
+  envoyé par `JancarRx.onHandlerOkData`), sauf pour les accusés du boîtier lui-même (commandes `0xFF` et `0xFE`) ;
+- **messages du profil** : pour la Clio 3, le **type de voiture** `5A A5 02 24 00 31 56`
+  (`HdRenaultProtocolLNP002.buildCarTypePacket` = commande `0x24`, `[code voiture, 0x31]`, code 0 pour la Clio 3 dans
+  `assets/protocol/renault.xml` et `persist.sys.can_carcode`), 1 s après le départ puis toutes les 30 s
+  (`CanBusService`, boîtier Hiworld), et de nouveau quand le boîtier reparle après un silence de plus de 5 s.
+
+Envoi par la trame MCU `10`, que la MCU recopie telle quelle sur la liaison série du boîtier
+(`core/.../can/CanBox.kt`, `can/CanBoxTalk.kt`). Seulement quand le service tient la MCU (jamais avec ivi-services,
+qui le fait déjà). Onglet CAN, carte **Dialogue avec le boîtier** : interrupteur, accusés envoyés, messages du
+profil envoyés (octets, heure), commandes accusées par le boîtier. Journal `LibreHU-CAN` : « box link … »,
+« → box: … », « box acknowledged 0x24 ».
+
+Dans un profil :
+```json
+"link": {
+  "ack": true,
+  "send": [ { "name": "car type", "cmd": "0x24", "data": "00 31", "first_ms": 1000, "every_ms": 30000 } ]
+}
+```
+`ack` (vrai par défaut) : accuser chaque message comme la famille du boîtier le fait. `send` : messages envoyés
+`first_ms` après le départ (0 à 60 000), puis toutes les `every_ms` (0 = une fois, sinon 500 ms au moins), 64 octets
+de données au plus, mis en trame par la famille du boîtier (`box`).
 
 ## Touches du volant
 
