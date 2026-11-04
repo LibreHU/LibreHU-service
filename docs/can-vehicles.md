@@ -103,6 +103,13 @@ qui le fait déjà). Onglet CAN, carte **Dialogue avec le boîtier** : interrupt
 profil envoyés (octets, heure), commandes accusées par le boîtier. Journal `LibreHU-CAN` : « box link … »,
 « → box: … », « box acknowledged 0x24 ».
 
+**TWRP** (recovery LibreHU, branche bêta du dépôt `android_device_alps_ac8257_demo`, `tools/touchfix`) fait de même
+pour lire les touches du volant hors d'Android : le service écrit **`/sdcard/TWRP/ujc201_can.conf`** d'après le profil
+choisi, à chaque changement (`core/.../can/TwrpCanConf.kt`, en root si la permission de stockage manque) :
+`ack 1`, `send <premier ms> <période ms> <octets>` (trame déjà faite, 32 octets au plus), `keys <cmd> <octet code>
+<octet état> <valeur appui> <octet événement> <masque>` (hex, `FF` = aucun). TWRP ne lit que la trame Hiworld : pour
+une autre famille, ni accusé ni touches dans TWRP.
+
 Dans un profil :
 ```json
 "link": {

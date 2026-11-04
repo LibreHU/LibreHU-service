@@ -168,3 +168,27 @@ class CanBoxFamiliesTest {
         assertEquals(0x08, CanVehicles.RENAULT_CLIO3_HIWORLD.keys!!.eventMask)
     }
 }
+
+class TwrpCanConfTest {
+    @Test
+    fun clio3() {
+        val c = TwrpCanConf.of(CanVehicles.RENAULT_CLIO3_HIWORLD)
+        assertTrue(c.contains("\nack 1\n"))
+        assertTrue(c.contains("\nsend 1000 30000 5A A5 02 24 00 31 56\n"))
+        assertTrue(c.contains("\nkeys 11 02 03 01 01 08\n"))
+    }
+
+    @Test
+    fun raiseBoxNoAckNorKeysInTwrp() {
+        val v =
+            CanVehicles.fromJson(
+                """{"format":"librehu-can-vehicle","version":1,"id":"raise-car","box":"raise",
+                   "link":{"send":[{"cmd":"0x81","data":"01","every_ms":0}]},
+                   "wheel_keys":{"cmd":"0x20","code_byte":0,"state_byte":1},"messages":{}}""",
+            )
+        val c = TwrpCanConf.of(v)
+        assertTrue(c.contains("\nack 0\n"))
+        assertTrue(c.contains("\nsend 1000 0 2E 81 01 01 7C\n"))
+        assertTrue(!c.contains("keys"))
+    }
+}

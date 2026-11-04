@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.librehu.core.can.CanVehicle
 import org.librehu.core.can.CanVehicleException
 import org.librehu.core.can.CanVehicles
+import org.librehu.core.can.TwrpCanConf
 import java.io.File
 
 /**
@@ -29,7 +30,35 @@ class CanVehicleStore private constructor(
     val selected: StateFlow<String> = _selected.asStateFlow()
 
     init {
-        CanMonitor.vehicle = current()
+        apply()
+    }
+
+    /** The selected profile decodes the box now, and TWRP answers the box and reads its keys the same way. */
+    private fun apply() {
+        val v = current()
+        CanMonitor.vehicle = v
+        Thread({ writeTwrpConf(v) }, "twrp-can-conf").start()
+    }
+
+    /**
+     * `/sdcard/TWRP/ujc201_can.conf` for LibreHU's TWRP ([TwrpCanConf]), written when it changes: directly, else as
+     * root (the storage permission may not be granted).
+     */
+    private fun writeTwrpConf(v: CanVehicle) {
+        val text = TwrpCanConf.of(v)
+        val f = File(android.os.Environment.getExternalStorageDirectory(), "TWRP/ujc201_can.conf")
+        if (runCatching { f.readText() }.getOrNull() == text) return
+        val ok =
+            runCatching {
+                f.parentFile?.mkdirs()
+                f.writeText(text)
+            }.isSuccess ||
+                (
+                    org.librehu.service.root.RootShell.isAvailable() &&
+                        org.librehu.service.root.RootShell.run("mkdir -p /data/media/0/TWRP") != null &&
+                        org.librehu.service.root.RootShell.write("/data/media/0/TWRP/ujc201_can.conf", text)
+                )
+        android.util.Log.i("LibreHU-CAN", if (ok) "TWRP CAN dialogue written for ${v.id}" else "TWRP CAN dialogue not written (storage)")
     }
 
     fun isBuiltIn(id: String) = CanVehicles.BUILT_IN.any { it.id == id }
@@ -39,7 +68,7 @@ class CanVehicleStore private constructor(
     fun select(id: String) {
         prefs.edit().putString(KEY_SELECTED, id).apply()
         _selected.value = id
-        CanMonitor.vehicle = current()
+        apply()
     }
 
     /** Validates and stores a profile file; returns it, or throws [CanVehicleException]. Same id = replaced. */
@@ -52,7 +81,7 @@ class CanVehicleStore private constructor(
         if (isBuiltIn(v.id)) throw CanVehicleException("\"${v.id}\" is a built-in profile: change the id")
         File(dir, "${v.id}.json").writeText(CanVehicles.toJson(v))
         _vehicles.value = load()
-        if (v.id == _selected.value) CanMonitor.vehicle = current()
+        if (v.id == _selected.value) apply()
         return v
     }
 
