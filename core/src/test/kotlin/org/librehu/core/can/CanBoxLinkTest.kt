@@ -50,9 +50,23 @@ class CanBoxLinkTest {
         // HdRenaultProtocolLNP002.buildCarTypePacket: getPacket(0x24, [car code 0, 0x31]).
         assertEquals("5A A5 02 24 00 31 56", out.single().bytes)
         l.tick(30_999)
-        assertEquals(1, out.size)
+        assertEquals(1, out.count { it.what == "car type" })
         l.tick(31_000)
-        assertEquals(2, out.size)
+        assertEquals(2, out.count { it.what == "car type" })
+    }
+
+    @Test
+    fun clio3SourceAndBluetoothForTheCarDisplay() {
+        val out = mutableListOf<Sent>()
+        val l = link(CanVehicles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
+        l.start(0)
+        l.tick(2_000)
+        // HdRenaultProtocolLNP002.getSource (source 3: [10, 12 spaces], 0xE1) and getBtInfo (6 = not connected, 0xCD).
+        assertEquals("5A A5 0D E1 0A 20 20 20 20 20 20 20 20 20 20 20 20 77", out.single { it.what == "source" }.bytes)
+        assertEquals("5A A5 1B CD 06" + " 00".repeat(26) + " ED", out.single { it.what == "bluetooth" }.bytes)
+        l.tick(12_000)
+        assertEquals(2, out.count { it.what == "source" })
+        assertEquals(1, out.count { it.what == "bluetooth" })
     }
 
     @Test
@@ -78,8 +92,8 @@ class CanBoxLinkTest {
         val v = CanVehicles.RENAULT_CLIO3_HIWORLD
         val again = CanVehicles.fromJson(CanVehicles.toJson(v))
         assertEquals(v.link, again.link)
-        assertEquals(listOf(0x00, 0x31), again.link.send.single().data)
-        assertEquals(30_000L, again.link.send.single().everyMs)
+        assertEquals(listOf(0x00, 0x31), again.link.send.single { it.name == "car type" }.data)
+        assertEquals(30_000L, again.link.send.single { it.name == "car type" }.everyMs)
     }
 
     @Test(expected = CanVehicleException::class)
@@ -175,6 +189,7 @@ class TwrpCanConfTest {
         val c = TwrpCanConf.of(CanVehicles.RENAULT_CLIO3_HIWORLD)
         assertTrue(c.contains("\nack 1\n"))
         assertTrue(c.contains("\nsend 1000 30000 5A A5 02 24 00 31 56\n"))
+        assertTrue(c.contains("\nsend 1500 10000 5A A5 0D E1 0A 20 20 20 20 20 20 20 20 20 20 20 20 77\n"))
         assertTrue(c.contains("\nkeys 11 02 03 01 01 08\n"))
     }
 
@@ -199,10 +214,10 @@ class CanVariantsTest {
         val p = CanVehicles.RENAULT_CLIO3_HIWORLD
         assertEquals(94, p.variants.size)
         // Default and Clio 3: car code 0 (HdRenaultProtocolLNP002.buildCarTypePacket, renault.xml).
-        assertEquals(listOf(0x00, 0x31), p.link.send.single().data)
-        assertEquals(listOf(0x00, 0x31), p.withVariant("Renault Clio3 2005-2014, all trims").link.send.single().data)
+        assertEquals(listOf(0x00, 0x31), p.link.send.single { it.name == "car type" }.data)
+        assertEquals(listOf(0x00, 0x31), p.withVariant("Renault Clio3 2005-2014, all trims").link.send.single { it.name == "car type" }.data)
         // LADA Priora: series 112, model 2 → 34 (0x22).
-        assertEquals(listOf(0x22, 0x31), p.withVariant("LADA priora 2012-now, all trims").link.send.single().data)
+        assertEquals(listOf(0x22, 0x31), p.withVariant("LADA priora 2012-now, all trims").link.send.single { it.name == "car type" }.data)
         // Unknown name: unchanged.
         assertEquals(p.link, p.withVariant("nope").link)
         // Through JSON and TWRP's file.
@@ -240,7 +255,7 @@ class Batch1ProfilesTest {
         // A car chosen: its car type, as its decoder builds it (getPacket(0x24, [code, 0x01])).
         val v = CanVehicles.TOYOTA_HIWORLD.variants.first()
         val withCar = CanVehicles.TOYOTA_HIWORLD.withVariant(v.name)
-        assertEquals(0x01, withCar.link.send.single().data[1])
+        assertEquals(0x01, withCar.link.send.single { it.name == "car type" }.data[1])
         val l2 = CanBoxLink(CanBoxFamilies.HIWORLD, withCar.link, { b, _ -> out += hex(b) })
         l2.start(0)
         l2.tick(1_000)
@@ -249,7 +264,7 @@ class Batch1ProfilesTest {
 
     @Test
     fun carTypesOfEachProtocol() {
-        assertEquals(listOf(0x0A, 0x09), CanVehicles.HYUNDAI_KIA_HIWORLD.withVariant("Hyundai Accent 2010-2019, all trims").link.send.single().data)
+        assertEquals(listOf(0x0A, 0x09), CanVehicles.HYUNDAI_KIA_HIWORLD.withVariant("Hyundai Accent 2010-2019, all trims").link.send.single { it.name == "car type" }.data)
         assertTrue(CanVehicles.HONDA_HIWORLD.variants.all { it.send.getValue("car type").let { d -> d[1] == 0x02 && d[0] != 0 } })
         assertTrue(CanVehicles.HYUNDAI_KIA_HIWORLD.variants.all { it.send.getValue("car type")[1] == 0x09 })
         // Keys: same layout (0x11, D2 code, D3 = 1 pressed) without LNP002's event bit.

@@ -3,7 +3,7 @@
  "version": 1,
  "id": "renault-clio3-hiworld",
  "name": "Renault, Dacia, LADA, Samsung, Nissan, Mercedes (Hiworld LNP002)",
- "description": "Hiworld box, protocol LNP002 (Renault / LADA / Samsung full compatible): Clio 3 by default, the other models in the list (car type from Hiworld's own app, HdRenaultProtocolLNP002).",
+ "description": "Hiworld box, protocol LNP002 (Renault / LADA / Samsung full compatible): Clio 3 by default, the other models in the list (car type from Hiworld's own app, HdRenaultProtocolLNP002). Like that app, the head unit also sends its audio source (0xE1, AUX here) and Bluetooth state (0xCD, not connected) for the car's display.",
  "box": "hiworld",
  "baud": 38400,
  "link": {
@@ -15,6 +15,20 @@
     "data": "00 31",
     "first_ms": 1000,
     "every_ms": 30000
+   },
+   {
+    "name": "source",
+    "cmd": "0xE1",
+    "data": "0A 20 20 20 20 20 20 20 20 20 20 20 20",
+    "first_ms": 1500,
+    "every_ms": 10000
+   },
+   {
+    "name": "bluetooth",
+    "cmd": "0xCD",
+    "data": "06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+    "first_ms": 2000,
+    "every_ms": 0
    }
   ]
  },
