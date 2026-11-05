@@ -269,6 +269,13 @@ message ; noms « volume + » / « volume − ». Ces codes s'affectent à une a
           { "cmd": "0x22", "code_byte": 0, "steps_byte": 1, "names": { "1": "volume", "2": "tune" } } ]
 ```
 
+**Schéma JSON** : [`can-vehicle.schema.json`](can-vehicle.schema.json) (JSON Schema 2020-12) décrit tout le format 2 :
+un éditeur (VS Code…) complète et vérifie un profil qui commence par
+`"$schema": "https://raw.githubusercontent.com/LibreHU/LibreHU-service/main/docs/can-vehicle.schema.json"` (le service ignore
+cette clé). Les 8
+profils intégrés y sont conformes (vérifié avec `jsonschema` 4.26). Le service, lui, vérifie en plus les rôles, les
+formules et les `examples` à l'import.
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.
