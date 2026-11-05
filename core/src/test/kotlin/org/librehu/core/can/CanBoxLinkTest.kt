@@ -243,7 +243,7 @@ class Batch1ProfilesTest {
     @Test
     fun builtInsLoad() {
         val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "hiworld-generic"), ids)
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "hiworld-generic"), ids)
         assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
         assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
         assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
@@ -315,5 +315,33 @@ class Batch2ProfilesTest {
         assertEquals(800.0, number(v, engine, "rpm"), 0.01)
         // 0x11 D6-D7: steering, little endian signed, negated (parseWheelInfo).
         assertEquals(-256.0, number(v, frame(0x11, 0x01, 0, 0, 0, 0, 0, 0x00, 0x01, 0, 0), "steering"), 0.01)
+    }
+
+    @Test
+    fun vwPqHiworld() {
+        val v = CanVehicles.VW_PQ_HIWORLD
+        assertEquals(33, v.variants.size)
+        // HdMQB6Protocol: no buildCarTypePacket, Hiworld's acknowledgement.
+        assertTrue(v.link.ack)
+        assertTrue(v.link.send.isEmpty())
+        // 0x72 D2: key code, pressed while not 0 (parseWheelKeyInfo forces the state to 1).
+        assertEquals(0x72, v.keys!!.cmd)
+        assertEquals(null, v.keys!!.stateByte)
+        assertEquals("voice", v.keys!!.name(15))
+        val pressed = mutableListOf<Int>()
+        val released = mutableListOf<Int>()
+        val keys = HiworldWheelKeys(onRelease = { released += it }, spec = v.keys!!) { pressed += it }
+        keys.onFrame(frame(0x72, 0x01, 0, 9, 0, 0, 0))
+        keys.onFrame(frame(0x72, 0x01, 0, 9, 0, 0, 0))
+        keys.onFrame(frame(0x72, 0x01, 0, 0, 0, 0, 0))
+        assertEquals(listOf(9), pressed)
+        assertEquals(listOf(9), released)
+        // 0x13: mileage D0-D2, speed (D3 * 256 + D4) / 10, engine speed D8 * 256 + D9 (parseCarInfo2).
+        val engine = frame(0x13, 0x01, 0x00, 0x00, 0x03, 0xE8, 0, 0, 0, 0x03, 0x20)
+        assertEquals(65536.0, number(v, engine, "mileage"), 0.01)
+        assertEquals(100.0, number(v, engine, "speed"), 0.01)
+        assertEquals(800.0, number(v, engine, "rpm"), 0.01)
+        // 0x73 D6: outside temperature D6 / 2 - 40 (parseAirInfo).
+        assertEquals(20.0, number(v, frame(0x73, 0, 0, 0, 0, 0, 0, 120, 0), "outside"), 0.01)
     }
 }

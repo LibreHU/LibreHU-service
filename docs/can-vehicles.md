@@ -33,6 +33,13 @@ Profils intégrés :
   carburant D7, batterie D8 (volts entiers) ; `0x19` **huile D6 − 40 °C, eau D7 − 40 °C, régime D8-D9** ; `0x36`
   clignotants ; `0x41` radar (brut ÷ 15). **Aucun type de voiture** (pas de `buildCarTypePacket`) : la voiture choisie
   ne fait que la nommer ; accusés Hiworld ;
+- `vw-pq-hiworld` (lot 2, v159) : **Volkswagen, Skoda, anciens Mercedes (Hiworld VWP003, PQ)**, 33 voitures
+  (`HdMQB6Protocol`) : `0x72` état D0 (contact, feux, marche AR, frein, clé, radar, Bluetooth), vitesse D1, touche D2
+  (**sans octet d'état** : appuyée tant que le code n'est pas 0), luminosité D3, volant D4 / D5 (un octet par côté,
+  0-140), radar D6-D13 (brut ÷ 16) ; `0x73` température extérieure D6 (÷ 2 − 40 °C), portes D7 ; `0x12` huile D2 (°C,
+  255 = absent), consommation D3, rapport D5, alertes D6, carburant D7, batterie D8 ; `0x13` **kilométrage D0-D2,
+  vitesse D3-D4 ÷ 10, régime D8-D9** ; `0x18` feux et clignotants ; `0x42` radar latéral. Pas de type de voiture,
+  accusés Hiworld. La clim (`0x73` D0-D5) n'est pas encore décodée ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -50,6 +57,7 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld TYP001 (`toyota-hiworld`) | Toyota, Lexus (ES) | 142 | v148 |
 | Hiworld HDP004 (`honda-hiworld`) | Honda, Acura | 79 | v148 |
 | Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 38 | v158 |
+| Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 33 | v159 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.
