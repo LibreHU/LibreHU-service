@@ -13,8 +13,9 @@ import org.librehu.core.can.CanVehicleException
  * broadcasts whose result carries the answer:
  * - [ACTION_QUERY]: result data = `{"engine": "2.5.0", "packs": {"renault": 3, …}}` (installed revisions), so that
  *   LibreHU Apps offers only the packs this engine reads and shows which are newer;
- * - [ACTION_INSTALL]: data = the pack file (content URI, read permission granted), extra [EXTRA_SHA256] = its digest
- *   in the index; result code [Activity.RESULT_OK] and the revision installed, or [Activity.RESULT_CANCELED] and why;
+ * - [ACTION_INSTALL]: the pack, as extra [EXTRA_PACK] (its bytes; a pack is well under the 1 MB of a broadcast) or as
+ *   data (a content URI, read permission granted), extra [EXTRA_SHA256] = its digest in the index; result code
+ *   [Activity.RESULT_OK] and the revision installed, or [Activity.RESULT_CANCELED] and why;
  * - [ACTION_REMOVE]: extra [EXTRA_ID]: the make's built-in profiles come back.
  */
 class CarPackReceiver : BroadcastReceiver() {
@@ -36,7 +37,8 @@ class CarPackReceiver : BroadcastReceiver() {
                 Thread({
                     try {
                         val bytes =
-                            uri?.let { u -> context.contentResolver.openInputStream(u)?.use { it.readBytes() } }
+                            intent.getByteArrayExtra(EXTRA_PACK)
+                                ?: uri?.let { u -> context.contentResolver.openInputStream(u)?.use { it.readBytes() } }
                                 ?: throw CanVehicleException("no pack file")
                         val p = store.installPack(bytes, sha)
                         pending.setResult(Activity.RESULT_OK, "${p.id} ${p.revision}", null)
@@ -60,6 +62,7 @@ class CarPackReceiver : BroadcastReceiver() {
         const val ACTION_INSTALL = "org.librehu.service.INSTALL_CAR_PACK"
         const val ACTION_REMOVE = "org.librehu.service.REMOVE_CAR_PACK"
         const val EXTRA_SHA256 = "sha256"
+        const val EXTRA_PACK = "pack"
         const val EXTRA_ID = "id"
     }
 }
