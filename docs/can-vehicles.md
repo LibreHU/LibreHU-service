@@ -27,19 +27,24 @@ Profils intégrés :
   AR / frein D0, vitesse D1, touche D2 / D3, volant D6-D7), portes, radar, version ; accusés ; type `0x24 [code, 0x02]`.
   Pas encore listées (type de voiture calculé par des règles par modèle non relues) : Accord 2018, Odyssey 2004-2008,
   Crosstour, Civic 2016-, CR-V 2017 ;
-- `vw-mqb-hiworld` (lot 2, v158) : **Volkswagen, Skoda (Hiworld VWP004, MQB)**, 38 voitures (`HdMQB7Protocol`) :
+- `vw-mqb-hiworld` (lot 2, v158) : **Volkswagen, Skoda (Hiworld VWP004, MQB)**, 29 voitures (`HdMQB7Protocol`) :
   `0x11` état (contact, feux, marche AR, frein, radar), touche D2 / D3 (1 à l'appui), volant D6-D7 (petit-boutiste,
   signé) ; `0x12` portes D2, consommation instantanée D3, alertes D6 (batterie faible, huile, ceinture, lave-glace),
   carburant D7, batterie D8 (volts entiers) ; `0x19` **huile D6 − 40 °C, eau D7 − 40 °C, régime D8-D9** ; `0x36`
   clignotants ; `0x41` radar (brut ÷ 15). **Aucun type de voiture** (pas de `buildCarTypePacket`) : la voiture choisie
   ne fait que la nommer ; accusés Hiworld ;
-- `vw-pq-hiworld` (lot 2, v159) : **Volkswagen, Skoda, anciens Mercedes (Hiworld VWP003, PQ)**, 33 voitures
-  (`HdMQB6Protocol`) : `0x72` état D0 (contact, feux, marche AR, frein, clé, radar, Bluetooth), vitesse D1, touche D2
+- `vw-pq-hiworld` (lot 2, v159) : **Volkswagen, Skoda, anciens Mercedes (Hiworld VWP003, PQ)**, 42 voitures
+  (`HdMQB6Protocol`, `HdProtocolVwp003` pour Mercedes, mêmes messages) : `0x72` état D0 (contact, feux, marche AR, frein, clé, radar, Bluetooth), vitesse D1, touche D2
   (**sans octet d'état** : appuyée tant que le code n'est pas 0), luminosité D3, volant D4 / D5 (un octet par côté,
   0-140), radar D6-D13 (brut ÷ 16) ; `0x73` température extérieure D6 (÷ 2 − 40 °C), portes D7 ; `0x12` huile D2 (°C,
   255 = absent), consommation D3, rapport D5, alertes D6, carburant D7, batterie D8 ; `0x13` **kilométrage D0-D2,
   vitesse D3-D4 ÷ 10, régime D8-D9** ; `0x18` feux et clignotants ; `0x42` radar latéral. Pas de type de voiture,
-  accusés Hiworld. La clim (`0x73` D0-D5) n'est pas encore décodée ;
+  accusés Hiworld. La clim (`0x73` D0-D5) n'est pas encore décodée. **Choix du décodeur** : l'appli Hiworld le
+  choisit par modèle et année (`VolkswagenHdManager`), pas par le fichier de protocole du catalogue ; 9 VW listées
+  VWP004 (Jetta 2011-, Santana 2013-, Scirocco, Touran 2010-2014, Bora 2013-2018, Lavida, Trek : plateformes PQ) sont
+  décodées en VWP003, elles sont donc ici (v160). À l'inverse, `SkodaHdManager` prend VWP004 pour toutes les Skoda,
+  même les PQ que le catalogue liste en VWP003 (Octavia II, Superb II, Yeti, Rapid) : laissées ici, essayer
+  `vw-mqb-hiworld` si rien n'est décodé ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -56,8 +61,8 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld HYP001 (`hyundai-kia-hiworld`) | Hyundai, Kia | 152 | v148 |
 | Hiworld TYP001 (`toyota-hiworld`) | Toyota, Lexus (ES) | 142 | v148 |
 | Hiworld HDP004 (`honda-hiworld`) | Honda, Acura | 79 | v148 |
-| Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 38 | v158 |
-| Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 33 | v159 |
+| Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 29 | v158 |
+| Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 42 | v159 ; 9 VW : v160 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.

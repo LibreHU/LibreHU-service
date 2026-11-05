@@ -299,7 +299,7 @@ class Batch2ProfilesTest {
     @Test
     fun vwMqbHiworld() {
         val v = CanVehicles.VW_MQB_HIWORLD
-        assertEquals(38, v.variants.size)
+        assertEquals(29, v.variants.size)
         // HdMQB7Protocol: no buildCarTypePacket, Hiworld's acknowledgement (shouldSendAck).
         assertTrue(v.link.ack)
         assertTrue(v.link.send.isEmpty())
@@ -320,7 +320,7 @@ class Batch2ProfilesTest {
     @Test
     fun vwPqHiworld() {
         val v = CanVehicles.VW_PQ_HIWORLD
-        assertEquals(33, v.variants.size)
+        assertEquals(42, v.variants.size)
         // HdMQB6Protocol: no buildCarTypePacket, Hiworld's acknowledgement.
         assertTrue(v.link.ack)
         assertTrue(v.link.send.isEmpty())

@@ -3,7 +3,7 @@
  "version": 1,
  "id": "vw-mqb-hiworld",
  "name": "Volkswagen, Skoda (Hiworld VWP004, MQB)",
- "description": "Hiworld box, protocol VWP004 (Volkswagen MQB), from Hiworld's own app (HdMQB7Protocol). This box needs no car type: the car chosen only names it. Not tried on a car yet.",
+ "description": "Hiworld box, protocol VWP004 (Volkswagen MQB), from Hiworld's own app (HdMQB7Protocol). This box needs no car type: the car chosen only names it. Older Volkswagen cars that Hiworld's catalogue lists with this box but its app decodes as VWP003 are in vw-pq-hiworld. Not tried on a car yet.",
  "box": "hiworld",
  "baud": 38400,
  "link": {
@@ -44,19 +44,7 @@
    "send": {}
   },
   {
-   "name": "Volkswagen bora 2013-2015, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen bora 2016-2018, all trims",
-   "send": {}
-  },
-  {
    "name": "Volkswagen bora 2019-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen Cross_Lavida 2013-now, all trims",
    "send": {}
   },
   {
@@ -65,14 +53,6 @@
   },
   {
    "name": "Volkswagen golf_sportsvan 2016-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen Grand_Lavida 2013-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen jetta 2011-now, all trims",
    "send": {}
   },
   {
@@ -101,14 +81,6 @@
   },
   {
    "name": "Volkswagen sagitar 2019-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen Santana 2013-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen Scirocco 2008-now, all trims",
    "send": {}
   },
   {
@@ -144,15 +116,7 @@
    "send": {}
   },
   {
-   "name": "Volkswagen touran 2010-2014, all trims",
-   "send": {}
-  },
-  {
    "name": "Volkswagen touran 2016-now, all trims",
-   "send": {}
-  },
-  {
-   "name": "Volkswagen TREK 2017-now, all trims",
    "send": {}
   },
   {
