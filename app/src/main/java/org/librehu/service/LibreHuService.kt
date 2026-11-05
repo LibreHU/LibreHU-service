@@ -37,6 +37,7 @@ import org.librehu.core.unit.VehicleInput
 import org.librehu.core.unit.VehicleState
 import org.librehu.service.bt.BluetoothModule
 import org.librehu.service.bt.ILibreHuBluetooth
+import org.librehu.service.can.CanBoxPorts
 import org.librehu.service.can.CanBoxTalk
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.can.CanVehicleStore
@@ -136,6 +137,8 @@ class LibreHuService : Service() {
         obd = ObdManager.get(this).also { it.start() }
         // The car's values by role from the CAN box and the OBD adapter together (box first).
         org.librehu.service.car.CarDataHub.start(obd)
+        // The CAN box through the MCU (default) or another port (USB, Bluetooth, serial port of other head units).
+        CanBoxPorts.init(this)
         // Engine sound made up from the OBD values (off by default).
         org.librehu.service.car.EngineSound.get(this).start()
         // Phone app (LibreHU bridge): Wi-Fi / Bluetooth server, paired phones only.
@@ -370,7 +373,8 @@ class LibreHuService : Service() {
         }
         headUnit.start(t::send)
         // Talking back to the CAN box (MCU 10, copied to its serial link): Jancar MCU only.
-        if (jancar) CanBoxTalk.start(headUnit::sendToMcu) { headUnit.sendToMcu(McuFrame(0x10, it)) }
+        // Through the MCU unless the CAN box is reached another way (CanBoxPorts: USB, Bluetooth, serial port).
+        if (jancar && CanBoxPorts.viaMcu) CanBoxTalk.start(headUnit::sendToMcu, { headUnit.sendToMcu(McuFrame(0x10, it)) })
         // Front panel LEDs: Jancar MCU only (0F 04).
         org.librehu.service.car.FrontLed
             .get(this)
@@ -381,7 +385,7 @@ class LibreHuService : Service() {
     }
 
     private fun stopHardware() {
-        CanBoxTalk.stop()
+        if (CanBoxPorts.viaMcu) CanBoxTalk.stop()
         org.librehu.service.car.FrontLed
             .get(this)
             .sender = null
@@ -456,7 +460,7 @@ class LibreHuService : Service() {
             override fun onKey(key: McuEvent.Key) = each { it.onKey(key.channel, key.values, key.released, key.learning) }
 
             override fun onCanData(bytes: ByteArray) {
-                CanMonitor.feed(bytes)
+                if (CanBoxPorts.viaMcu) CanMonitor.feed(bytes)
                 each { it.onCanData(bytes) }
             }
 

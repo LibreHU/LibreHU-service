@@ -105,6 +105,7 @@ fun CanScreen(actions: AppActions) {
             Actions { Pill(stringResource(R.string.mcu_import), icon = Icons.Default.FileDownload, onClick = actions.importCanVehicle) }
             CanVariantRow(store)
         }
+        CanBoxPortCard()
         CanBoxTalkCard()
         CanWheelKeysCard()
         Card(stringResource(R.string.can_values)) {
@@ -249,6 +250,48 @@ internal fun CanVariantDialog(
 }
 
 /** The service's answers to the box: on / off, acknowledgements sent, the profile's messages, the box's acknowledgements. */
+/** How the box is reached: the MCU (this head unit), or USB, Bluetooth, a serial port (other head units, other MCUs). */
+@Composable
+internal fun CanBoxPortCard() {
+    val context = LocalContext.current
+    val s by org.librehu.service.can.CanBoxPorts.settings.collectAsStateWithLifecycle()
+    val st by org.librehu.service.can.CanBoxPorts.status.collectAsStateWithLifecycle()
+    val kinds = org.librehu.service.can.CanBoxPorts.Kind.entries
+    val labels = listOf(R.string.can_port_mcu, R.string.can_port_usb, R.string.can_port_bt, R.string.can_port_serial).map { stringResource(it) }
+    Card(stringResource(R.string.can_port)) {
+        Hint(stringResource(R.string.can_port_hint))
+        Choices(kinds.zip(labels), s.kind) { org.librehu.service.can.CanBoxPorts.set(s.copy(kind = it)) }
+        when (s.kind) {
+            org.librehu.service.can.CanBoxPorts.Kind.USB -> {
+                val list = remember { runCatching { org.librehu.service.can.CanBoxPorts.usbAdapters(context) }.getOrDefault(emptyMap()) }
+                if (list.isEmpty()) Hint(stringResource(R.string.can_port_none_usb))
+                Choices(list.entries.map { it.key to it.value }, s.usbDevice) { org.librehu.service.can.CanBoxPorts.set(s.copy(usbDevice = it)) }
+            }
+            org.librehu.service.can.CanBoxPorts.Kind.BLUETOOTH -> {
+                val list = remember { org.librehu.service.can.CanBoxPorts.pairedDevices() }
+                if (list.isEmpty()) Hint(stringResource(R.string.can_port_none_bt))
+                Choices(list.entries.map { it.key to it.value }, s.btAddress) { org.librehu.service.can.CanBoxPorts.set(s.copy(btAddress = it)) }
+            }
+            org.librehu.service.can.CanBoxPorts.Kind.SERIAL -> {
+                val list =
+                    remember {
+                        runCatching { java.io.File("/dev").list()?.toList() }.getOrNull().orEmpty()
+                            .filter { Regex("tty(S|MT|HS|AMA)[0-9]{1,2}").matches(it) }
+                            .sorted()
+                            .map { "/dev/$it" }
+                            .ifEmpty { listOf("/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3", "/dev/ttyMT1") }
+                    }
+                Choices((list + s.serialPath).distinct().map { it to it.removePrefix("/dev/") }, s.serialPath) {
+                    org.librehu.service.can.CanBoxPorts.set(s.copy(serialPath = it))
+                }
+            }
+            else -> {}
+        }
+        st.open?.let { Hint(stringResource(R.string.can_port_open, it)) }
+        st.problem?.let { Hint("⚠ $it") }
+    }
+}
+
 @Composable
 internal fun CanBoxTalkCard() {
     val enabled by CanBoxTalk.enabled.collectAsStateWithLifecycle()

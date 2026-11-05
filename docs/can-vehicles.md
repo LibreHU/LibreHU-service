@@ -336,6 +336,13 @@ dans l'index. Le service installe un paquet **tout ou rien** (`CanPacks.read` : 
 annulé + raison ; `org.librehu.service.REMOVE_CAR_PACK` (extra `id`). `librehu-car-tool.jar pack <marque>.json
 [sha256]` fait la même vérification sur un ordinateur.
 
+**Liaison avec le boîtier (service v175)** : carte de l'onglet CAN (`can/CanBoxPorts`). **MCU** (par défaut, cet
+autoradio : trames `10` du MCU Jancar, vitesse par `0F 00`) ; **adaptateur USB-série** (usb-serial-for-android, à choisir
+dans la liste : jamais la sonde OBD par erreur ; permission USB demandée à l'écran) ; **Bluetooth** (SPP, appareil appairé) ;
+**port série** du SoC (`/dev/ttyS…`, `ttyMT…` : autres autoradios, autres MCU ; le root règle la vitesse par `stty` et
+ouvre le port). Le profil ne change pas : mêmes octets, même trame, même dialogue ; la vitesse du profil est donnée au
+port ; une coupure est retentée toutes les 5 s. Hors MCU, les trames `10` du MCU ne sont plus lues comme boîtier.
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.

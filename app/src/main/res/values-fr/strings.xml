@@ -1371,4 +1371,13 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="search_loading">Recherche dans les réglages…</string>
     <string name="search_empty">Aucun résultat</string>
     <string name="search_open">Ouvrir</string>
+    <string name="can_port">Liaison avec le boîtier</string>
+    <string name="can_port_hint">Où est branché le boîtier CAN. Sur cet autoradio : par son MCU. USB, Bluetooth ou port série : un boîtier branché autrement, ou un autre autoradio.</string>
+    <string name="can_port_mcu">MCU (par défaut)</string>
+    <string name="can_port_usb">Adaptateur USB</string>
+    <string name="can_port_bt">Bluetooth</string>
+    <string name="can_port_serial">Port série (root)</string>
+    <string name="can_port_none_usb">Aucun adaptateur USB-série branché.</string>
+    <string name="can_port_none_bt">Aucun appareil Bluetooth appairé : appairer d\'abord l\'adaptateur dans Android.</string>
+    <string name="can_port_open">Ouvert : %1$s</string>
 </resources>

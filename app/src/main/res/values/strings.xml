@@ -1371,4 +1371,13 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="search_loading">Indexing the settings…</string>
     <string name="search_empty">Nothing found</string>
     <string name="search_open">Open</string>
+    <string name="can_port">Way to the box</string>
+    <string name="can_port_hint">Where the CAN box is plugged in. On this head unit: through its MCU. USB, Bluetooth or serial port: a box wired another way, or another head unit.</string>
+    <string name="can_port_mcu">MCU (default)</string>
+    <string name="can_port_usb">USB adapter</string>
+    <string name="can_port_bt">Bluetooth</string>
+    <string name="can_port_serial">Serial port (root)</string>
+    <string name="can_port_none_usb">No USB-serial adapter plugged in.</string>
+    <string name="can_port_none_bt">No paired Bluetooth device: pair the adapter in Android first.</string>
+    <string name="can_port_open">Open: %1$s</string>
 </resources>

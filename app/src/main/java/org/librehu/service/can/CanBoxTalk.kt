@@ -47,6 +47,10 @@ object CanBoxTalk {
     @Volatile
     private var mcu: ((org.librehu.core.mcu.McuFrame) -> Unit)? = null
 
+    /** Speed of a port other than the MCU (bit/s), see [CanBoxPorts]. */
+    @Volatile
+    private var portBaud: ((Int) -> Unit)? = null
+
     @Volatile
     private var link: CanBoxLink? = null
 
@@ -82,14 +86,19 @@ object CanBoxTalk {
         rebuild()
     }
 
-    /** The MCU link is up (Jancar MCU): [send] writes the bytes to the box, [mcuFrame] sends an MCU frame (cmd, data). */
+    /**
+     * The way to the box is up: [send] writes the bytes to the box; through the Jancar MCU, [mcuFrame] sends an MCU
+     * frame (the box's speed is MCU `0F 00`); through another port ([CanBoxPorts]), [baud] sets its speed instead.
+     */
     @Synchronized
     fun start(
         mcuFrame: (org.librehu.core.mcu.McuFrame) -> Unit,
         send: (ByteArray) -> Unit,
+        baud: ((Int) -> Unit)? = null,
     ) {
         sender = send
         mcu = mcuFrame
+        portBaud = baud
         rebuild()
         if (timer == null) {
             timer =
@@ -210,6 +219,11 @@ object CanBoxTalk {
         i: Int,
         why: String,
     ) {
+        portBaud?.let { set ->
+            runCatching { set(org.librehu.core.mcu.JacDebug.CAN_BAUDS[i]) }
+            Log.i(TAG, "box port speed ${org.librehu.core.mcu.JacDebug.CAN_BAUDS[i]} bit/s ($why)")
+            return
+        }
         mcu?.invoke(
             org.librehu.core.mcu.JacDebug
                 .canBaud(i),
