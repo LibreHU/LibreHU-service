@@ -20,7 +20,7 @@ object CanEngine {
             "2.2.0" to "framing described in the profile (v165)",
             "2.3.0" to "messages built from the head unit's state, on change, commands (v166)",
             "2.4.0" to "several key sources, knobs (v167)",
-            "2.5.0" to "engine requirement of a profile (\"engine\"), OBD sources (v168)",
+            "2.5.0" to "engine requirement of a profile (\"engine\"), CAN box and OBD together (v169)",
         )
 
     data class Version(

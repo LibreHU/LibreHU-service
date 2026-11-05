@@ -446,3 +446,27 @@ class CarDataTest {
         assertEquals("V", m["battery.voltage"]!!.unit)
     }
 }
+
+/** The command-line tool of the profiles repository ([CarTool]). */
+class CarToolTest {
+    @Test
+    fun checksProfilesAndTheirEngine() {
+        val dir = kotlin.io.path.createTempDirectory("cartool").toFile()
+        java.io.File(dir, "good.json").writeText(
+            """{"format":"librehu-can-vehicle","version":2,"engine":">=2.0","id":"good-car","messages":{"0x19":{"signals":{"rpm":{"start_byte":0,"size":2,"role":"engine.rpm"}}}},
+               "examples":[{"cmd":"0x19","data":"03 20","expect":{"engine.rpm":800}}]}""",
+        )
+        val out = mutableListOf<String>()
+        assertEquals(0, CarTool.check(listOf(dir.path), { out += it }))
+        // Too low an engine for a formula, a wrong example: refused, with the reasons.
+        java.io.File(dir, "bad.json").writeText(
+            """{"format":"librehu-can-vehicle","version":2,"engine":">=2.0","id":"bad-car","messages":{"0x19":{"signals":{"rpm":{"expr":"u16be(0)","role":"engine.rpm"}}}},
+               "examples":[{"cmd":"0x19","data":"03 20","expect":{"engine.rpm":900}}]}""",
+        )
+        out.clear()
+        assertEquals(1, CarTool.check(listOf(dir.path), { out += it }))
+        assertTrue(out.joinToString("\n"), out.any { it.contains("write \"engine\": \">=2.1\"") })
+        assertTrue(out.any { it.contains("expected 900") })
+        dir.deleteRecursively()
+    }
+}
