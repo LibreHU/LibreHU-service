@@ -244,6 +244,18 @@
         </service>
 
         <!-- Buttons another app (LibreHU BtnRemap) handles: the service leaves them to it. -->
+        <!-- Packs of car profiles by make, installed by LibreHU Apps (can/CarPackReceiver). -->
+        <receiver
+            android:name=".can.CarPackReceiver"
+            android:exported="true"
+            android:permission="org.librehu.permission.HEADUNIT">
+            <intent-filter>
+                <action android:name="org.librehu.service.QUERY_CAR_PACKS" />
+                <action android:name="org.librehu.service.INSTALL_CAR_PACK" />
+                <action android:name="org.librehu.service.REMOVE_CAR_PACK" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".can.KeyClaimReceiver"
             android:exported="true"

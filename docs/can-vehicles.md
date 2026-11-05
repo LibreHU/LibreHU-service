@@ -309,6 +309,19 @@ et vérifie son `"engine"` ; `java -jar librehu-car-tool.jar decode <profil.json
 l'onglet CAN sans la voiture. Le dépôt des fiches (<https://github.com/LibreHU/LibreHU-car-profiles>) s'en sert à
 chaque changement.
 
+**Paquets par marque (service v172)** : les fiches vivent dans <https://github.com/LibreHU/LibreHU-car-profiles>
+(`brands/<marque>/`, guide `PORTING.md`, fiche modèle `template/new-car.json`). Sa CI (ou `tools/build_packs.py`)
+publie `dist/index.json` et un paquet par marque (`"format": "librehu-car-pack"` : `id`, `revision` = nombre de
+commits du dossier de la marque, `engine` = le plus récent demandé par ses fiches, `profiles`), avec taille et SHA-256
+dans l'index. Le service installe un paquet **tout ou rien** (`CanPacks.read` : empreinte, moteur, chaque fiche lue et ses
+`examples` passés) dans `files/can-packs/<marque>.json` ; une fiche d'un paquet remplace la fiche intégrée de même
+`id`, les intégrées restent en secours (paquet retiré ou illisible par ce moteur). Pour LibreHU Apps, récepteur
+`can/CarPackReceiver` (permission signature `org.librehu.permission.HEADUNIT`, diffusions ordonnées) :
+`org.librehu.service.QUERY_CAR_PACKS` → `{"engine": "2.5.0", "packs": {"renault": 1, …}}` ;
+`org.librehu.service.INSTALL_CAR_PACK` (data = URI du fichier, lecture accordée, extra `sha256`) → OK + révision, ou
+annulé + raison ; `org.librehu.service.REMOVE_CAR_PACK` (extra `id`). `librehu-car-tool.jar pack <marque>.json
+[sha256]` fait la même vérification sur un ordinateur.
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.

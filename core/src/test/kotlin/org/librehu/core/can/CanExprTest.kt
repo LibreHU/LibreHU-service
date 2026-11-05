@@ -470,3 +470,42 @@ class CarToolTest {
         dir.deleteRecursively()
     }
 }
+
+/** Packs of car profiles by make ([CanPacks]). */
+class CanPacksTest {
+    private fun pack(
+        profiles: String,
+        engine: String = ">=2.0",
+    ) = """{"format":"librehu-car-pack","version":1,"id":"testmake","name":"Test make","revision":7,"engine":"$engine","profiles":[$profiles]}""".toByteArray()
+
+    private val good =
+        """{"format":"librehu-can-vehicle","version":2,"engine":">=2.0","id":"test-car","messages":{"0x19":{"signals":{"rpm":{"start_byte":0,"size":2,"role":"engine.rpm"}}}},
+           "examples":[{"cmd":"0x19","data":"03 20","expect":{"engine.rpm":800}}]}"""
+
+    @Test
+    fun readsAPack() {
+        val bytes = pack(good)
+        val sha = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        val p = CanPacks.read(bytes, sha)
+        assertEquals("testmake", p.id)
+        assertEquals(7, p.revision)
+        assertEquals(listOf("test-car"), p.profiles.map { it.id })
+    }
+
+    @Test
+    fun refusesWholePacks() {
+        for ((bytes, why) in listOf(
+            pack(good) to "0000",
+            pack(good, ">=9.0") to null,
+            pack(good.replace("800", "900")) to null,
+            pack("$good,$good") to null,
+            """{"format":"something"}""".toByteArray() to null,
+        )) {
+            try {
+                CanPacks.read(bytes, why)
+                fail("accepted: ${String(bytes).take(60)}")
+            } catch (_: CanVehicleException) {
+            }
+        }
+    }
+}

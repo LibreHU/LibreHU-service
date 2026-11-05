@@ -12,8 +12,9 @@ import org.librehu.core.can.TwrpCanConf
 import java.io.File
 
 /**
- * Car profiles for the CAN box decoding: the built-in ones plus those imported from JSON files (device-protected
- * storage, like the MCU profiles). The selected one decodes the messages right away ([CanMonitor.vehicle]).
+ * Car profiles for the CAN box decoding: the built-in ones, those of the packs by make installed by LibreHU Apps
+ * (LibreHU-car-profiles; a pack's profile replaces the built-in one of the same id) and those imported from JSON files
+ * (device-protected storage, like the MCU profiles). The selected one decodes the messages right away ([CanMonitor.vehicle]).
  */
 class CanVehicleStore private constructor(
     context: Context,
@@ -21,6 +22,14 @@ class CanVehicleStore private constructor(
     private val storage = context.applicationContext.createDeviceProtectedStorageContext()
     private val app = context.applicationContext
     private val dir = File(storage.filesDir, "can-vehicles").apply { mkdirs() }
+
+    /** Packs by make (`<id>.json`, as published), see [installPack]. */
+    private val packDir = File(storage.filesDir, "can-packs").apply { mkdirs() }
+
+    private val _packs = MutableStateFlow(loadPacks())
+
+    /** Installed packs by make: id → revision. */
+    val packs: StateFlow<Map<String, org.librehu.core.can.CanPack>> = _packs.asStateFlow()
     private val prefs = storage.getSharedPreferences("can", Context.MODE_PRIVATE)
 
     private val _vehicles = MutableStateFlow(load())
@@ -61,7 +70,8 @@ class CanVehicleStore private constructor(
         android.util.Log.i("LibreHU-CAN", if (ok) "TWRP CAN dialogue written for ${v.id}" else "TWRP CAN dialogue not written (storage)")
     }
 
-    fun isBuiltIn(id: String) = CanVehicles.BUILT_IN.any { it.id == id }
+    /** Built in, or from an installed pack (not removable one by one, not replaceable by an import). */
+    fun isBuiltIn(id: String) = CanVehicles.BUILT_IN.any { it.id == id } || _packs.value.values.any { p -> p.profiles.any { it.id == id } }
 
     /** The selected profile as stored (all its cars). */
     fun profile(): CanVehicle = _vehicles.value.firstOrNull { it.id == _selected.value } ?: CanVehicles.RENAULT_CLIO3_HIWORLD
@@ -119,6 +129,49 @@ class CanVehicleStore private constructor(
         if (_selected.value == id) select(CanVehicles.DEFAULT_ID)
     }
 
+    /**
+     * Installs a pack by make ([org.librehu.core.can.CanPacks.read]: all its profiles readable by this engine, their
+     * examples passing, the SHA-256 of the index when given); replaces the previous revision. Returns it, or throws.
+     */
+    @Synchronized
+    fun installPack(
+        bytes: ByteArray,
+        sha256: String?,
+    ): org.librehu.core.can.CanPack {
+        val p = org.librehu.core.can.CanPacks.read(bytes, sha256)
+        val tmp = File(packDir, "${p.id}.json.tmp")
+        tmp.writeBytes(bytes)
+        if (!tmp.renameTo(File(packDir, "${p.id}.json"))) {
+            tmp.delete()
+            throw CanVehicleException("cannot store pack ${p.id}")
+        }
+        _packs.value = loadPacks()
+        _vehicles.value = load()
+        applySelected()
+        android.util.Log.i("LibreHU-CAN", "car pack ${p.id} revision ${p.revision} installed (${p.profiles.size} profiles)")
+        return p
+    }
+
+    /** Removes an installed pack: its make's built-in profiles come back. */
+    @Synchronized
+    fun removePack(id: String) {
+        File(packDir, "$id.json").delete()
+        _packs.value = loadPacks()
+        _vehicles.value = load()
+        applySelected()
+    }
+
+    /** Packs this engine can read; one it cannot (a service downgraded…) is skipped, its make falls back to built-in. */
+    private fun loadPacks(): Map<String, org.librehu.core.can.CanPack> =
+        (packDir.listFiles { f -> f.extension == "json" } ?: emptyArray()).mapNotNull { f ->
+            try {
+                org.librehu.core.can.CanPacks.read(f.readBytes())
+            } catch (e: CanVehicleException) {
+                android.util.Log.w("LibreHU-CAN", "car pack ${f.name} skipped: ${e.message}")
+                null
+            }
+        }.associateBy { it.id }
+
     private fun load(): List<CanVehicle> {
         val imported =
             dir.listFiles { f -> f.extension == "json" }.orEmpty().mapNotNull { f ->
@@ -128,7 +181,11 @@ class CanVehicleStore private constructor(
                     null
                 }
             }
-        return CanVehicles.BUILT_IN + imported.sortedBy { it.name.lowercase() }
+        // A pack's profile replaces the built-in one of the same id (newer decoding); then the pack's new profiles.
+        val fromPacks = _packs.value.values.flatMap { it.profiles }.associateBy { it.id }
+        val builtIn = CanVehicles.BUILT_IN.map { fromPacks[it.id] ?: it }
+        val extra = fromPacks.values.filter { p -> CanVehicles.BUILT_IN.none { it.id == p.id } }.sortedBy { it.name.lowercase() }
+        return builtIn + extra + imported.filter { i -> fromPacks[i.id] == null }.sortedBy { it.name.lowercase() }
     }
 
     companion object {

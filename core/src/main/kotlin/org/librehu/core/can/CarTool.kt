@@ -26,13 +26,14 @@ object CarTool {
                 }
                 "check" -> check(args.drop(1), System.out::println)
                 "decode" -> if (args.size == 3) decode(File(args[1]), File(args[2]), System.out::println) else usage()
+                "pack" -> if (args.size in 2..3) pack(File(args[1]), args.getOrNull(2), System.out::println) else usage()
                 else -> usage()
             }
         exitProcess(code)
     }
 
     private fun usage(): Int {
-        System.err.println("librehu-car-tool ${CanEngine.VERSION}: version | check <file or folder>... | decode <profile.json> <can-export.txt>")
+        System.err.println("librehu-car-tool ${CanEngine.VERSION}: version | check <file or folder>... | decode <profile.json> <can-export.txt> | pack <make.json> [sha256]")
         return 2
     }
 
@@ -98,6 +99,21 @@ object CarTool {
         val n = CanEngine.parse(needed.removePrefix(">=")) ?: return false
         return d < n
     }
+
+    /** Reads a pack as LibreHU service installs it (all or nothing); returns the exit code. */
+    fun pack(
+        file: File,
+        sha256: String?,
+        out: (String) -> Unit,
+    ): Int =
+        try {
+            val p = CanPacks.read(file.readBytes(), sha256)
+            out("ok    pack ${p.id} revision ${p.revision}, engine ${p.engine}: ${p.profiles.size} profiles, ${p.profiles.sumOf { it.variants.size }} cars")
+            0
+        } catch (e: CanVehicleException) {
+            out("FAIL  ${file.path}: ${e.message}")
+            1
+        }
 
     /** Decodes a CAN export with a profile; returns the exit code. */
     fun decode(
