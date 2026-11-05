@@ -243,7 +243,7 @@ class Batch1ProfilesTest {
     @Test
     fun builtInsLoad() {
         val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "hiworld-generic"), ids)
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "hiworld-generic"), ids)
         assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
         assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
         assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
@@ -343,5 +343,30 @@ class Batch2ProfilesTest {
         assertEquals(800.0, number(v, engine, "rpm"), 0.01)
         // 0x73 D6: outside temperature D6 / 2 - 40 (parseAirInfo).
         assertEquals(20.0, number(v, frame(0x73, 0, 0, 0, 0, 0, 0, 120, 0), "outside"), 0.01)
+    }
+
+    @Test
+    fun vwMqbRaise() {
+        val v = CanVehicles.VW_MQB_RAISE
+        assertEquals(61, v.variants.size)
+        assertEquals(CanBoxFamilies.RAISE, v.family)
+        // ReBaseProtocol: acknowledge = [FF], hello buildConnectPacket = getPacket(0x81, [1]), no car type.
+        assertTrue(v.link.ack)
+        assertEquals(listOf(0x81), v.link.send.map { it.cmd })
+        assertTrue(TwrpCanConf.of(v).contains("\nsend 500 0 2E 81 01 01 7C\n"))
+        // 0x20: D0 key code, D1 1 while pressed (parseWheelKeyInfo).
+        val pressed = mutableListOf<Int>()
+        val released = mutableListOf<Int>()
+        val keys = HiworldWheelKeys(onRelease = { released += it }, spec = v.keys!!) { pressed += it }
+        keys.onFrame(frame(0x20, 3, 1))
+        keys.onFrame(frame(0x20, 0, 0))
+        assertEquals(listOf(3), pressed)
+        assertEquals(listOf(3), released)
+        assertEquals("next", v.keys!!.name(3))
+        // 0x29: steering D0-D1 little endian signed, negated (parseWheelInfo: -byte2Short(bArr, 3)).
+        assertEquals(-256.0, number(v, frame(0x29, 0x00, 0x01), "steering"), 0.01)
+        // 0x27: outside temperature D1-D2 little endian signed / 10 (parseOutTempInfo).
+        assertEquals(21.0, number(v, frame(0x27, 0, 0xD2, 0x00), "outside"), 0.01)
+        assertEquals(-10.0, number(v, frame(0x27, 0, 0x9C, 0xFF), "outside"), 0.01)
     }
 }

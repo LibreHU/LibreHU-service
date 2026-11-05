@@ -45,6 +45,15 @@ Profils intégrés :
   décodées en VWP003, elles sont donc ici (v160). À l'inverse, `SkodaHdManager` prend VWP004 pour toutes les Skoda,
   même les PQ que le catalogue liste en VWP003 (Octavia II, Superb II, Yeti, Rapid) : laissées ici, essayer
   `vw-mqb-hiworld` si rien n'est décodé ;
+- `vw-mqb-raise` (lot 2, v161) : **Volkswagen, Skoda (Raise / Oudi, MQB)**, 61 voitures (`ReMQB7Protocol`), premier
+  profil Raise (`2E CMD LEN D… CS`) : bonjour `0x81 01` une fois au départ (`buildConnectPacket`), accusé `FF` de chaque
+  message, pas de type de voiture. `0x20` touche D0 / état D1 (1 à l'appui) ; `0x24` portes D0, feux / frein / marche AR
+  D1 ; `0x27` température extérieure D1-D2 (petit-boutiste, signé, ÷ 10 ; D0 bit 0 = °F) ; `0x29` volant D0-D1
+  (petit-boutiste, signé) ; `0x22` / `0x23` radar arrière / avant (brut) ; `0x32` / `0x33` radar latéral ; `0x30`
+  version. Voitures : celles que l'appli décode avec ce décodeur (`VolkswagenReManager`, `VolkswagenOudiManager`,
+  `SkodaReManager`, `SkodaOudiManager`, par modèle et année), boîtiers Raise et Oudi réunis. Pas de régime ni de
+  température moteur dans ce protocole ; les messages multiplexés (`0x40`, `0x50` : autonomie, consommations, TPMS
+  `0x66`) ne sont pas décodés. Dans TWRP, seul le bonjour est envoyé (accusés et touches : boîtiers Hiworld seulement) ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -63,6 +72,7 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld HDP004 (`honda-hiworld`) | Honda, Acura | 79 | v148 |
 | Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 29 | v158 |
 | Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 42 | v159 ; 9 VW : v160 |
+| Raise / Oudi MQB (`vw-mqb-raise`) | Volkswagen, Skoda (MQB) | 61 | v161 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.
