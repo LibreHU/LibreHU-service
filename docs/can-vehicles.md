@@ -54,6 +54,11 @@ Profils intégrés :
   `SkodaReManager`, `SkodaOudiManager`, par modèle et année), boîtiers Raise et Oudi réunis. Pas de régime ni de
   température moteur dans ce protocole ; les messages multiplexés (`0x40`, `0x50` : autonomie, consommations, TPMS
   `0x66`) ne sont pas décodés. Dans TWRP, seul le bonjour est envoyé (accusés et touches : boîtiers Hiworld seulement) ;
+- `vw-pq-raise` (lot 2, v162) : **Volkswagen, Skoda (Raise / Oudi, PQ)**, 49 voitures (`RePQProtocol`), même liaison
+  que `vw-mqb-raise` (bonjour `0x81 01`, accusés `FF`) : `0x20` touche D0 / état D1 ; `0x16` vitesse D0-D1
+  (petit-boutiste ÷ 16 km/h) ; `0x24` feux / frein / marche AR (D1 quand le message a 2 octets, D0 sinon : seul le cas
+  à 2 octets est décodé) ; `0x26` volant D0-D1 (petit-boutiste, signé) ; radars `0x22`, `0x23`, `0x32`, `0x33` (brut,
+  0 = rien) ; `0x30` version. Pas de portes ni de données moteur ici (`0x41` multiplexé non décodé) ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -73,6 +78,7 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 29 | v158 |
 | Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 42 | v159 ; 9 VW : v160 |
 | Raise / Oudi MQB (`vw-mqb-raise`) | Volkswagen, Skoda (MQB) | 61 | v161 |
+| Raise / Oudi PQ (`vw-pq-raise`) | Volkswagen, Skoda (PQ) | 49 | v162 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.

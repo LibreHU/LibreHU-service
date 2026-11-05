@@ -240,6 +240,9 @@ object CanVehicles {
     /** Volkswagen, Skoda (MQB), Raise or Oudi box (Raise framing): hello 0x81 01, keys in 0x20, doors, outside temperature, radar. */
     val VW_MQB_RAISE: CanVehicle by lazy { builtIn("vw-mqb-raise") }
 
+    /** Volkswagen, Skoda (older PQ platforms), Raise or Oudi box: hello 0x81 01, keys in 0x20, speed, lights / reverse, radar. */
+    val VW_PQ_RAISE: CanVehicle by lazy { builtIn("vw-pq-raise") }
+
     /** Any car: no decoding, the CAN viewer shows the raw messages. */
     val GENERIC_HIWORLD =
         CanVehicle(
@@ -248,7 +251,7 @@ object CanVehicles {
             description = "No decoding: raw messages, to find the fields of a new car.",
         )
 
-    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, VW_PQ_HIWORLD, VW_MQB_RAISE, GENERIC_HIWORLD) }
+    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, VW_PQ_HIWORLD, VW_MQB_RAISE, VW_PQ_RAISE, GENERIC_HIWORLD) }
 
     val DEFAULT_ID = "renault-clio3-hiworld"
 

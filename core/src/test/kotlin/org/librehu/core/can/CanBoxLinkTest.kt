@@ -243,7 +243,7 @@ class Batch1ProfilesTest {
     @Test
     fun builtInsLoad() {
         val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "hiworld-generic"), ids)
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "vw-pq-raise", "hiworld-generic"), ids)
         assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
         assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
         assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
@@ -368,5 +368,21 @@ class Batch2ProfilesTest {
         // 0x27: outside temperature D1-D2 little endian signed / 10 (parseOutTempInfo).
         assertEquals(21.0, number(v, frame(0x27, 0, 0xD2, 0x00), "outside"), 0.01)
         assertEquals(-10.0, number(v, frame(0x27, 0, 0x9C, 0xFF), "outside"), 0.01)
+    }
+
+    @Test
+    fun vwPqRaise() {
+        val v = CanVehicles.VW_PQ_RAISE
+        assertEquals(49, v.variants.size)
+        assertEquals(CanBoxFamilies.RAISE, v.family)
+        assertTrue(v.link.ack)
+        assertEquals(listOf(0x81), v.link.send.map { it.cmd })
+        // 0x20: D0 key code, D1 1 while pressed (RePQProtocol.parseWheelKeyInfo).
+        assertEquals(0x20, v.keys!!.cmd)
+        assertEquals("voice", v.keys!!.name(8))
+        // 0x16: speed (D1 << 8 | D0) / 16 (parseVehicleSpeedInfo).
+        assertEquals(100.0, number(v, frame(0x16, 0x40, 0x06), "speed"), 0.01)
+        // 0x26: steering D0-D1 little endian signed (parseWheelInfo: byte2Short(bArr, 3)).
+        assertEquals(-2.0, number(v, frame(0x26, 0xFE, 0xFF), "steering"), 0.01)
     }
 }
