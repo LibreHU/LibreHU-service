@@ -118,7 +118,7 @@ object CanMonitor {
         history.addLast(line)
         while (history.size > 20_000) history.removeFirst()
         frameListener?.invoke(f)
-        val decoded = vehicle.decode(f)
+        val decoded = vehicle.decode(f) { r -> _roles.value[r]?.number ?: _roles.value[r]?.flag?.let { if (it) 1.0 else 0.0 } }
         // Roles first: a feature collecting [values] reads [roles] of the same message.
         val byRole = decoded.filter { it.role != null }
         if (byRole.isNotEmpty()) _roles.value = _roles.value + byRole.associateBy { it.role!! }

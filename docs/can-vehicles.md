@@ -36,7 +36,7 @@ Profils intégrés :
 - `vw-pq-hiworld` (lot 2, v159) : **Volkswagen, Skoda, anciens Mercedes (Hiworld VWP003, PQ)**, 42 voitures
   (`HdMQB6Protocol`, `HdProtocolVwp003` pour Mercedes, mêmes messages) : `0x72` état D0 (contact, feux, marche AR, frein, clé, radar, Bluetooth), vitesse D1, touche D2
   (**sans octet d'état** : appuyée tant que le code n'est pas 0), luminosité D3, volant D4 / D5 (un octet par côté,
-  0-140), radar D6-D13 (brut ÷ 16) ; `0x73` température extérieure D6 (÷ 2 − 40 °C), portes D7 ; `0x12` huile D2 (°C,
+  0-140 ; v164 : un seul signal `steering` par formule `D4 == 0 ? -D5 : D4`, × 540 / 140, rôle `steering.angle`), radar D6-D13 (brut ÷ 16) ; `0x73` température extérieure D6 (÷ 2 − 40 °C), portes D7 ; `0x12` huile D2 (°C,
   255 = absent), consommation D3, rapport D5, alertes D6, carburant D7, batterie D8 ; `0x13` **kilométrage D0-D2,
   vitesse D3-D4 ÷ 10, régime D8-D9** ; `0x18` feux et clignotants ; `0x42` radar latéral. Pas de type de voiture,
   accusés Hiworld. La clim (`0x73` D0-D5) n'est pas encore décodée. **Choix du décodeur** : l'appli Hiworld le
@@ -209,6 +209,23 @@ l'équivalent, avec son unité et son sens (angle du volant : positif à gauche 
 **% de proximité**, 100 = contact), `steering.position` (-1..1), `lights.on` (mode nuit), `box.version`.
 **Angle du volant** : en degrés comme l'appli Hiworld (`SteerWheelInfo.setEps` : brut × 540 / maximum du décodeur) ; son
 sens n'est pas encore vérifié sur une voiture (réglage « inverser » de la caméra de recul).
+
+**Formules, héritage, retouches par voiture (service v164)**
+
+| Nouveau | Rôle |
+|---|---|
+| `expr` (signal) | formule qui donne le nombre à la place des octets lus ; `factor`, `offset`, `invalid`, `values`, `bits` s'appliquent ensuite. Ex. VWP003 : `"expr": "D4 == 0 ? -D5 : D4", "factor": 3.857143` |
+| `when` texte | condition en formule : `"when": "len == 2 && bit(D0, 1)"` (l'objet `{ "byte", "is", "len" }` reste valable) |
+| `extends` (profil) | part d'un autre profil (intégré, ou importé avant) et le complète : objets fusionnés clé par clé (messages, signaux…), le reste remplacé, `null` retire une clé |
+| `patch` (voiture de `variants`) | retouche du profil pour cette voiture seulement, fusionnée de la même façon (un autre facteur d'angle, un message en plus, une autre vitesse série) ; `id`, `variants`, `extends` ne changent pas |
+
+Formules (`CanExpr`, jamais du code : lues une fois, calculées à chaque message, 600 caractères au plus) : syntaxe C,
+`+ - * / %`, `& | ^ ~ << >>`, `== != < <= > >=`, `&& || !`, `c ? a : b` ; noms `D0`..`D63` (octets, 0 au-delà de la fin),
+`len`, `raw` (les octets du signal), la valeur d'un signal décodé avant dans le même message (son nom) ; fonctions
+`min max abs round floor ceil clamp`, `u16be u16le s16be s16le u24be u24le u32be u32le s8` (octets depuis D`i`), `bit`,
+`bits(x, début, longueur)`, `signed(x, bits)`, `bcd`, `role("…")` (dernière valeur d'un rôle, venue de n'importe quel
+message : unité réglée ailleurs…), `has("…")`. Un calcul impossible (division par zéro, rôle sans valeur) ne donne
+aucune valeur.
 
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant

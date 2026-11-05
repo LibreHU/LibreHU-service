@@ -23,6 +23,8 @@ import kotlinx.serialization.json.put
  * Format 2: [role] (what the value means for LibreHU's features, [CanRoles]), [bitRoles] (the role of each named bit),
  * [invalid] (raw values meaning "no value", as 0xFF often does), [labels] (label per language, `{"en": …, "fr": …}`),
  * [condition] (decoded only when the message matches it: a code in a byte, a length).
+ * [expr] (a formula, [CanExpr], giving the number instead of the bytes read; factor, offset, invalid, values and bits
+ * apply to it) and [whenExpr] (a formula condition, `"when": "len == 2 && bit(D0, 1)"`).
  */
 data class CanSignal(
     val name: String,
@@ -48,6 +50,8 @@ data class CanSignal(
     val invalid: Set<Long> = emptySet(),
     val labels: Map<String, String> = emptyMap(),
     val condition: CanCondition? = null,
+    val expr: CanExpr? = null,
+    val whenExpr: CanExpr? = null,
 )
 
 /**
@@ -166,6 +170,8 @@ data class CanSend(
 data class CanVariant(
     val name: String,
     val send: Map<String, List<Int>>,
+    /** Changes to the profile for this car (format 2, `"patch"`): any part of a profile, merged as `extends` does. */
+    val patch: JsonObject? = null,
 )
 
 /**
@@ -197,11 +203,15 @@ data class CanVehicle(
     val variants: List<CanVariant> = emptyList(),
     /** Self-tests of the decoding (format 2), checked by [selfTest]. */
     val examples: List<CanExample> = emptyList(),
+    /** The whole profile as read, `extends` resolved (for the cars' [CanVariant.patch]); not part of equality. */
+    val source: CanSource = CanSource(null),
 ) {
     /** This profile for the car [name] (one of [variants]); unknown or null: unchanged. */
     fun withVariant(name: String?): CanVehicle {
         val v = variants.firstOrNull { it.name == name } ?: return this
-        return copy(link = link.copy(send = link.send.map { s -> v.send[s.name]?.let { s.copy(data = it) } ?: s }))
+        val src = source.json
+        val base = if (v.patch != null && src != null) CanVehicles.fromSource(CanVehicles.merge(src, v.patch)).copy(variants = variants, source = source) else this
+        return base.copy(link = base.link.copy(send = base.link.send.map { s -> v.send[s.name]?.let { s.copy(data = it) } ?: s }))
     }
 
     /** The box family named by [box] (checked when the profile is read). */
@@ -219,14 +229,30 @@ data class CanVehicle(
                 }
 
     /** Every value of [f] this profile knows; empty when the command is unknown. */
-    fun decode(f: CanboxFrame): List<CanValue> {
+    fun decode(
+        f: CanboxFrame,
+        /** Last value of a role, from earlier messages (formulas' `role("…")`). */
+        roles: (String) -> Double? = { null },
+    ): List<CanValue> {
         val m = messages[f.cmd] ?: return emptyList()
         val name = m.nameFor(f.data)
-        return m.signalsFor(f.data).flatMap { decodeSignal(name, it, f.data) }
+        val known = HashMap<String, Double>()
+        val out = ArrayList<CanValue>()
+        for (s in m.signalsFor(f.data)) {
+            if (s.whenExpr != null && !s.whenExpr.test(CanExpr.Context(f.data, signals = known, roles = roles))) continue
+            for (v in decodeSignal(name, s, f.data, known, roles)) {
+                out += v
+                (v.number ?: v.flag?.let { if (it) 1.0 else 0.0 })?.let { known[v.key] = it }
+            }
+        }
+        return out
     }
 
     /** The values of [f] by role (those whose signal names one). */
-    fun decodeRoles(f: CanboxFrame): Map<String, CanValue> = decode(f).filter { it.role != null }.associateBy { it.role!! }
+    fun decodeRoles(
+        f: CanboxFrame,
+        roles: (String) -> Double? = { null },
+    ): Map<String, CanValue> = decode(f, roles).filter { it.role != null }.associateBy { it.role!! }
 
     /** The failures of this profile's [examples] (empty: all pass, or none). */
     fun selfTest(): List<String> =
@@ -267,6 +293,8 @@ private fun decodeSignal(
     message: String,
     s: CanSignal,
     data: ByteArray,
+    known: Map<String, Double> = emptyMap(),
+    roles: (String) -> Double? = { null },
 ): List<CanValue> {
     val label = s.label.ifEmpty { s.name }
     if (s.ascii) {
@@ -274,11 +302,35 @@ private fun decodeSignal(
         val text = String(data, s.startByte, data.size - s.startByte, Charsets.US_ASCII).trim { it <= ' ' || it == '\u0000' }
         return listOf(CanValue(s.name, label, message, text = text, role = s.role, labels = s.labels))
     }
-    if (s.startByte < 0 || s.startByte + s.size > data.size) return emptyList()
+    val fits = s.startByte >= 0 && s.startByte + s.size <= data.size
+    if (!fits && s.expr == null) return emptyList()
     var raw = 0L
-    for (i in 0 until s.size) {
-        val b = data[s.startByte + if (s.bigEndian) i else s.size - 1 - i].toLong() and 0xFF
-        raw = (raw shl 8) or b
+    if (fits) {
+        for (i in 0 until s.size) {
+            val b = data[s.startByte + if (s.bigEndian) i else s.size - 1 - i].toLong() and 0xFF
+            raw = (raw shl 8) or b
+        }
+    }
+    if (s.expr != null) {
+        // A formula: its result is the number; bits, invalid, factor, offset, bounds and names apply to it.
+        val r = s.expr.eval(CanExpr.Context(data, raw, known, roles)) ?: return emptyList()
+        if (s.bits.isNotEmpty()) {
+            val bits = r.toLong()
+            if (bits in s.invalid) return emptyList()
+            return s.bits.map { (bit, pos) -> CanValue(bit, bit, message, flag = (bits shr pos) and 1L == 1L, role = s.bitRoles[bit]) }
+        }
+        if (r == kotlin.math.floor(r) && r.toLong() in s.invalid) return emptyList()
+        val value = r * s.factor + s.offset
+        if (s.min != null && value < s.min) return emptyList()
+        if (s.max != null && value > s.max) return emptyList()
+        val named = if (r == kotlin.math.floor(r)) s.values[r.toInt()] else null
+        return listOf(
+            if (named != null) {
+                CanValue(s.name, label, message, number = value, text = named, role = s.role, labels = s.labels)
+            } else {
+                CanValue(s.name, label, message, value, unit = s.unit, role = s.role, labels = s.labels)
+            },
+        )
     }
     if (s.bits.isNotEmpty()) {
         if (raw in s.invalid) return emptyList()
@@ -308,6 +360,17 @@ private fun decodeSignal(
     )
 }
 
+/** The JSON a profile was read from: carried along, never compared (two equal profiles may be written differently). */
+class CanSource(
+    val json: JsonObject?,
+) {
+    override fun equals(other: Any?) = other is CanSource
+
+    override fun hashCode() = 0
+
+    override fun toString() = "CanSource"
+}
+
 class CanVehicleException(
     message: String,
 ) : Exception(message)
@@ -321,11 +384,7 @@ object CanVehicles {
     private val json = Json { prettyPrint = true }
 
     /** A built-in profile, a JSON file next to this class (`vehicles/<id>.json`, generated from Hiworld's app: docs/can-vehicles.md). */
-    private fun builtIn(id: String): CanVehicle =
-        fromJson(
-            CanVehicles::class.java.getResourceAsStream("vehicles/$id.json")?.use { it.readBytes().toString(Charsets.UTF_8) }
-                ?: throw CanVehicleException("Built-in profile $id missing"),
-        )
+    private fun builtIn(id: String): CanVehicle = fromJson(builtInText(id) ?: throw CanVehicleException("Built-in profile $id missing"))
 
     /** Renault, Dacia, LADA, Samsung, Nissan, Mercedes, Hiworld protocol LNP002 (docs/ivi-services/12-canbus.md §12.4); Clio 3 by default. */
     val RENAULT_CLIO3_HIWORLD: CanVehicle by lazy { builtIn("renault-clio3-hiworld") }
@@ -363,13 +422,59 @@ object CanVehicles {
 
     val DEFAULT_ID = "renault-clio3-hiworld"
 
-    fun fromJson(text: String): CanVehicle {
-        val root =
-            try {
-                Json.parseToJsonElement(text).jsonObject
-            } catch (e: Exception) {
-                throw CanVehicleException("Not JSON: ${e.message}")
+    /** The text of a built-in profile, or null. */
+    fun builtInText(id: String): String? = CanVehicles::class.java.getResourceAsStream("vehicles/$id.json")?.use { it.readBytes().toString(Charsets.UTF_8) }
+
+    /**
+     * Reads a profile. `"extends": "<id>"` (format 2) starts from that profile ([resolve]: built-in ones by default),
+     * then merges this one over it ([merge]).
+     */
+    fun fromJson(
+        text: String,
+        resolve: (String) -> String? = ::builtInText,
+    ): CanVehicle = fromSource(resolveExtends(parseObject(text), resolve, 0))
+
+    private fun parseObject(text: String): JsonObject =
+        try {
+            Json.parseToJsonElement(text).jsonObject
+        } catch (e: Exception) {
+            throw CanVehicleException("Not JSON: ${e.message}")
+        }
+
+    private fun resolveExtends(
+        root: JsonObject,
+        resolve: (String) -> String?,
+        depth: Int,
+    ): JsonObject {
+        val parent = root.str("extends") ?: return root
+        if (depth >= 8) throw CanVehicleException("extends: more than 8 levels (a loop?)")
+        val text = resolve(parent) ?: throw CanVehicleException("extends: unknown profile \"$parent\"")
+        val base = resolveExtends(parseObject(text), resolve, depth + 1)
+        return JsonObject(merge(base, root) - "extends")
+    }
+
+    /**
+     * [over] merged over [base]: objects key by key (messages, signals…), anything else replaced; a key set to null
+     * removes it (a message, a signal of the parent profile).
+     */
+    fun merge(
+        base: JsonObject,
+        over: JsonObject,
+    ): JsonObject {
+        val out = LinkedHashMap<String, JsonElement>(base)
+        for ((k, v) in over) {
+            val b = out[k]
+            when {
+                v is kotlinx.serialization.json.JsonNull -> out.remove(k)
+                v is JsonObject && b is JsonObject -> out[k] = merge(b, v)
+                else -> out[k] = v
             }
+        }
+        return JsonObject(out)
+    }
+
+    /** A profile from its JSON object, `extends` already resolved. */
+    fun fromSource(root: JsonObject): CanVehicle {
         val format = root.str("format")
         if (format != FORMAT) {
             if (root.containsKey("schema_version") && root.keys.any { it.startsWith("0x") }) {
@@ -415,15 +520,21 @@ object CanVehicles {
             variants =
                 ((root["variants"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                     val o = e as? JsonObject ?: throw CanVehicleException("variants[$i] is not an object")
+                    val patch = o["patch"] as? JsonObject
+                    if (patch != null && (patch.containsKey("id") || patch.containsKey("variants") || patch.containsKey("extends"))) {
+                        throw CanVehicleException("variants[$i].patch: id, variants and extends cannot change")
+                    }
                     CanVariant(
                         o.str("name")?.ifBlank { null } ?: throw CanVehicleException("variants[$i]: name missing"),
                         (o["send"] as? JsonObject).orEmpty().map { (k, v) -> k to bytes((v as? JsonPrimitive)?.contentOrNull.orEmpty(), "variants[$i].$k") }.toMap(),
+                        patch,
                     )
                 },
             baud =
                 root.int("baud")?.also {
                     if (it !in CanBoxFamilies.BAUDS) throw CanVehicleException("baud $it (one of ${CanBoxFamilies.BAUDS.joinToString()})")
                 },
+            source = CanSource(root),
             examples =
                 ((root["examples"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                     val o = e as? JsonObject ?: throw CanVehicleException("examples[$i] is not an object")
@@ -593,6 +704,7 @@ object CanVehicles {
                                 buildJsonObject {
                                     put("name", c.name)
                                     put("send", buildJsonObject { c.send.forEach { (k, d) -> put(k, d.joinToString(" ") { "%02X".format(it) }) } })
+                                    c.patch?.let { put("patch", it) }
                                 }
                             },
                         ),
@@ -722,6 +834,8 @@ object CanVehicles {
                     else -> setOf(rawValue(v, where))
                 },
             condition = (o["when"] as? JsonObject)?.let { condition(it, "$where.when") },
+            expr = o.str("expr")?.let { formula(it, "$where.expr") },
+            whenExpr = (o["when"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.let { formula(it, "$where.when") },
             bits = bits.orEmpty(),
             values =
                 (o["values"] as? JsonObject)
@@ -730,6 +844,20 @@ object CanVehicles {
                     .orEmpty(),
             ascii = (o["ascii"] as? JsonPrimitive)?.booleanOrNull ?: false,
         )
+    }
+
+    private fun formula(
+        text: String,
+        where: String,
+    ): CanExpr {
+        val e =
+            try {
+                CanExpr.parse(text)
+            } catch (x: CanVehicleException) {
+                throw CanVehicleException("$where: ${x.message}")
+            }
+        CanExpr.roleNames(text).forEach { role(it, where) }
+        return e
     }
 
     private fun role(
@@ -785,6 +913,8 @@ object CanVehicles {
                 )
             }
             if (s.values.isNotEmpty()) put("values", buildJsonObject { s.values.forEach { (k, v) -> put(k.toString(), v) } })
+            s.expr?.let { put("expr", it.source) }
+            s.whenExpr?.let { put("when", it.source) }
             s.condition?.let { c ->
                 put(
                     "when",

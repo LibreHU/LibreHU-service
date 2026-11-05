@@ -94,7 +94,8 @@ class CanVehicleStore private constructor(
             app.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
                 ?: throw CanVehicleException("Cannot read the file")
         if (text.length > MAX_SIZE) throw CanVehicleException("File too big")
-        val v = CanVehicles.fromJson(text)
+        // "extends": a built-in profile or one imported before (stored with its parent already merged in).
+        val v = CanVehicles.fromJson(text) { id -> CanVehicles.builtInText(id) ?: File(dir, "$id.json").takeIf { it.isFile }?.readText() }
         if (isBuiltIn(v.id)) throw CanVehicleException("\"${v.id}\" is a built-in profile: change the id")
         File(dir, "${v.id}.json").writeText(CanVehicles.toJson(v))
         _vehicles.value = load()

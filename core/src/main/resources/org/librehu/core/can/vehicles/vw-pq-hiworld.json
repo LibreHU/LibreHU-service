@@ -251,13 +251,13 @@
      "start_byte": 3,
      "label": "brightness"
     },
-    "steering_a": {
+    "steering": {
      "start_byte": 4,
-     "label": "steering, one side (raw, 0-140)"
-    },
-    "steering_b": {
-     "start_byte": 5,
-     "label": "steering, other side (raw, 0-140)"
+     "expr": "D4 == 0 ? -D5 : D4",
+     "factor": 3.857143,
+     "unit": "°",
+     "label": "steering angle",
+     "role": "steering.angle"
     },
     "rear_L": {
      "start_byte": 6,
@@ -545,6 +545,20 @@
     "lights.high_beam": true,
     "turn.left": true,
     "turn.right": false
+   }
+  },
+  {
+   "cmd": "0x72",
+   "data": "00 00 00 00 00 46 00 00 00 00 00 00 00 00",
+   "expect": {
+    "steering.angle": -270
+   }
+  },
+  {
+   "cmd": "0x72",
+   "data": "00 00 00 00 23 00 00 00 00 00 00 00 00 00",
+   "expect": {
+    "steering.angle": 135
    }
   }
  ]
