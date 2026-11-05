@@ -231,6 +231,9 @@ object CanVehicles {
     /** Honda, Acura, Hiworld protocol HDP004. */
     val HONDA_HIWORLD: CanVehicle by lazy { builtIn("honda-hiworld") }
 
+    /** Volkswagen, Skoda (MQB), Hiworld protocol VWP004: no car type, engine data (coolant, oil, engine speed). */
+    val VW_MQB_HIWORLD: CanVehicle by lazy { builtIn("vw-mqb-hiworld") }
+
     /** Any car: no decoding, the CAN viewer shows the raw messages. */
     val GENERIC_HIWORLD =
         CanVehicle(
@@ -239,7 +242,7 @@ object CanVehicles {
             description = "No decoding: raw messages, to find the fields of a new car.",
         )
 
-    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, GENERIC_HIWORLD) }
+    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, GENERIC_HIWORLD) }
 
     val DEFAULT_ID = "renault-clio3-hiworld"
 

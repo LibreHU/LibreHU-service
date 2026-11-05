@@ -27,6 +27,12 @@ Profils intégrés :
   AR / frein D0, vitesse D1, touche D2 / D3, volant D6-D7), portes, radar, version ; accusés ; type `0x24 [code, 0x02]`.
   Pas encore listées (type de voiture calculé par des règles par modèle non relues) : Accord 2018, Odyssey 2004-2008,
   Crosstour, Civic 2016-, CR-V 2017 ;
+- `vw-mqb-hiworld` (lot 2, v158) : **Volkswagen, Skoda (Hiworld VWP004, MQB)**, 38 voitures (`HdMQB7Protocol`) :
+  `0x11` état (contact, feux, marche AR, frein, radar), touche D2 / D3 (1 à l'appui), volant D6-D7 (petit-boutiste,
+  signé) ; `0x12` portes D2, consommation instantanée D3, alertes D6 (batterie faible, huile, ceinture, lave-glace),
+  carburant D7, batterie D8 (volts entiers) ; `0x19` **huile D6 − 40 °C, eau D7 − 40 °C, régime D8-D9** ; `0x36`
+  clignotants ; `0x41` radar (brut ÷ 15). **Aucun type de voiture** (pas de `buildCarTypePacket`) : la voiture choisie
+  ne fait que la nommer ; accusés Hiworld ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -43,6 +49,7 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld HYP001 (`hyundai-kia-hiworld`) | Hyundai, Kia | 152 | v148 |
 | Hiworld TYP001 (`toyota-hiworld`) | Toyota, Lexus (ES) | 142 | v148 |
 | Hiworld HDP004 (`honda-hiworld`) | Honda, Acura | 79 | v148 |
+| Hiworld VWP004 (`vw-mqb-hiworld`) | Volkswagen, Skoda (MQB) | 38 | v158 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.

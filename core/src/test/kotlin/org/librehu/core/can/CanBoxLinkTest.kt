@@ -243,7 +243,7 @@ class Batch1ProfilesTest {
     @Test
     fun builtInsLoad() {
         val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "hiworld-generic"), ids)
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "hiworld-generic"), ids)
         assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
         assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
         assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
@@ -281,5 +281,39 @@ class Batch1ProfilesTest {
         val k = CanVehicles.HONDA_HIWORLD.keys!!
         assertEquals(null, k.eventByte)
         assertEquals("volume +", k.name(1))
+    }
+}
+
+class Batch2ProfilesTest {
+    private fun frame(
+        cmd: Int,
+        vararg d: Int,
+    ) = CanboxFrame(cmd, ByteArray(d.size) { d[it].toByte() }, true)
+
+    private fun number(
+        v: CanVehicle,
+        f: CanboxFrame,
+        key: String,
+    ) = v.decode(f).single { it.key == key }.number!!
+
+    @Test
+    fun vwMqbHiworld() {
+        val v = CanVehicles.VW_MQB_HIWORLD
+        assertEquals(38, v.variants.size)
+        // HdMQB7Protocol: no buildCarTypePacket, Hiworld's acknowledgement (shouldSendAck).
+        assertTrue(v.link.ack)
+        assertTrue(v.link.send.isEmpty())
+        assertTrue(!TwrpCanConf.of(v).contains("\nsend "))
+        // 0x11: D2 key code, D3 1 while pressed (parseWheelKeyInfo on bytes 6-7 of the frame).
+        assertEquals(0x11, v.keys!!.cmd)
+        assertEquals("volume +", v.keys!!.name(1))
+        assertEquals("mode", v.keys!!.name(11))
+        // 0x19: oil D6 - 40, coolant D7 - 40, engine speed D8 * 256 + D9 (HdMQB7Protocol.parseCarInfo, 25).
+        val engine = frame(0x19, 0, 0, 0, 0, 0, 0, 130, 125, 0x03, 0x20)
+        assertEquals(90.0, number(v, engine, "oil_temp"), 0.01)
+        assertEquals(85.0, number(v, engine, "coolant"), 0.01)
+        assertEquals(800.0, number(v, engine, "rpm"), 0.01)
+        // 0x11 D6-D7: steering, little endian signed, negated (parseWheelInfo).
+        assertEquals(-256.0, number(v, frame(0x11, 0x01, 0, 0, 0, 0, 0, 0x00, 0x01, 0, 0), "steering"), 0.01)
     }
 }
