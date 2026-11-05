@@ -309,3 +309,61 @@ class CanTemplateTest {
         assertTrue(TwrpCanConf.of(p).contains("# time: built by the service"))
     }
 }
+
+/** More key sources (format 2 `"keys"`): media keys, knobs. */
+class CanKeySourcesTest {
+    private fun frame(
+        cmd: Int,
+        vararg d: Int,
+    ) = CanboxFrame(cmd, ByteArray(d.size) { d[it].toByte() }, true)
+
+    private val p =
+        CanVehicles.fromJson(
+            """{"format":"librehu-can-vehicle","version":2,"id":"keys-car","box":"raise",
+               "wheel_keys":{"cmd":"0x20","code_byte":0,"state_byte":1,"pressed":[1],"names":{"1":"volume +"}},
+               "keys":[{"cmd":"0x2F","code_byte":0,"state_byte":1,"pressed":[1],"names":{"1":"play / pause"}},
+                       {"cmd":"0x22","code_byte":0,"steps_byte":1,"names":{"1":"volume","2":"tune"}}]}""",
+        )
+
+    @Test
+    fun sourcesHaveTheirOwnCodes() {
+        assertEquals(3, p.allKeys.size)
+        assertEquals(listOf(0, 256, 512), p.allKeys.map { it.codeBase })
+        val pressed = mutableListOf<Int>()
+        val released = mutableListOf<Int>()
+        val ds = p.allKeys.map { s -> HiworldWheelKeys(onRelease = { released += it }, spec = s) { pressed += it } }
+        fun feed(f: CanboxFrame) = ds.forEach { it.onFrame(f) }
+        feed(frame(0x20, 1, 1))
+        feed(frame(0x20, 0, 0))
+        feed(frame(0x2F, 1, 1))
+        feed(frame(0x2F, 0, 0))
+        // The volume knob turned 3 steps up, then 1 down (0xFF = -1).
+        feed(frame(0x22, 1, 3))
+        feed(frame(0x22, 1, 0xFF))
+        assertEquals(listOf(1, 257, 514, 514, 514, 515), pressed)
+        assertEquals(pressed, released)
+        assertEquals("volume +", p.allKeys.first { it.owns(1) }.name(1))
+        assertEquals("play / pause", p.allKeys.first { it.owns(257) }.name(257))
+        assertEquals("volume +", p.allKeys.first { it.owns(514) }.name(514))
+        assertEquals("volume −", p.allKeys.first { it.owns(515) }.name(515))
+        assertEquals("tune +", p.allKeys.first { it.owns(516) }.name(516))
+        assertEquals(p.allKeys, CanVehicles.fromJson(CanVehicles.toJson(p)).allKeys)
+    }
+
+    @Test
+    fun aKnobTakesTenStepsAtMost() {
+        val got = mutableListOf<Int>()
+        HiworldWheelKeys(spec = p.moreKeys[1]) { got += it }.onFrame(frame(0x22, 1, 100))
+        assertEquals(10, got.size)
+    }
+
+    @Test
+    fun extraSourcesStayAboveTheWheelCodes() {
+        try {
+            CanVehicles.fromJson("""{"format":"librehu-can-vehicle","version":2,"id":"k2","keys":[{"cmd":"0x2F","code_byte":0,"code_base":10}]}""")
+            fail("code_base 10 accepted")
+        } catch (e: CanVehicleException) {
+            assertTrue(e.message!!.contains("code_base"))
+        }
+    }
+}

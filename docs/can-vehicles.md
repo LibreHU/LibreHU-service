@@ -258,6 +258,17 @@ Une valeur inconnue : pas de message. **État fourni aujourd'hui** : l'horloge (
 `day`, `hour`, `minute`, `second`, `weekday` 1 = lundi, `hour12`, `pm`) ; les textes (média, téléphone) viendront avec
 les envois du lot « envois vers la voiture ». TWRP n'envoie pas les messages construits (commentaire dans son fichier).
 
+**Plusieurs sources de touches (service v167)** : `"keys"` liste d'autres sources que `wheel_keys` (touches média,
+façade, molettes), même champs plus `code_base` (par défaut 256, 512… : leurs codes = base + code, jamais ceux du volant)
+et, pour une **molette**, `steps_byte` (crans tournés dans le message, signés sauf `"steps_signed": false`) : chaque cran
+= un appui du code base + 2 × molette (vers le haut) ou base + 2 × molette + 1 (vers le bas), 10 crans au plus par
+message ; noms « volume + » / « volume − ». Ces codes s'affectent à une action comme les touches du volant.
+
+```json
+"keys": [ { "cmd": "0x2F", "code_byte": 0, "state_byte": 1, "pressed": [1], "names": { "1": "play / pause" } },
+          { "cmd": "0x22", "code_byte": 0, "steps_byte": 1, "names": { "1": "volume", "2": "tune" } } ]
+```
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.

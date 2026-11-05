@@ -220,7 +220,12 @@ data class CanVehicle(
     val source: CanSource = CanSource(null),
     /** The box's framing, described in the profile (format 2): replaces the family named by [box]. */
     val framing: CanFraming? = null,
+    /** More key sources (format 2, `"keys"`): media keys, front panel, knobs ([WheelKeySpec.codeBase]). */
+    val moreKeys: List<WheelKeySpec> = emptyList(),
 ) {
+    /** Every key source: the steering wheel's ([keys]) then [moreKeys]. */
+    val allKeys: List<WheelKeySpec> get() = listOfNotNull(keys) + moreKeys
+
     /** This profile for the car [name] (one of [variants]); unknown or null: unchanged. */
     fun withVariant(name: String?): CanVehicle {
         val v = variants.firstOrNull { it.name == name } ?: return this
@@ -534,7 +539,11 @@ object CanVehicles {
             box = box,
             messages = messages.toMap(),
             link = (root["link"] as? JsonObject)?.let(::link) ?: CanLink(),
-            wheelKeys = (root["wheel_keys"] as? JsonObject)?.let(::wheelKeys),
+            wheelKeys = (root["wheel_keys"] as? JsonObject)?.let { wheelKeys(it) },
+            moreKeys =
+                ((root["keys"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
+                    wheelKeys(e as? JsonObject ?: throw CanVehicleException("keys[$i] is not an object"), 256 * (i + 1), "keys[$i]")
+                },
             variants =
                 ((root["variants"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                     val o = e as? JsonObject ?: throw CanVehicleException("variants[$i] is not an object")
@@ -643,15 +652,20 @@ object CanVehicles {
     }
 
     /** `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`. */
-    private fun wheelKeys(o: JsonObject): WheelKeySpec {
-        val cmd = o.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("wheel_keys: cmd missing")
-        val code = o.int("code_byte") ?: throw CanVehicleException("wheel_keys: code_byte missing")
-        fun byte(k: String): Int? = o.int(k)?.also { if (it !in 0..63) throw CanVehicleException("wheel_keys: $k 0..63") }
+    private fun wheelKeys(
+        o: JsonObject,
+        defaultBase: Int = 0,
+        w: String = "wheel_keys",
+    ): WheelKeySpec {
+        val cmd = o.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("$w: cmd missing")
+        val code = o.int("code_byte") ?: throw CanVehicleException("$w: code_byte missing")
+        fun byte(k: String): Int? = o.int(k)?.also { if (it !in 0..63) throw CanVehicleException("$w: $k 0..63") }
         fun mask(k: String): Int? =
             o.str(k)?.let { m ->
-                m.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 1..0xFF } ?: throw CanVehicleException("wheel_keys: bad $k $m")
+                m.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 1..0xFF } ?: throw CanVehicleException("$w: bad $k $m")
             }
-        if (code !in 0..63) throw CanVehicleException("wheel_keys: code_byte 0..63")
+        if (code !in 0..63) throw CanVehicleException("$w: code_byte 0..63")
+        val base = (o.int("code_base") ?: defaultBase).also { if (it < 0 || it > 0xFFFF || (w != "wheel_keys" && it < 256)) throw CanVehicleException("$w: code_base 256..65535 (codes under 256 are the steering wheel's)") }
         return WheelKeySpec(
             cmd = cmd,
             codeByte = code,
@@ -667,6 +681,9 @@ object CanVehicles {
                     ?.mapNotNull { (k, v) -> k.toIntOrNull()?.let { it to ((v as? JsonPrimitive)?.contentOrNull ?: "") } }
                     ?.toMap()
                     .orEmpty(),
+            codeBase = if (w == "wheel_keys") 0 else base,
+            stepsByte = byte("steps_byte"),
+            stepsSigned = (o["steps_signed"] as? JsonPrimitive)?.booleanOrNull ?: true,
         )
     }
 
@@ -680,6 +697,9 @@ object CanVehicles {
             w.eventByte?.let { put("event_byte", it) }
             if (w.eventMask != 0xFF) put("event_mask", "0x%02X".format(w.eventMask))
             if (w.names.isNotEmpty()) put("names", buildJsonObject { w.names.toSortedMap().forEach { (k, v) -> put(k.toString(), v) } })
+            if (w.codeBase != 0) put("code_base", w.codeBase)
+            w.stepsByte?.let { put("steps_byte", it) }
+            if (!w.stepsSigned) put("steps_signed", false)
         }
 
     /** `"link": { "ack": true, "send": [ { "name", "cmd": "0x24", "data": "00 31", "first_ms", "every_ms" } ] }`. */
@@ -776,6 +796,7 @@ object CanVehicles {
                 v.baud?.let { put("baud", it) }
                 put("link", linkJson(v.link))
                 v.wheelKeys?.let { put("wheel_keys", wheelKeysJson(it)) }
+                if (v.moreKeys.isNotEmpty()) put("keys", kotlinx.serialization.json.JsonArray(v.moreKeys.map { wheelKeysJson(it) }))
                 if (v.variants.isNotEmpty()) {
                     put(
                         "variants",

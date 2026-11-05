@@ -60,22 +60,26 @@ class CanWheelKeys private constructor(
     val lastTimeline: StateFlow<String?> = _timeline.asStateFlow()
 
     /** Reads the keys where the car profile says the box puts them (rebuilt when the profile changes). */
-    private var detectorFor: WheelKeySpec? = null
-    private var detector: HiworldWheelKeys? = null
+    private var detectors: Map<WheelKeySpec, HiworldWheelKeys> = emptyMap()
 
-    private fun detector(spec: WheelKeySpec): HiworldWheelKeys =
-        detector?.takeIf { detectorFor == spec }
-            ?: HiworldWheelKeys(
-                { d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) },
-                { code -> main.post { onUp(code) } },
-                spec,
-            ) { code -> main.post { onPress(code) } }.also {
-                detector = it
-                detectorFor = spec
-            }
+    /** One detector per key source of the profile (steering wheel, then format 2's `keys`: media keys, panel, knobs). */
+    private fun detectors(specs: List<WheelKeySpec>): Collection<HiworldWheelKeys> {
+        if (detectors.keys.toList() != specs) {
+            detectors =
+                specs.associateWith { spec ->
+                    HiworldWheelKeys(
+                        { d1, d2, d3 -> _raw.value = "%02X %02X %02X".format(d1, d2, d3) },
+                        { code -> main.post { onUp(code) } },
+                        spec,
+                    ) { code -> main.post { onPress(code) } }
+                }
+        }
+        return detectors.values
+    }
 
     /** Name of a button code in the car profile, "?" when it has none. */
-    fun name(code: Int): String = (CanMonitor.vehicle.keys ?: WheelKeySpec.HIWORLD_LNP002).name(code) ?: "?"
+    fun name(code: Int): String =
+        (CanMonitor.vehicle.allKeys.firstOrNull { it.owns(code) && it.name(code) != null } ?: CanMonitor.vehicle.keys ?: WheelKeySpec.HIWORLD_LNP002).name(code) ?: "?"
 
     /** Short / long press of the keys that have a long action, on the frames' timing ([WheelHold]). */
     private var hold = WheelHold(longMs().toLong(), GAP_MS)
@@ -100,15 +104,15 @@ class CanWheelKeys private constructor(
 
     /** Only with a car profile that says where the keys are (`wheel_keys`, or Hiworld LNP002's `0x11`). */
     fun onFrame(f: CanboxFrame) {
-        val spec = CanMonitor.vehicle.keys
-        if (spec == null) {
+        val specs = CanMonitor.vehicle.allKeys
+        if (specs.isEmpty()) {
             if (!profileWarned) {
                 profileWarned = true
                 android.util.Log.w(TAG, "the car profile ${CanMonitor.vehicle.id} says nothing of the steering wheel keys: none read")
             }
             return
         }
-        detector(spec).onFrame(f)
+        for (d in detectors(specs)) d.onFrame(f)
     }
 
     private var profileWarned = false
@@ -147,10 +151,10 @@ class CanWheelKeys private constructor(
     private fun installed(pkg: String): Boolean = runCatching { app.packageManager.getPackageInfo(pkg, 0) }.isSuccess
 
     /** Mapping of [code], or of its low 5 bits (codes mapped before the whole byte was read). */
-    private fun click(code: Int): ZoneAction? = _mapping.value[code] ?: _mapping.value[code and 0x1F]?.takeIf { code > 0x1F }
+    private fun click(code: Int): ZoneAction? = _mapping.value[code] ?: _mapping.value[code and 0x1F]?.takeIf { code in 0x20..0xFF }
 
     private fun longOf(code: Int): ZoneAction? =
-        (_long.value[code] ?: _long.value[code and 0x1F]?.takeIf { code > 0x1F })?.takeIf { it.action != TouchAction.NONE }
+        (_long.value[code] ?: _long.value[code and 0x1F]?.takeIf { code in 0x20..0xFF })?.takeIf { it.action != TouchAction.NONE }
 
     private fun onPress(code: Int) {
         val now = SystemClock.elapsedRealtime()
