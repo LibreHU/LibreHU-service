@@ -241,3 +241,71 @@ class CanFramingTest {
         }
     }
 }
+
+/** Messages built from the head unit's state ([CanTemplate]) and commands. */
+class CanTemplateTest {
+    private class State(
+        val n: MutableMap<String, Double> = mutableMapOf(),
+        val t: MutableMap<String, String> = mutableMapOf(),
+    ) : CanState {
+        override fun number(name: String) = n[name]
+
+        override fun text(name: String) = t[name]
+    }
+
+    private fun hex(b: ByteArray?) = b?.joinToString(" ") { "%02X".format(it) }
+
+    @Test
+    fun buildsBytesFromTheState() {
+        val st = State(CanState.clock(java.time.LocalDateTime.of(2026, 11, 5, 14, 7, 30)).toMutableMap(), mutableMapOf("title" to "Él Song"))
+        assertEquals("1A 0B 05 0E 07 04", hex(CanTemplate.parse("{year2} {month} {day} {hour} {minute} {weekday}", "t").build(st)))
+        assertEquals("07 EA EA 07", hex(CanTemplate.parse("{year:2be} {year:2le}", "t").build(st)))
+        // Text: ASCII padded with spaces (or 0x00), unknown characters as "?"; UTF-16.
+        assertEquals("0A 3F 6C 20 53 6F 6E 67 20 20", hex(CanTemplate.parse("0A {text:title:9}", "t").build(st)))
+        assertEquals("3F 6C 00", hex(CanTemplate.parse("{text:x:3:00}", "t").build(State(t = mutableMapOf("x" to "él")))))
+        assertEquals("C9 00 6C 00", hex(CanTemplate.parse("{utf16le:title:2}", "t").build(st)))
+        // A command's value.
+        assertEquals("01 2B", hex(CanTemplate.parse("01 {value * 2}", "t").build(st, 21.5)))
+        // Unknown: nothing.
+        assertNull(CanTemplate.parse("{text:artist:8}", "t").build(st))
+        assertNull(CanTemplate.parse("{volume}", "t").build(st))
+        assertEquals(listOf(0x81, 0x01), CanTemplate.parse("81 01", "t").fixed)
+        for (bad in listOf("{text:x:99}", "GG", "{1 +}", "00 ".repeat(130))) {
+            try {
+                CanTemplate.parse(bad, "t")
+                fail("accepted: $bad")
+            } catch (_: CanVehicleException) {
+            }
+        }
+    }
+
+    @Test
+    fun linkSendsBuiltMessagesAndCommands() {
+        val p =
+            CanVehicles.fromJson(
+                """{"format":"librehu-can-vehicle","version":2,"id":"clock-car","box":"raise","link":{"ack":true,
+                   "send":[{"name":"time","cmd":"0xCB","data":"{hour} {minute}","first_ms":1000,"every_ms":0,"on":"change"}],
+                   "commands":{"temp left":{"cmd":"0x8A","data":"01 {value * 2}"}}}}""",
+            )
+        val st = State(mutableMapOf("hour" to 14.0, "minute" to 7.0))
+        val out = mutableListOf<String>()
+        val l = CanBoxLink(p.family, p.link, { b, w -> out += "$w ${hex(b)}" }, state = st)
+        l.start(0)
+        l.tick(500)
+        assertTrue(out.isEmpty())
+        l.tick(1_000)
+        assertEquals(listOf("time 2E CB 02 0E 07 1D"), out)
+        // Same time: nothing; a new minute: sent at once.
+        l.tick(2_000)
+        assertEquals(1, out.size)
+        st.n["minute"] = 8.0
+        l.tick(2_100)
+        assertEquals("time 2E CB 02 0E 08 1C", out.last())
+        assertTrue(l.command("temp left", 21.5))
+        assertEquals("command temp left 2E 8A 02 01 2B 47", out.last())
+        assertTrue(!l.command("no such command", 1.0))
+        // Written back as read; TWRP leaves the built message to the service.
+        assertEquals(p.link, CanVehicles.fromJson(CanVehicles.toJson(p)).link)
+        assertTrue(TwrpCanConf.of(p).contains("# time: built by the service"))
+    }
+}

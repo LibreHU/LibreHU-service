@@ -316,14 +316,21 @@ class CanBoxLink(
     private val send: (ByteArray, String) -> Unit,
     /** A command the box acknowledged (the car type…). */
     private val onAcked: (Int) -> Unit = {},
+    /** What the head unit knows (clock…), for the messages built from it ([CanSend.template]). */
+    private val state: CanState = CanState.NONE,
 ) {
     private val due = LongArray(link.send.size) { -1 }
+
+    /** Data last sent by each message built from the state (`on: change`). */
+    private val lastBuilt = arrayOfNulls<String>(link.send.size)
+    private val lastAt = LongArray(link.send.size)
     private var lastFrameAt = Long.MIN_VALUE
 
     /** Starts the schedule of the profile's messages. */
     @Synchronized
     fun start(now: Long) {
         for (i in due.indices) due[i] = now + link.send[i].firstMs
+        lastBuilt.fill(null)
     }
 
     @Synchronized
@@ -341,6 +348,10 @@ class CanBoxLink(
     @Synchronized
     fun tick(now: Long) {
         for ((i, s) in link.send.withIndex()) {
+            if (s.template != null) {
+                tickBuilt(i, s, now)
+                continue
+            }
             // No data: set by the car to choose (the box gets no car type until then).
             if (s.data.isEmpty() || due[i] < 0 || now < due[i]) continue
             send(family.encode(s.cmd, ByteArray(s.data.size) { s.data[it].toByte() }), s.name)
@@ -348,8 +359,42 @@ class CanBoxLink(
         }
     }
 
+    /** A message built from the state: at its time, and for `on: change` as soon as its data changes (not faster than [MIN_CHANGE_MS]). */
+    private fun tickBuilt(
+        i: Int,
+        s: CanSend,
+        now: Long,
+    ) {
+        val started = due[i] >= 0 || lastBuilt[i] != null
+        if (!started || (lastBuilt[i] == null && now < due[i])) return
+        val data = s.template!!.build(state) ?: return
+        val hex = data.joinToString("") { "%02X".format(it) }
+        val timeDue = due[i] in 0..now
+        val changed = s.on == "change" && lastBuilt[i] != null && hex != lastBuilt[i] && now - lastAt[i] >= MIN_CHANGE_MS
+        if (!timeDue && !changed) return
+        send(family.encode(s.cmd, data), s.name)
+        lastBuilt[i] = hex
+        lastAt[i] = now
+        due[i] = if (s.everyMs > 0) now + s.everyMs else -1
+    }
+
+    /** Sends the command [name] of the profile with [value]; false when unknown or its data cannot be built. */
+    @Synchronized
+    fun command(
+        name: String,
+        value: Double? = null,
+    ): Boolean {
+        val c = link.commands[name] ?: return false
+        val data = c.template.build(state, value) ?: return false
+        send(family.encode(c.cmd, data), "command $name")
+        return true
+    }
+
     companion object {
         /** A box silent this long, then talking again, has restarted. */
         const val SILENCE_MS = 5_000L
+
+        /** A message sent on change is not sent again sooner (a clock's seconds…). */
+        const val MIN_CHANGE_MS = 500L
     }
 }

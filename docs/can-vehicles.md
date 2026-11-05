@@ -242,6 +242,22 @@ xor `xor` ; accusé `ack.cmd` (données : la commande reçue, tramé pareil, com
 Raise), sauf pour `no_ack_for` ; `box_answers` : octets seuls que le boîtier envoie entre ses messages. Vérifié : mêmes
 octets que les familles Hiworld, Raise et Raise FD 16 bits écrites dans le code (tests `CanFramingTest`).
 
+**Messages construits et commandes (service v166)** : dans `link.send`, des `data` avec des champs entre accolades
+sont construits à chaque envoi depuis ce que sait l'autoradio ; `"on": "change"` les envoie aussi dès qu'ils changent
+(500 ms au moins entre deux) ; `link.commands` = messages envoyés à la demande avec une valeur.
+
+```json
+"link": { "send": [ { "name": "time", "cmd": "0xCB", "data": "{year2} {month} {day} {hour} {minute}", "first_ms": 1000, "every_ms": 60000, "on": "change" } ],
+          "commands": { "temp left": { "cmd": "0x8A", "data": "01 {value * 2}" } } }
+```
+
+Champs : `{formule}` = un octet (formule sur l'état : `{hour}`, `{minute + 1}`, `{value * 2}` dans une commande),
+`{formule:2be}` / `{formule:2le}` = sur 2 à 4 octets ; `{text:title:12}` = texte ASCII sur 12 octets complété d'espaces
+(`{text:title:12:00}` : de 0x00, caractère hors ASCII → `?`), `{utf16le:title:12}` / `{utf16be:…}` = 12 caractères UTF-16.
+Une valeur inconnue : pas de message. **État fourni aujourd'hui** : l'horloge (`year` sur 4 chiffres, `year2`, `month`,
+`day`, `hour`, `minute`, `second`, `weekday` 1 = lundi, `hour12`, `pm`) ; les textes (média, téléphone) viendront avec
+les envois du lot « envois vers la voiture ». TWRP n'envoie pas les messages construits (commentaire dans son fichier).
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.

@@ -188,7 +188,21 @@ object CanBoxTalk {
                     if (cmd !in _status.value.acked) Log.i(TAG, "box acknowledged 0x%02X".format(cmd))
                     _status.update { it.copy(acked = it.acked + cmd) }
                 },
+                state = HeadUnitState,
             ).also { it.start(SystemClock.elapsedRealtime()) }
+    }
+
+    /** Sends the profile's command [name] (a car setting, the climate…) with [value]; false when not possible now. */
+    fun command(
+        name: String,
+        value: Double? = null,
+    ): Boolean = link?.command(name, value) ?: false
+
+    /** What the head unit knows for the messages built from it (org.librehu.core.can.CanTemplate): the clock for now. */
+    private object HeadUnitState : org.librehu.core.can.CanState {
+        override fun number(name: String): Double? = org.librehu.core.can.CanState.clock(java.time.LocalDateTime.now())[name]
+
+        override fun text(name: String): String? = null
     }
 
     /** MCU `0F 00 <index>`: speed of the box's serial link. */

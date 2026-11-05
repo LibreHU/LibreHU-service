@@ -161,6 +161,17 @@ data class CanSend(
     val data: List<Int>,
     val firstMs: Long = 1_000,
     val everyMs: Long = 0,
+    /** Data built from the head unit's state (format 2: `{hour}`…, [CanTemplate]); [data] is then empty. */
+    val template: CanTemplate? = null,
+    /** `start`: [firstMs] then every [everyMs]; `change`: also as soon as the built data changes (clock, media…). */
+    val on: String = "start",
+)
+
+/** A message sent on demand (`"link": { "commands": { "<name>": { "cmd", "data" } } }`), its data a [CanTemplate] reading `value`. */
+data class CanCommand(
+    val name: String,
+    val cmd: Int,
+    val template: CanTemplate,
 )
 
 /**
@@ -181,6 +192,8 @@ data class CanVariant(
 data class CanLink(
     val ack: Boolean = true,
     val send: List<CanSend> = emptyList(),
+    /** Messages sent on demand (a setting of the car, the climate…), by name. */
+    val commands: Map<String, CanCommand> = emptyMap(),
 )
 
 /**
@@ -213,7 +226,7 @@ data class CanVehicle(
         val v = variants.firstOrNull { it.name == name } ?: return this
         val src = source.json
         val base = if (v.patch != null && src != null) CanVehicles.fromSource(CanVehicles.merge(src, v.patch)).copy(variants = variants, source = source) else this
-        return base.copy(link = base.link.copy(send = base.link.send.map { s -> v.send[s.name]?.let { s.copy(data = it) } ?: s }))
+        return base.copy(link = base.link.copy(send = base.link.send.map { s -> v.send[s.name]?.let { s.copy(data = it, template = null) } ?: s }))
     }
 
     /** The box family named by [box] (checked when the profile is read). */
@@ -675,14 +688,24 @@ object CanVehicles {
             ((o["send"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                 val m = e as? JsonObject ?: throw CanVehicleException("link.send[$i] is not an object")
                 val cmd = m.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("link.send[$i]: cmd missing")
-                val data = bytes(m.str("data").orEmpty(), "link.send[$i]")
+                val text = m.str("data").orEmpty()
+                val template = if ('{' in text) CanTemplate.parse(text, "link.send[$i]") else null
+                val data = if (template == null) bytes(text, "link.send[$i]") else emptyList()
+                val on = m.str("on") ?: "start"
+                if (on != "start" && on != "change") throw CanVehicleException("link.send[$i]: on is start or change")
                 val first = m.long("first_ms") ?: 1_000
                 val every = m.long("every_ms") ?: 0
                 if (first !in 0..60_000) throw CanVehicleException("link.send[$i]: first_ms 0..60000")
                 if (every != 0L && every !in MIN_EVERY_MS..3_600_000) throw CanVehicleException("link.send[$i]: every_ms 0 or $MIN_EVERY_MS..3600000")
-                CanSend(m.str("name")?.ifBlank { null } ?: "0x%02X".format(cmd), cmd, data, first, every)
+                CanSend(m.str("name")?.ifBlank { null } ?: "0x%02X".format(cmd), cmd, data, first, every, template, on)
             }
-        return CanLink(ack = (o["ack"] as? JsonPrimitive)?.booleanOrNull ?: true, send = sends)
+        val commands =
+            (o["commands"] as? JsonObject).orEmpty().map { (name, e) ->
+                val c = e as? JsonObject ?: throw CanVehicleException("link.commands.$name is not an object")
+                val cmd = c.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("link.commands.$name: cmd missing")
+                name to CanCommand(name, cmd, CanTemplate.parse(c.str("data").orEmpty(), "link.commands.$name"))
+            }.toMap()
+        return CanLink(ack = (o["ack"] as? JsonPrimitive)?.booleanOrNull ?: true, send = sends, commands = commands)
     }
 
     /** Hex bytes "00 31" (spaces or commas). */
@@ -709,13 +732,30 @@ object CanVehicles {
                         buildJsonObject {
                             put("name", s.name)
                             put("cmd", "0x%02X".format(s.cmd))
-                            put("data", s.data.joinToString(" ") { "%02X".format(it) })
+                            put("data", s.template?.source ?: s.data.joinToString(" ") { "%02X".format(it) })
                             put("first_ms", s.firstMs)
                             put("every_ms", s.everyMs)
+                            if (s.on != "start") put("on", s.on)
                         }
                     },
                 ),
             )
+            if (l.commands.isNotEmpty()) {
+                put(
+                    "commands",
+                    buildJsonObject {
+                        l.commands.forEach { (n, c) ->
+                            put(
+                                n,
+                                buildJsonObject {
+                                    put("cmd", "0x%02X".format(c.cmd))
+                                    put("data", c.template.source)
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         }
 
     /** Bytes of one message sent to the box, and its shortest interval (a box is not flooded). */

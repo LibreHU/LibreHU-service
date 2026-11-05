@@ -21,6 +21,8 @@ class CanExpr private constructor(
         val raw: Long = 0,
         val signals: Map<String, Double> = emptyMap(),
         val roles: (String) -> Double? = { null },
+        /** Other names: the head unit's state in a message it builds ([CanTemplate]). */
+        val vars: (String) -> Double? = { null },
     )
 
     /** The value, or null when the formula cannot be computed for this message. */
@@ -63,7 +65,7 @@ class CanExpr private constructor(
                 n == "raw" -> c.raw.toDouble()
                 n == "true" -> 1.0
                 n == "false" -> 0.0
-                else -> c.signals[n] ?: throw IllegalStateException("unknown name $n")
+                else -> c.signals[n] ?: c.vars(n) ?: throw IllegalStateException("unknown name $n")
             }
     }
 

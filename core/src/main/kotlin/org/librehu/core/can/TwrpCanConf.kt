@@ -18,6 +18,10 @@ object TwrpCanConf {
             append("# ${v.name.replace('\n', ' ')}; box ${v.family.name}. Written again when the profile changes.\n")
             append("ack ${if (hiworld && v.link.ack) 1 else 0}\n")
             for (s in v.link.send) {
+                if (s.template != null) {
+                    append("# ${s.name}: built by the service from its state (${s.template.source}), not sent by TWRP\n")
+                    continue
+                }
                 if (s.data.isEmpty()) {
                     append("# ${s.name}: set by the car chosen in the CAN tab, none yet\n")
                     continue
