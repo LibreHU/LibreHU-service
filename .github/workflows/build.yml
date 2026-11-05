@@ -46,7 +46,8 @@ jobs:
 
       - name: Build APK (release, R8)
         # jacsettings: the replacement for the settings provider of Jancar's settings app (its own small APK).
-        run: ./gradlew --no-daemon :app:assembleRelease :jacsettings:assembleRelease
+        # librehu-car-tool.jar: the car data engine on a computer, for the LibreHU-car-profiles repository.
+        run: ./gradlew --no-daemon :app:assembleRelease :jacsettings:assembleRelease :core:carToolJar
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -104,7 +105,7 @@ jobs:
           # The same notes with the APK name and size, as a file of the release: LibreHU Apps reads it as a download,
           # which does not count against the GitHub API limit (60 requests per hour without an account).
           { printf 'apk=%s\nsize=%s\ndate=%s\n' "$OUT" "$(stat -c %s "$OUT")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; cat notes.txt; } > release.txt
-          gh release upload "$TAG" "$OUT" release.txt "$JAC" --clobber
+          gh release upload "$TAG" "$OUT" release.txt "$JAC" core/build/libs/librehu-car-tool.jar --clobber
           # Numbered copy of this build, so that LibreHU OTA can install an older version; the last 15 per branch kept.
           BTAG="build-$SLUG-$CODE"
           if ! gh release view "$BTAG" >/dev/null 2>&1; then
