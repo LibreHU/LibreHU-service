@@ -227,6 +227,21 @@ Formules (`CanExpr`, jamais du code : lues une fois, calculées à chaque messag
 message : unité réglée ailleurs…), `has("…")`. Un calcul impossible (division par zéro, rôle sans valeur) ne donne
 aucune valeur.
 
+**Trame décrite dans le profil (service v165)** : pour un fabricant de boîtier sans famille dans le code,
+`"framing"` décrit sa trame et remplace la famille de `box` :
+
+```json
+"framing": { "head": "2E", "order": "cmd,len", "len_offset": 0,
+  "checksum": { "algo": "sum", "over": "cmd,len,data", "size": 1, "add": 0, "xor": "0xFF" },
+  "ack": { "raw": "FF" }, "no_ack_for": [], "box_answers": ["FF", "F0", "F3", "FC"], "baud": 38400 }
+```
+
+`head` 1 à 4 octets ; `order` `len,cmd` ou `cmd,len` ; LEN = nombre d'octets de données + `len_offset` ; somme `sum`
+(additionnée) ou `xor` sur `over` (`head`, `len`, `cmd`, `data`), sur `size` octets (gros-boutiste), puis + `add`, puis
+xor `xor` ; accusé `ack.cmd` (données : la commande reçue, tramé pareil, comme Hiworld) ou `ack.raw` (octets bruts, comme
+Raise), sauf pour `no_ack_for` ; `box_answers` : octets seuls que le boîtier envoie entre ses messages. Vérifié : mêmes
+octets que les familles Hiworld, Raise et Raise FD 16 bits écrites dans le code (tests `CanFramingTest`).
+
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
 du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.

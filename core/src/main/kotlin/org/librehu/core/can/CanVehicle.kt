@@ -205,6 +205,8 @@ data class CanVehicle(
     val examples: List<CanExample> = emptyList(),
     /** The whole profile as read, `extends` resolved (for the cars' [CanVariant.patch]); not part of equality. */
     val source: CanSource = CanSource(null),
+    /** The box's framing, described in the profile (format 2): replaces the family named by [box]. */
+    val framing: CanFraming? = null,
 ) {
     /** This profile for the car [name] (one of [variants]); unknown or null: unchanged. */
     fun withVariant(name: String?): CanVehicle {
@@ -215,7 +217,9 @@ data class CanVehicle(
     }
 
     /** The box family named by [box] (checked when the profile is read). */
-    val family: CanBoxFamily get() = CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
+    val family: CanBoxFamily get() = framingFamily ?: CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
+
+    private val framingFamily: CanBoxFamily? by lazy { framing?.family(box) }
 
     /**
      * The steering wheel keys of this profile: its [wheelKeys], else Hiworld LNP002's when the profile names a
@@ -490,7 +494,8 @@ object CanVehicles {
         val id = root.str("id")?.trim().orEmpty()
         if (!Regex("[a-z0-9][a-z0-9._-]{1,63}").matches(id)) throw CanVehicleException("Invalid id \"$id\" (a-z, 0-9, . _ -)")
         val box = root.str("box") ?: CanVehicle.BOX_HIWORLD
-        if (CanBoxFamilies.byId(box) == null) {
+        val framing = (root["framing"] as? JsonObject)?.let(::framing)
+        if (framing == null && CanBoxFamilies.byId(box) == null) {
             throw CanVehicleException(
                 "Unknown box \"$box\" (supported: ${(CanBoxFamilies.ALL.map { it.id } + CanBoxFamilies.MAKERS.keys).distinct().joinToString()})",
             )
@@ -535,6 +540,7 @@ object CanVehicles {
                     if (it !in CanBoxFamilies.BAUDS) throw CanVehicleException("baud $it (one of ${CanBoxFamilies.BAUDS.joinToString()})")
                 },
             source = CanSource(root),
+            framing = framing,
             examples =
                 ((root["examples"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                     val o = e as? JsonObject ?: throw CanVehicleException("examples[$i] is not an object")
@@ -588,6 +594,39 @@ object CanVehicles {
         val p = e as? JsonPrimitive ?: throw CanVehicleException("$where: bad byte value $e")
         val v = if (p.isString) p.content.removePrefix("0x").removePrefix("0X").toIntOrNull(16) else p.intOrNull
         return v?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$where: bad byte value $e")
+    }
+
+    /** `"framing": { "head", "order", "len_offset", "checksum": { "algo", "over", "size", "add", "xor" }, "ack", "no_ack_for", "box_answers", "baud" }`. */
+    private fun framing(o: JsonObject): CanFraming {
+        val w = "framing"
+        val head = bytes(o.str("head").orEmpty(), "$w.head")
+        if (head.isEmpty() || head.size > 4) throw CanVehicleException("$w.head: 1 to 4 bytes")
+        val order = o.str("order") ?: "len,cmd"
+        if (order != "len,cmd" && order != "cmd,len") throw CanVehicleException("$w.order: \"len,cmd\" or \"cmd,len\"")
+        val c = o["checksum"] as? JsonObject ?: JsonObject(emptyMap())
+        val algo = c.str("algo") ?: "sum"
+        if (algo != "sum" && algo != "xor") throw CanVehicleException("$w.checksum.algo: sum or xor")
+        val over = (c.str("over") ?: "len,cmd,data").split(",").map { it.trim() }.toSet()
+        if (!over.all { it in setOf("head", "len", "cmd", "data") }) throw CanVehicleException("$w.checksum.over: head, len, cmd, data")
+        val size = c.int("size") ?: 1
+        if (size !in 1..2) throw CanVehicleException("$w.checksum.size: 1 or 2")
+        val ack = o["ack"] as? JsonObject
+        fun codes(k: String) = ((o[k] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).map { code(it, "$w.$k") }.toSet()
+        return CanFraming(
+            head = head,
+            lenFirst = order == "len,cmd",
+            lenOffset = (o.int("len_offset") ?: 0).also { if (it !in -2..8) throw CanVehicleException("$w.len_offset: -2..8") },
+            sumAlgo = algo,
+            sumOver = over,
+            sumSize = size,
+            sumAdd = c.int("add") ?: 0,
+            sumXor = c.str("xor")?.let { code(JsonPrimitive(it), "$w.checksum.xor") } ?: c.int("xor") ?: 0,
+            ackCmd = ack?.str("cmd")?.let(::hexKey),
+            ackRaw = ack?.str("raw")?.let { bytes(it, "$w.ack.raw") },
+            noAckFor = codes("no_ack_for"),
+            boxAnswers = codes("box_answers"),
+            baud = o.int("baud") ?: 38400,
+        )
     }
 
     /** `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`. */
@@ -693,6 +732,7 @@ object CanVehicles {
                 put("name", v.name)
                 put("description", v.description)
                 put("box", v.box)
+                v.source.json?.get("framing")?.let { put("framing", it) }
                 v.baud?.let { put("baud", it) }
                 put("link", linkJson(v.link))
                 v.wheelKeys?.let { put("wheel_keys", wheelKeysJson(it)) }

@@ -183,3 +183,61 @@ class CanExprTest {
         }
     }
 }
+
+/** Box framing described in a profile ([CanFraming]): the same bytes as the families written in code. */
+class CanFramingTest {
+    private fun fam(json: String) =
+        CanVehicles.fromJson("""{"format":"librehu-can-vehicle","version":2,"id":"frame-car","box":"newbox","framing":$json}""").family
+
+    private val hiworld =
+        fam("""{"head":"5A A5","order":"len,cmd","checksum":{"algo":"sum","over":"len,cmd,data","add":-1},"ack":{"cmd":"0xFF"},"no_ack_for":["0xFF","0xFE"]}""")
+    private val raise =
+        fam("""{"head":"2E","order":"cmd,len","checksum":{"algo":"sum","over":"cmd,len,data","xor":"0xFF"},"ack":{"raw":"FF"},"box_answers":["FF","F0","F3","FC"]}""")
+    private val fd16 = fam("""{"head":"FD","order":"len,cmd","len_offset":4,"checksum":{"algo":"sum","over":"len,cmd,data","size":2}}""")
+
+    private fun hex(b: ByteArray) = b.joinToString(" ") { "%02X".format(it) }
+
+    @Test
+    fun sameBytesAsTheCodedFamilies() {
+        val samples = listOf(byteArrayOf(), byteArrayOf(0x00, 0x31), ByteArray(27) { (it * 37).toByte() })
+        for (d in samples) {
+            assertEquals(hex(CanBoxFamilies.HIWORLD.encode(0x24, d)), hex(hiworld.encode(0x24, d)))
+            assertEquals(hex(CanBoxFamilies.RAISE.encode(0x81, d)), hex(raise.encode(0x81, d)))
+            assertEquals(hex(CanBoxFamilies.RAISE_FD2.encode(0x40, d)), hex(fd16.encode(0x40, d)))
+        }
+        assertEquals("5A A5 02 24 00 31 56", hex(hiworld.encode(0x24, byteArrayOf(0x00, 0x31))))
+        assertEquals("2E 81 01 01 7C", hex(raise.encode(0x81, byteArrayOf(1))))
+    }
+
+    @Test
+    fun parsesAndAcknowledges() {
+        for ((family, coded) in listOf(hiworld to CanBoxFamilies.HIWORLD, raise to CanBoxFamilies.RAISE, fd16 to CanBoxFamilies.RAISE_FD2)) {
+            val got = mutableListOf<CanboxFrame>()
+            val p = family.parser { got += it }
+            val a = coded.encode(0x11, byteArrayOf(1, 2, 3))
+            val b = coded.encode(0x12, byteArrayOf())
+            val bad = coded.encode(0x13, byteArrayOf(9)).also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() }
+            // Noise, a box answer, frames cut anywhere.
+            val stream = byteArrayOf(0x00, 0x77) + a + byteArrayOf(0xFF.toByte()) + b + bad
+            stream.toList().chunked(3).forEach { p.feed(it.toByteArray()) }
+            assertEquals(family.id, listOf(0x11, 0x12, 0x13), got.map { it.cmd })
+            assertEquals(listOf(true, true, false), got.map { it.checksumOk })
+            assertEquals("01 02 03", hex(got[0].data))
+            assertEquals(coded.ack(got[0])?.let { hex(it) }, family.ack(got[0])?.let { hex(it) })
+        }
+        // Hiworld: no acknowledgement of the box's own acknowledgements.
+        assertNull(hiworld.ack(CanboxFrame(0xFF, byteArrayOf(0x24), true)))
+    }
+
+    @Test
+    fun badFramingRefused() {
+        for (bad in listOf("""{"head":""}""", """{"head":"2E","order":"x"}""", """{"head":"2E","checksum":{"algo":"crc99"}}""", """{"head":"2E","checksum":{"size":3}}""")) {
+            try {
+                fam(bad)
+                fail("accepted: $bad")
+            } catch (e: CanVehicleException) {
+                assertTrue(e.message!!, e.message!!.contains("framing"))
+            }
+        }
+    }
+}

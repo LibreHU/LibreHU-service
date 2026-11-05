@@ -57,7 +57,7 @@ object CanMonitor {
     var vehicle: CanVehicle = CanVehicles.RENAULT_CLIO3_HIWORLD
         set(value) {
             // Another box family frames its messages its own way.
-            if (value.family !== field.family) synchronized(this) { parser = value.family.parser(::onFrame) }
+            if (value.family != field.family) synchronized(this) { parser = value.family.parser(::onFrame) }
             field = value
             _values.value = emptyMap()
             _roles.value = emptyMap()
