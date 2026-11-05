@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "hyundai-kia-hiworld",
  "name": "Hyundai, Kia (Hiworld HYP001)",
  "description": "Hiworld box, protocol HYP001 (Hyundai / Kia full compatible), from Hiworld's own app (HdKoreaProtocol). Choose your car: its box needs its car type. Not tried on a car yet.",
@@ -965,9 +965,18 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "ACC": 0,
-      "lights": 1,
-      "reverse": 2,
+      "ACC": {
+       "bit": 0,
+       "role": "ignition.acc"
+      },
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
       "park": 3
      }
     },
@@ -1002,7 +1011,9 @@
      "size": 2,
      "signed": true,
      "factor": -1,
-     "label": "steering (raw)"
+     "label": "steering angle",
+     "unit": "°",
+     "role": "steering.angle"
     }
    }
   },
@@ -1012,12 +1023,30 @@
     "doors": {
      "start_byte": 2,
      "bits": {
-      "front left": 7,
-      "front right": 6,
-      "rear left": 5,
-      "rear right": 4,
-      "trunk": 3,
-      "hood": 2
+      "front left": {
+       "bit": 7,
+       "role": "door.front_left"
+      },
+      "front right": {
+       "bit": 6,
+       "role": "door.front_right"
+      },
+      "rear left": {
+       "bit": 5,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 4,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      }
      }
     },
     "park_state": {
@@ -1039,7 +1068,8 @@
      "factor": 0.5,
      "offset": -40,
      "unit": "°C",
-     "label": "outside"
+     "label": "outside",
+     "role": "outside.temp"
     }
    }
   },
@@ -1051,21 +1081,24 @@
      "size": 2,
      "max_value": 65534,
      "unit": "rpm",
-     "label": "engine speed"
+     "label": "engine speed",
+     "role": "engine.rpm"
     },
     "speed": {
      "start_byte": 4,
      "size": 2,
      "max_value": 65534,
      "unit": "km/h",
-     "label": "speed"
+     "label": "speed",
+     "role": "vehicle.speed"
     },
     "odometer": {
      "start_byte": 10,
      "size": 3,
      "max_value": 16777214,
      "unit": "km",
-     "label": "odometer"
+     "label": "odometer",
+     "role": "vehicle.odometer"
     }
    }
   },
@@ -1116,9 +1149,38 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x32",
+   "data": "00 00 03 20 00 32 00 00 00 00 01 E2 40",
+   "expect": {
+    "engine.rpm": 800,
+    "vehicle.speed": 50,
+    "vehicle.odometer": 123456
+   }
+  },
+  {
+   "cmd": "0x11",
+   "data": "05 00 00 00 00 00 FF 9C",
+   "expect": {
+    "ignition.acc": true,
+    "gear.reverse": true,
+    "lights.on": false,
+    "steering.angle": 100
+   }
+  },
+  {
+   "cmd": "0x31",
+   "data": "00 00 00 00 00 00 00 00 00 00 00 64",
+   "expect": {
+    "outside.temp": 10
+   }
+  }
+ ]
 }

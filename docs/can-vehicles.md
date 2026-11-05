@@ -163,6 +163,57 @@ Clés des messages : commande Hiworld en hexa. Champs d'un signal, comme dans Cl
 Pour une nouvelle voiture : choisir `hiworld-generic`, capturer (onglet CAN, export) en actionnant chaque commande,
 repérer les octets qui changent (en orange), écrire le profil, l'importer.
 
+### Format 2 (service v163)
+
+Le moteur ne connaît aucune voiture : tout est dans le profil. Le format 2 ajoute ce dont les décodeurs de l'appli
+Hiworld ont besoin et ce qui rend un profil vérifiable ; un profil `"version": 1` reste lu tel quel.
+
+```json
+{
+  "format": "librehu-can-vehicle", "version": 2, "id": "…", "box": "raise",
+  "messages": {
+    "0x24": { "name": "Doors", "signals": {
+      "doors": { "start_byte": 0, "bits": { "front left": { "bit": 6, "role": "door.front_left" }, "trunk": 3 } },
+      "state": { "start_byte": 1, "bits": { "reverse": { "bit": 0, "role": "gear.reverse" } }, "when": { "len": 2 } }
+    } },
+    "0x50": { "name": "Driving data", "mux": 0, "signals": {},
+      "cases": {
+        "0x10": { "name": "Range", "signals": { "range": { "start_byte": 2, "size": 2, "endian": "little", "unit": "km", "role": "fuel.range" } } },
+        "0x30": { "name": "Average consumption", "signals": { "avg": { "start_byte": 2, "size": 2, "endian": "little", "factor": 0.1, "role": "fuel.average" } } }
+      } },
+    "0x12": { "signals": {
+      "oil":  { "start_byte": 2, "invalid": ["0xFF"], "unit": "°C", "role": "engine.oil_temp", "label": { "en": "oil", "fr": "huile" } },
+      "mode": { "start_byte": 4, "start_bit": 4, "bit_length": 3 }
+    } }
+  },
+  "examples": [ { "cmd": "0x50", "data": "10 00 2C 01", "expect": { "fuel.range": 300, "avg": null } } ]
+}
+```
+
+| Nouveau | Rôle |
+|---|---|
+| `role` (signal, ou bit sous forme `{ "bit": n, "role": … }`) | ce que la valeur veut dire pour LibreHU, quelle que soit la voiture (liste ci-dessous) ; `x.<nom>` pour une valeur propre au profil |
+| `mux` + `cases` (message) | message multiplexé : l'octet `mux` (depuis D0) donne le code, chaque code a ses signaux (Raise `0x40`, `0x50`, TPMS `0x66`…) |
+| `when` (signal) | décodé seulement si `byte` (masqué par `mask`) vaut une des valeurs de `is`, et/ou si le message a `len` octets (ou `min_len`..`max_len`) |
+| `invalid` | valeurs brutes « pas de valeur » (souvent `0xFF`) : ignorées |
+| `label` objet | libellé par langue (`en`, `fr`) ; sans libellé, celui du rôle |
+| `start_bit` + `bit_length` | champ de bits à la façon DBC (bit 0 = poids faible des octets lus), au lieu de `mask` / `shift` |
+| `examples` | auto-tests du profil : message + valeurs attendues (par nom de signal, de bit ou par rôle ; `null` = aucune valeur). Les tests du service vérifient ceux de chaque profil intégré |
+
+**Rôles** (`core/src/main/kotlin/org/librehu/core/can/CanRoles.kt`, 94 rôles) : alignés sur la **COVESA Vehicle Signal
+Specification 4.2** (<https://github.com/COVESA/vehicle_signal_specification>, export `vss_rel_4.2.csv`) quand elle a
+l'équivalent, avec son unité et son sens (angle du volant : positif à gauche ; portes : chemins d'une voiture conduite
+à gauche) : `vehicle.speed` → `Vehicle.Speed`, `engine.rpm` → `Vehicle.Powertrain.CombustionEngine.Speed`,
+`door.front_left` → `Vehicle.Cabin.Door.Row1.DriverSide.IsOpen`, `hvac.temp_left` → `…HVAC.Station.Row1.Driver.Temperature`,
+`tpms.front_left.pressure` → `…Axle.Row1.Wheel.Left.Tire.Pressure`… Sans équivalent VSS : radars (`radar.rear.left`… en
+**% de proximité**, 100 = contact), `steering.position` (-1..1), `lights.on` (mode nuit), `box.version`.
+**Angle du volant** : en degrés comme l'appli Hiworld (`SteerWheelInfo.setEps` : brut × 540 / maximum du décodeur) ; son
+sens n'est pas encore vérifié sur une voiture (réglage « inverser » de la caméra de recul).
+
+La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
+Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant
+du profil Honda (`HdHondaDAProtocol.parseWheelInfo` : bit 7 à 1 = positif, ÷ 10, × 540 / 520) était lu en entier signé.
+
 ## Dialogue avec le boîtier (`link`)
 
 Un boîtier Hiworld attend que l'autoradio lui réponde : sans réponse, il envoie ses messages **un par seconde en

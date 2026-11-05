@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "toyota-hiworld",
  "name": "Toyota, Lexus ES (Hiworld TYP001)",
  "description": "Hiworld box, protocol TYP001 (Toyota full compatible, Lexus ES), from Hiworld's own app (HdToyotaProtocol). Choose your car: its box needs its car type. Not tried on a car yet.",
@@ -903,11 +903,23 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "ACC": 0,
-      "lights": 1,
-      "reverse": 2,
+      "ACC": {
+       "bit": 0,
+       "role": "ignition.acc"
+      },
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
       "park": 3,
-      "radar": 5,
+      "radar": {
+       "bit": 5,
+       "role": "radar.shown"
+      },
       "mute": 7
      }
     },
@@ -938,12 +950,30 @@
     "doors": {
      "start_byte": 4,
      "bits": {
-      "front left": 6,
-      "front right": 7,
-      "rear left": 4,
-      "rear right": 5,
-      "trunk": 3,
-      "hood": 2
+      "front left": {
+       "bit": 6,
+       "role": "door.front_left"
+      },
+      "front right": {
+       "bit": 7,
+       "role": "door.front_right"
+      },
+      "rear left": {
+       "bit": 4,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 5,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      }
      }
     },
     "steering": {
@@ -951,7 +981,9 @@
      "size": 2,
      "signed": true,
      "factor": -1,
-     "label": "steering (raw)"
+     "label": "steering angle",
+     "unit": "°",
+     "role": "steering.angle"
     }
    }
   },
@@ -1002,9 +1034,23 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x11",
+   "data": "02 00 00 00 C0 00 00 64",
+   "expect": {
+    "lights.on": true,
+    "door.front_left": true,
+    "door.front_right": true,
+    "door.trunk": false,
+    "steering.angle": -100
+   }
+  }
+ ]
 }

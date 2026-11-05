@@ -19,6 +19,10 @@ import kotlinx.serialization.json.put
  * [min]..[max]. With [bits], each named bit of the integer is a flag instead. Extensions: [label], [values] (names of
  * codes), [ascii] (text from [startByte] to the end), [signMagnitude] (top bit of [bitLength] = minus sign, the
  * rest = magnitude: Hiworld's steering angle). [startByte] counts from D0, the first data byte.
+ *
+ * Format 2: [role] (what the value means for LibreHU's features, [CanRoles]), [bitRoles] (the role of each named bit),
+ * [invalid] (raw values meaning "no value", as 0xFF often does), [labels] (label per language, `{"en": …, "fr": …}`),
+ * [condition] (decoded only when the message matches it: a code in a byte, a length).
  */
 data class CanSignal(
     val name: String,
@@ -39,13 +43,75 @@ data class CanSignal(
     val bits: Map<String, Int> = emptyMap(),
     val values: Map<Int, String> = emptyMap(),
     val ascii: Boolean = false,
+    val role: String? = null,
+    val bitRoles: Map<String, String> = emptyMap(),
+    val invalid: Set<Long> = emptySet(),
+    val labels: Map<String, String> = emptyMap(),
+    val condition: CanCondition? = null,
 )
 
-/** A message of the CAN box: Hiworld command [cmd] and its signals. */
+/**
+ * When a signal (or a case of a message) applies, from the message itself: the byte [byte] (from D0, masked by [mask])
+ * is one of [values], and the message has [len] data bytes, or [minLen]..[maxLen]. Null fields are not checked.
+ * `"when": { "byte": 0, "is": ["0x10", "0x11"], "mask": "0x7F", "len": 2, "min_len": 2, "max_len": 8 }`.
+ */
+data class CanCondition(
+    val byte: Int? = null,
+    val values: Set<Int> = emptySet(),
+    val mask: Int = 0xFF,
+    val len: Int? = null,
+    val minLen: Int? = null,
+    val maxLen: Int? = null,
+) {
+    fun matches(data: ByteArray): Boolean {
+        if (len != null && data.size != len) return false
+        if (minLen != null && data.size < minLen) return false
+        if (maxLen != null && data.size > maxLen) return false
+        if (byte != null) {
+            if (byte >= data.size) return false
+            if (values.isNotEmpty() && (data[byte].toInt() and mask) !in values) return false
+        }
+        return true
+    }
+}
+
+/**
+ * A message of the CAN box: command [cmd], its [signals], and, when its layout depends on a code in one of its bytes
+ * (a multiplexed message: the box puts several kinds of data under one command), the byte [mux] (from D0) and the
+ * signals of each code ([cases]).
+ */
 data class CanMessage(
     val cmd: Int,
     val name: String,
     val signals: List<CanSignal>,
+    val mux: Int? = null,
+    val cases: Map<Int, CanCase> = emptyMap(),
+) {
+    /** The signals that apply to [data]: the message's, then those of its case. */
+    fun signalsFor(data: ByteArray): List<CanSignal> {
+        val case = mux?.takeIf { it < data.size }?.let { cases[data[it].toInt() and 0xFF] }
+        val all = if (case == null) signals else signals + case.signals
+        return all.filter { it.condition?.matches(data) ?: true }
+    }
+
+    /** Name for the viewer: the case's when it has one. */
+    fun nameFor(data: ByteArray): String = mux?.takeIf { it < data.size }?.let { cases[data[it].toInt() and 0xFF]?.name } ?: name
+}
+
+/** The signals of one code of a multiplexed message ([CanMessage.mux]). */
+data class CanCase(
+    val name: String?,
+    val signals: List<CanSignal>,
+)
+
+/**
+ * A self-test of a profile (`"examples"`): message [cmd] with [data] must give each value of [expect], keyed by a
+ * signal name, a bit name or a role (numbers within 0.01, flags, texts); a key mapped to null must give no value.
+ */
+data class CanExample(
+    val cmd: Int,
+    val data: List<Int>,
+    val expect: Map<String, Any?>,
 )
 
 /** A decoded value: a number, a flag of a `bits` signal, or a text. */
@@ -57,7 +123,19 @@ data class CanValue(
     val flag: Boolean? = null,
     val text: String? = null,
     val unit: String = "",
+    /** What the value means ([CanRoles]), when the profile says. */
+    val role: String? = null,
+    /** The label in other languages (`fr`…), [label] being the default. */
+    val labels: Map<String, String> = emptyMap(),
 ) {
+    /** The label in [lang] (a language code), else the role's, else the default. */
+    fun labelIn(lang: String): String {
+        labels[lang]?.let { return it }
+        val r = role?.let { CanRoles.byId(it) }
+        if (r != null && label == key) return if (lang == "fr") r.fr else r.en
+        return label
+    }
+
     fun display(): String =
         when {
             text != null -> text
@@ -117,6 +195,8 @@ data class CanVehicle(
     val baud: Int? = null,
     /** The cars of this profile, chosen in the CAN tab; none chosen: [link] as it is. */
     val variants: List<CanVariant> = emptyList(),
+    /** Self-tests of the decoding (format 2), checked by [selfTest]. */
+    val examples: List<CanExample> = emptyList(),
 ) {
     /** This profile for the car [name] (one of [variants]); unknown or null: unchanged. */
     fun withVariant(name: String?): CanVehicle {
@@ -141,16 +221,41 @@ data class CanVehicle(
     /** Every value of [f] this profile knows; empty when the command is unknown. */
     fun decode(f: CanboxFrame): List<CanValue> {
         val m = messages[f.cmd] ?: return emptyList()
-        return m.signals.flatMap { decodeSignal(m, it, f.data) }
+        val name = m.nameFor(f.data)
+        return m.signalsFor(f.data).flatMap { decodeSignal(name, it, f.data) }
     }
+
+    /** The values of [f] by role (those whose signal names one). */
+    fun decodeRoles(f: CanboxFrame): Map<String, CanValue> = decode(f).filter { it.role != null }.associateBy { it.role!! }
+
+    /** The failures of this profile's [examples] (empty: all pass, or none). */
+    fun selfTest(): List<String> =
+        examples.flatMapIndexed { i, e ->
+            val values = decode(CanboxFrame(e.cmd, ByteArray(e.data.size) { e.data[it].toByte() }, true))
+            e.expect.mapNotNull { (k, want) ->
+                val got = values.firstOrNull { it.key == k } ?: values.firstOrNull { it.role == k }
+                val where = "examples[$i] 0x%02X %s".format(e.cmd, k)
+                when {
+                    want == null -> if (got != null) "$where: expected no value, got ${got.display()}" else null
+                    got == null -> "$where: no value"
+                    want is Boolean -> if (got.flag != want) "$where: expected $want, got ${got.display()}" else null
+                    want is Number -> {
+                        val n = got.number
+                        if (n == null || kotlin.math.abs(n - want.toDouble()) > 0.01) "$where: expected $want, got ${got.display()}" else null
+                    }
+                    else -> if ((got.text ?: got.display()) != want.toString()) "$where: expected \"$want\", got \"${got.text ?: got.display()}\"" else null
+                }
+            }
+        }
 
     /** One line for the CAN viewer, or null when the command is unknown. */
     fun describe(f: CanboxFrame): String? {
         val m = messages[f.cmd] ?: return null
         val values = decode(f)
+        val name = m.nameFor(f.data)
         val flags = values.filter { it.flag == true }.joinToString(", ") { it.label }
         val others = values.filter { it.flag == null }.joinToString(" · ") { "${it.label} ${it.display()}" }
-        return listOf(m.name, flags, others).filter { it.isNotEmpty() }.joinToString(" · ")
+        return listOf(name, flags, others).filter { it.isNotEmpty() }.joinToString(" · ")
     }
 
     companion object {
@@ -159,15 +264,15 @@ data class CanVehicle(
 }
 
 private fun decodeSignal(
-    m: CanMessage,
+    message: String,
     s: CanSignal,
     data: ByteArray,
 ): List<CanValue> {
     val label = s.label.ifEmpty { s.name }
     if (s.ascii) {
         if (s.startByte >= data.size) return emptyList()
-        val text = String(data, s.startByte, data.size - s.startByte, Charsets.US_ASCII).trim { it <= ' ' }
-        return listOf(CanValue(s.name, label, m.name, text = text))
+        val text = String(data, s.startByte, data.size - s.startByte, Charsets.US_ASCII).trim { it <= ' ' || it == '\u0000' }
+        return listOf(CanValue(s.name, label, message, text = text, role = s.role, labels = s.labels))
     }
     if (s.startByte < 0 || s.startByte + s.size > data.size) return emptyList()
     var raw = 0L
@@ -176,10 +281,12 @@ private fun decodeSignal(
         raw = (raw shl 8) or b
     }
     if (s.bits.isNotEmpty()) {
-        return s.bits.map { (bit, pos) -> CanValue(bit, bit, m.name, flag = (raw shr pos) and 1L == 1L) }
+        if (raw in s.invalid) return emptyList()
+        return s.bits.map { (bit, pos) -> CanValue(bit, bit, message, flag = (raw shr pos) and 1L == 1L, role = s.bitRoles[bit]) }
     }
     if (s.mask != null) raw = raw and s.mask
     if (s.shift > 0) raw = raw shr s.shift
+    if (raw in s.invalid) return emptyList()
     if (s.signMagnitude && s.bitLength in 1..63) {
         val sign = 1L shl (s.bitLength - 1)
         if (raw and sign != 0L) raw = -(raw and (sign - 1))
@@ -194,9 +301,9 @@ private fun decodeSignal(
         if (named !=
             null
         ) {
-            CanValue(s.name, label, m.name, number = value, text = named)
+            CanValue(s.name, label, message, number = value, text = named, role = s.role, labels = s.labels)
         } else {
-            CanValue(s.name, label, m.name, value, unit = s.unit)
+            CanValue(s.name, label, message, value, unit = s.unit, role = s.role, labels = s.labels)
         },
     )
 }
@@ -208,7 +315,8 @@ class CanVehicleException(
 /** Built-in car profiles and the JSON format of the importable ones (docs/can-vehicles.md). */
 object CanVehicles {
     const val FORMAT = "librehu-can-vehicle"
-    const val VERSION = 1
+    /** 2: roles, conditions, multiplexed messages, invalid values, labels per language, examples (1 is still read). */
+    const val VERSION = 2
 
     private val json = Json { prettyPrint = true }
 
@@ -286,11 +394,15 @@ object CanVehicles {
             (root["messages"] as? JsonObject).orEmpty().map { (key, e) ->
                 val cmd = hexKey(key)
                 val o = e as? JsonObject ?: throw CanVehicleException("Message $key is not an object")
-                val signals =
-                    (o["signals"] as? JsonObject).orEmpty().map { (name, se) ->
-                        signal(name, se as? JsonObject ?: throw CanVehicleException("Signal $key.$name is not an object"), key)
-                    }
-                cmd to CanMessage(cmd, o.str("name") ?: "%02X".format(cmd), signals)
+                val mux = o.int("mux")?.also { if (it !in 0..63) throw CanVehicleException("Message $key: mux 0..63") }
+                val cases =
+                    (o["cases"] as? JsonObject).orEmpty().map { (ck, ce) ->
+                        val code = hexKey(ck)
+                        val co = ce as? JsonObject ?: throw CanVehicleException("Message $key case $ck is not an object")
+                        code to CanCase(co.str("name"), signals(co, "$key.$ck"))
+                    }.toMap()
+                if (cases.isNotEmpty() && mux == null) throw CanVehicleException("Message $key: cases without mux (the byte holding their code)")
+                cmd to CanMessage(cmd, o.str("name") ?: "%02X".format(cmd), signals(o, key), mux, cases)
             }
         return CanVehicle(
             id = id,
@@ -312,7 +424,59 @@ object CanVehicles {
                 root.int("baud")?.also {
                     if (it !in CanBoxFamilies.BAUDS) throw CanVehicleException("baud $it (one of ${CanBoxFamilies.BAUDS.joinToString()})")
                 },
+            examples =
+                ((root["examples"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
+                    val o = e as? JsonObject ?: throw CanVehicleException("examples[$i] is not an object")
+                    CanExample(
+                        o.str("cmd")?.let(::hexKey) ?: throw CanVehicleException("examples[$i]: cmd missing"),
+                        bytes(o.str("data").orEmpty(), "examples[$i]"),
+                        (o["expect"] as? JsonObject).orEmpty().mapValues { (_, v) ->
+                            val pv = v as? JsonPrimitive
+                            when {
+                                pv == null || v is kotlinx.serialization.json.JsonNull -> null
+                                pv.isString -> pv.content
+                                pv.booleanOrNull != null -> pv.booleanOrNull
+                                else -> pv.doubleOrNull ?: throw CanVehicleException("examples[$i]: bad value $v")
+                            }
+                        },
+                    )
+                },
         )
+    }
+
+    private fun signals(
+        o: JsonObject,
+        key: String,
+    ): List<CanSignal> =
+        (o["signals"] as? JsonObject).orEmpty().map { (name, se) ->
+            signal(name, se as? JsonObject ?: throw CanVehicleException("Signal $key.$name is not an object"), key)
+        }
+
+    /** `"when": { "byte", "is", "mask", "len", "min_len", "max_len" }`. */
+    private fun condition(
+        o: JsonObject,
+        where: String,
+    ): CanCondition {
+        fun small(k: String) = o.int(k)?.also { if (it !in 0..255) throw CanVehicleException("$where: $k 0..255") }
+        val values =
+            when (val v = o["is"]) {
+                null -> emptyList()
+                is kotlinx.serialization.json.JsonArray -> v.map { code(it, where) }
+                else -> listOf(code(v, where))
+            }
+        val byte = o.int("byte")?.also { if (it !in 0..63) throw CanVehicleException("$where: byte 0..63") }
+        if (values.isNotEmpty() && byte == null) throw CanVehicleException("$where: \"is\" without \"byte\"")
+        return CanCondition(byte, values.toSet(), o.str("mask")?.let { code(JsonPrimitive(it), where) } ?: 0xFF, small("len"), small("min_len"), small("max_len"))
+    }
+
+    /** A byte value: a number or a hex string ("0x10"). */
+    private fun code(
+        e: JsonElement,
+        where: String,
+    ): Int {
+        val p = e as? JsonPrimitive ?: throw CanVehicleException("$where: bad byte value $e")
+        val v = if (p.isString) p.content.removePrefix("0x").removePrefix("0X").toIntOrNull(16) else p.intOrNull
+        return v?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$where: bad byte value $e")
     }
 
     /** `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`. */
@@ -442,12 +606,55 @@ object CanVehicles {
                                 "0x%02X".format(m.cmd),
                                 buildJsonObject {
                                     put("name", m.name)
+                                    m.mux?.let { put("mux", it) }
                                     put("signals", buildJsonObject { m.signals.forEach { put(it.name, signalJson(it)) } })
+                                    if (m.cases.isNotEmpty()) {
+                                        put(
+                                            "cases",
+                                            buildJsonObject {
+                                                for ((code, c) in m.cases.toSortedMap()) {
+                                                    put(
+                                                        "0x%02X".format(code),
+                                                        buildJsonObject {
+                                                            c.name?.let { put("name", it) }
+                                                            put("signals", buildJsonObject { c.signals.forEach { put(it.name, signalJson(it)) } })
+                                                        },
+                                                    )
+                                                }
+                                            },
+                                        )
+                                    }
                                 },
                             )
                         }
                     },
                 )
+                if (v.examples.isNotEmpty()) {
+                    put(
+                        "examples",
+                        kotlinx.serialization.json.JsonArray(
+                            v.examples.map { e ->
+                                buildJsonObject {
+                                    put("cmd", "0x%02X".format(e.cmd))
+                                    put("data", e.data.joinToString(" ") { "%02X".format(it) })
+                                    put(
+                                        "expect",
+                                        buildJsonObject {
+                                            e.expect.forEach { (k, x) ->
+                                                when (x) {
+                                                    null -> put(k, kotlinx.serialization.json.JsonNull)
+                                                    is Boolean -> put(k, x)
+                                                    is Number -> put(k, x.toDouble())
+                                                    else -> put(k, x.toString())
+                                                }
+                                            }
+                                        },
+                                    )
+                                }
+                            },
+                        ),
+                    )
+                }
             },
         )
 
@@ -458,20 +665,37 @@ object CanVehicles {
     ): CanSignal {
         val size = o.int("size") ?: 1
         val start = o.int("start_byte") ?: 0
-        if (size !in 1..8 || start < 0) throw CanVehicleException("Signal $key.$name: bad start_byte / size")
+        val where = "Signal $key.$name"
+        if (size !in 1..8 || start < 0) throw CanVehicleException("$where: bad start_byte / size")
         val endian = o.str("endian") ?: "big"
         if (endian != "big" && endian != "little") throw CanVehicleException("Signal $key.$name: endian must be big or little")
+        val bitRoles = mutableMapOf<String, String>()
         val bits =
             (o["bits"] as? JsonObject)?.mapValues { (bit, v) ->
-                val pos = (v as? JsonPrimitive)?.intOrNull
-                if (pos == null || pos !in 0 until size * 8) throw CanVehicleException("Signal $key.$name: bad bit $bit")
+                // A bit is its position, or { "bit": position, "role": … }.
+                val pos = (v as? JsonPrimitive)?.intOrNull ?: (v as? JsonObject)?.int("bit")
+                if (pos == null || pos !in 0 until size * 8) throw CanVehicleException("$where: bad bit $bit")
+                (v as? JsonObject)?.str("role")?.let { bitRoles[bit] = role(it, "$where.$bit") }
                 pos
             }
-        val mask =
+        val startBit = o.int("start_bit")
+        val bitLen = o.int("bit_length")
+        var mask =
             o.str("mask")?.let {
                 it.removePrefix("0x").removePrefix("0X").toLongOrNull(16)
-                    ?: throw CanVehicleException("Signal $key.$name: bad mask $it")
+                    ?: throw CanVehicleException("$where: bad mask $it")
             }
+        var shift = o.int("shift") ?: 0
+        if (startBit != null) {
+            // DBC style: the field is bit_length bits from start_bit (bit 0 = lowest bit of the bytes read).
+            val len = bitLen ?: 1
+            if (startBit < 0 || len < 1 || startBit + len > size * 8) throw CanVehicleException("$where: start_bit / bit_length outside the bytes read")
+            mask = ((1L shl len) - 1) shl startBit
+            shift = startBit
+        }
+        val labelEl = o["label"]
+        val labels =
+            (labelEl as? JsonObject)?.mapNotNull { (lang, v) -> (v as? JsonPrimitive)?.contentOrNull?.let { lang to it } }?.toMap().orEmpty()
         return CanSignal(
             name = name,
             startByte = start,
@@ -480,14 +704,24 @@ object CanVehicles {
             factor = o.dbl("factor") ?: 1.0,
             offset = o.dbl("offset") ?: 0.0,
             mask = mask,
-            shift = o.int("shift") ?: 0,
+            shift = shift,
             signed = (o["signed"] as? JsonPrimitive)?.booleanOrNull ?: false,
             signMagnitude = (o["sign_magnitude"] as? JsonPrimitive)?.booleanOrNull ?: false,
-            bitLength = o.int("bit_length") ?: size * 8,
+            bitLength = bitLen ?: size * 8,
             min = o.dbl("min_value"),
             max = o.dbl("max_value"),
             unit = o.str("unit").orEmpty(),
-            label = o.str("label").orEmpty(),
+            label = (labelEl as? JsonPrimitive)?.contentOrNull ?: labels["en"] ?: labels.values.firstOrNull().orEmpty(),
+            labels = labels,
+            role = o.str("role")?.let { role(it, where) },
+            bitRoles = bitRoles,
+            invalid =
+                when (val v = o["invalid"]) {
+                    null -> emptySet()
+                    is kotlinx.serialization.json.JsonArray -> v.map { rawValue(it, where) }.toSet()
+                    else -> setOf(rawValue(v, where))
+                },
+            condition = (o["when"] as? JsonObject)?.let { condition(it, "$where.when") },
             bits = bits.orEmpty(),
             values =
                 (o["values"] as? JsonObject)
@@ -496,6 +730,21 @@ object CanVehicles {
                     .orEmpty(),
             ascii = (o["ascii"] as? JsonPrimitive)?.booleanOrNull ?: false,
         )
+    }
+
+    private fun role(
+        id: String,
+        where: String,
+    ): String = id.takeIf { CanRoles.isValid(it) } ?: throw CanVehicleException("$where: unknown role \"$id\" (see CanRoles, or x.<name> for a new one)")
+
+    /** A raw value: a number or a hex string ("0xFF"). */
+    private fun rawValue(
+        e: JsonElement,
+        where: String,
+    ): Long {
+        val p = e as? JsonPrimitive ?: throw CanVehicleException("$where: bad invalid value $e")
+        return (if (p.isString) p.content.removePrefix("0x").removePrefix("0X").toLongOrNull(16) else p.content.toLongOrNull())
+            ?: throw CanVehicleException("$where: bad invalid value $e")
     }
 
     private fun signalJson(s: CanSignal) =
@@ -517,9 +766,38 @@ object CanVehicles {
                 s.max?.let { put("max_value", it) }
             }
             if (s.unit.isNotEmpty()) put("unit", s.unit)
-            if (s.label.isNotEmpty()) put("label", s.label)
-            if (s.bits.isNotEmpty()) put("bits", buildJsonObject { s.bits.forEach { (k, v) -> put(k, v) } })
+            if (s.labels.isNotEmpty()) {
+                put("label", buildJsonObject { if (s.label.isNotEmpty() && "en" !in s.labels) put("en", s.label); s.labels.forEach { (k, v) -> put(k, v) } })
+            } else if (s.label.isNotEmpty()) {
+                put("label", s.label)
+            }
+            s.role?.let { put("role", it) }
+            if (s.invalid.isNotEmpty()) put("invalid", kotlinx.serialization.json.JsonArray(s.invalid.sorted().map { JsonPrimitive(it) }))
+            if (s.bits.isNotEmpty()) {
+                put(
+                    "bits",
+                    buildJsonObject {
+                        s.bits.forEach { (k, v) ->
+                            val r = s.bitRoles[k]
+                            if (r == null) put(k, v) else put(k, buildJsonObject { put("bit", v); put("role", r) })
+                        }
+                    },
+                )
+            }
             if (s.values.isNotEmpty()) put("values", buildJsonObject { s.values.forEach { (k, v) -> put(k.toString(), v) } })
+            s.condition?.let { c ->
+                put(
+                    "when",
+                    buildJsonObject {
+                        c.byte?.let { put("byte", it) }
+                        if (c.values.isNotEmpty()) put("is", kotlinx.serialization.json.JsonArray(c.values.sorted().map { JsonPrimitive("0x%02X".format(it)) }))
+                        if (c.mask != 0xFF) put("mask", "0x%02X".format(c.mask))
+                        c.len?.let { put("len", it) }
+                        c.minLen?.let { put("min_len", it) }
+                        c.maxLen?.let { put("max_len", it) }
+                    },
+                )
+            }
         }
 
     private fun hexKey(key: String): Int {

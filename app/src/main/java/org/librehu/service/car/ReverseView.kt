@@ -233,7 +233,7 @@ class ReverseView private constructor(
         if (!preview && !manual) sounds.duckMedia(s.media)
         val sc = MainScope()
         scope = sc
-        sc.launch { CanMonitor.values.collect { onCan(it) } }
+        sc.launch { CanMonitor.values.collect { onCan(it, CanMonitor.roles.value) } }
     }
 
     /**
@@ -711,18 +711,23 @@ class ReverseView private constructor(
 
     // --- CAN box -------------------------------------------------------------------------------------------------
 
-    private fun onCan(values: Map<String, org.librehu.core.can.CanValue>) {
+    private fun onCan(
+        values: Map<String, org.librehu.core.can.CanValue>,
+        roles: Map<String, org.librehu.core.can.CanValue>,
+    ) {
         val g = guide ?: return
         val s = _settings.value
-        val angle = values[KEY_STEERING]?.number
+        // By role, whatever the car profile (format 2); the Clio 3 keys of a profile written before roles otherwise.
+        val angle = roles[ROLE_STEERING]?.number ?: values[KEY_STEERING]?.number
         g.steering = angle
-        val raw = RADAR_KEYS.map { values[it]?.number }
+        val byRole = RADAR_ROLES.map { r -> roles[r]?.number?.let { it / 25.0 } }
+        val raw = if (byRole.any { it != null }) byRole else RADAR_KEYS.map { values[it]?.number }
         val levels =
             if (raw.all { it == null }) {
                 null
             } else {
                 IntArray(4) { i ->
-                    val v = (raw[i] ?: 0.0).toInt().coerceIn(0, 4)
+                    val v = Math.round(raw[i] ?: 0.0).toInt().coerceIn(0, 4)
                     if (s.radarInvert) (4 - v) else v
                 }
             }
@@ -803,6 +808,10 @@ class ReverseView private constructor(
         private const val ANALYSIS_MS = 120L
         private const val APPROACH_WINDOW_MS = 1200L
         private const val KEY_STEERING = "11.steering_angle"
+
+        /** Roles (org.librehu.core.can.CanRoles): steering angle in degrees, rear sensors in % of proximity (100 = touching, 25 per level). */
+        private const val ROLE_STEERING = "steering.angle"
+        private val RADAR_ROLES = listOf("radar.rear.left", "radar.rear.left_center", "radar.rear.right_center", "radar.rear.right")
         private val RADAR_KEYS = listOf("41.rear_left", "41.rear_center_left", "41.rear_center_right", "41.rear_right")
 
         private const val PREF_FORMAT = "reverse_camera_format"

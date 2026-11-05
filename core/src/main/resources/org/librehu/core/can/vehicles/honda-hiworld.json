@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "honda-hiworld",
  "name": "Honda, Acura (Hiworld HDP004)",
  "description": "Hiworld box, protocol HDP004 (Honda & Acura full compatible), from Hiworld's own app (HdHondaDAProtocol). Choose your car: its box needs its car type. Accord 2018, Odyssey 2004-2008, Crosstour, Civic 2016-, CR-V 2017 not listed yet (car type from rules not read). Not tried on a car yet.",
@@ -531,15 +531,25 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "lights": 1,
-      "reverse": 2,
-      "handbrake": 3
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
+      "handbrake": {
+       "bit": 3,
+       "role": "handbrake"
+      }
      }
     },
     "speed": {
      "start_byte": 1,
      "unit": "km/h",
-     "label": "speed"
+     "label": "speed",
+     "role": "vehicle.speed"
     },
     "wheel_key": {
      "start_byte": 2,
@@ -574,9 +584,11 @@
     "steering": {
      "start_byte": 6,
      "size": 2,
-     "signed": true,
-     "factor": -1,
-     "label": "steering (raw)"
+     "sign_magnitude": true,
+     "factor": -0.103846,
+     "unit": "°",
+     "label": "steering angle",
+     "role": "steering.angle"
     }
    }
   },
@@ -586,12 +598,30 @@
     "doors": {
      "start_byte": 2,
      "bits": {
-      "front left": 7,
-      "front right": 6,
-      "rear left": 5,
-      "rear right": 4,
-      "trunk": 3,
-      "hood": 2
+      "front left": {
+       "bit": 7,
+       "role": "door.front_left"
+      },
+      "front right": {
+       "bit": 6,
+       "role": "door.front_right"
+      },
+      "rear left": {
+       "bit": 5,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 4,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      }
      }
     }
    }
@@ -643,9 +673,29 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x11",
+   "data": "08 32 00 00 00 00 81 2C",
+   "expect": {
+    "handbrake": true,
+    "vehicle.speed": 50,
+    "steering.angle": 31.15
+   }
+  },
+  {
+   "cmd": "0x11",
+   "data": "00 00 00 00 00 00 01 2C",
+   "expect": {
+    "handbrake": false,
+    "steering.angle": -31.15
+   }
+  }
+ ]
 }

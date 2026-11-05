@@ -363,8 +363,8 @@ class Batch2ProfilesTest {
         assertEquals(listOf(3), pressed)
         assertEquals(listOf(3), released)
         assertEquals("next", v.keys!!.name(3))
-        // 0x29: steering D0-D1 little endian signed, negated (parseWheelInfo: -byte2Short(bArr, 3)).
-        assertEquals(-256.0, number(v, frame(0x29, 0x00, 0x01), "steering"), 0.01)
+        // 0x29: steering D0-D1 little endian signed, negated, in degrees as Hiworld's app (setEps(-byte2Short(bArr, 3), 19918): × 540 / 19918).
+        assertEquals(-256 * 540.0 / 19918, number(v, frame(0x29, 0x00, 0x01), "steering"), 0.01)
         // 0x27: outside temperature D1-D2 little endian signed / 10 (parseOutTempInfo).
         assertEquals(21.0, number(v, frame(0x27, 0, 0xD2, 0x00), "outside"), 0.01)
         assertEquals(-10.0, number(v, frame(0x27, 0, 0x9C, 0xFF), "outside"), 0.01)
@@ -382,7 +382,7 @@ class Batch2ProfilesTest {
         assertEquals("voice", v.keys!!.name(8))
         // 0x16: speed (D1 << 8 | D0) / 16 (parseVehicleSpeedInfo).
         assertEquals(100.0, number(v, frame(0x16, 0x40, 0x06), "speed"), 0.01)
-        // 0x26: steering D0-D1 little endian signed (parseWheelInfo: byte2Short(bArr, 3)).
-        assertEquals(-2.0, number(v, frame(0x26, 0xFE, 0xFF), "steering"), 0.01)
+        // 0x26: steering D0-D1 little endian signed, in degrees (setEps(byte2Short(bArr, 3), 537): × 540 / 537).
+        assertEquals(-2 * 540.0 / 537, number(v, frame(0x26, 0xFE, 0xFF), "steering"), 0.01)
     }
 }

@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "vw-pq-raise",
  "name": "Volkswagen, Skoda (Raise / Oudi, PQ)",
  "description": "Raise (RZC) or Oudi box, older Volkswagen / Skoda (PQ platforms), from the decoder Hiworld's own app uses for these boxes (RePQProtocol); the cars are the ones that app decodes with it. The head unit says hello once (0x81 01) and acknowledges each message (FF); no car type. Not tried on a car yet.",
@@ -275,7 +275,8 @@
      "endian": "little",
      "factor": 0.0625,
      "unit": "km/h",
-     "label": "speed"
+     "label": "speed",
+     "role": "vehicle.speed"
     }
    }
   },
@@ -285,9 +286,18 @@
     "status": {
      "start_byte": 1,
      "bits": {
-      "lights": 2,
-      "handbrake": 1,
-      "reverse": 0
+      "lights": {
+       "bit": 2,
+       "role": "lights.on"
+      },
+      "handbrake": {
+       "bit": 1,
+       "role": "handbrake"
+      },
+      "reverse": {
+       "bit": 0,
+       "role": "gear.reverse"
+      }
      }
     }
    }
@@ -300,7 +310,10 @@
      "size": 2,
      "endian": "little",
      "signed": true,
-     "label": "steering (raw)"
+     "label": "steering angle",
+     "factor": 1.005587,
+     "unit": "°",
+     "role": "steering.angle"
     }
    }
   },
@@ -394,9 +407,35 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x16",
+   "data": "40 06",
+   "expect": {
+    "vehicle.speed": 100
+   }
+  },
+  {
+   "cmd": "0x26",
+   "data": "FE FF",
+   "expect": {
+    "steering.angle": -2.01
+   }
+  },
+  {
+   "cmd": "0x24",
+   "data": "00 05",
+   "expect": {
+    "lights.on": true,
+    "gear.reverse": true,
+    "handbrake": false
+   }
+  }
+ ]
 }

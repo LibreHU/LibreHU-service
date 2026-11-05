@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "vw-mqb-raise",
  "name": "Volkswagen, Skoda (Raise / Oudi, MQB)",
  "description": "Raise (RZC) or Oudi box, Volkswagen MQB protocol, from the decoder Hiworld's own app uses for these boxes (ReMQB7Protocol); the cars are the ones that app decodes with it. The head unit says hello once (0x81 01) and acknowledges each message (FF); no car type. Not tried on a car yet.",
@@ -336,21 +336,48 @@
     "doors": {
      "start_byte": 0,
      "bits": {
-      "front right": 7,
-      "front left": 6,
-      "rear right": 5,
-      "rear left": 4,
-      "trunk": 3,
-      "hood": 2,
+      "front right": {
+       "bit": 7,
+       "role": "door.front_right"
+      },
+      "front left": {
+       "bit": 6,
+       "role": "door.front_left"
+      },
+      "rear right": {
+       "bit": 5,
+       "role": "door.rear_right"
+      },
+      "rear left": {
+       "bit": 4,
+       "role": "door.rear_left"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      },
       "doors valid": 0
      }
     },
     "status": {
      "start_byte": 1,
      "bits": {
-      "lights": 2,
-      "handbrake": 1,
-      "reverse": 0
+      "lights": {
+       "bit": 2,
+       "role": "lights.on"
+      },
+      "handbrake": {
+       "bit": 1,
+       "role": "handbrake"
+      },
+      "reverse": {
+       "bit": 0,
+       "role": "gear.reverse"
+      }
      }
     }
    }
@@ -358,19 +385,38 @@
   "0x27": {
    "name": "Outside temperature",
    "signals": {
-    "unit": {
-     "start_byte": 0,
-     "bits": {
-      "°F": 0
-     }
-    },
     "outside": {
      "start_byte": 1,
      "size": 2,
      "endian": "little",
      "signed": true,
      "factor": 0.1,
-     "label": "outside temperature"
+     "label": "outside temperature",
+     "role": "outside.temp",
+     "when": {
+      "byte": 0,
+      "is": [
+       0
+      ],
+      "mask": "0x01"
+     },
+     "unit": "°C"
+    },
+    "outside_f": {
+     "start_byte": 1,
+     "size": 2,
+     "endian": "little",
+     "signed": true,
+     "factor": 0.1,
+     "unit": "°F",
+     "label": "outside temperature (°F)",
+     "when": {
+      "byte": 0,
+      "is": [
+       1
+      ],
+      "mask": "0x01"
+     }
     }
    }
   },
@@ -382,8 +428,10 @@
      "size": 2,
      "endian": "little",
      "signed": true,
-     "factor": -1,
-     "label": "steering (raw)"
+     "factor": -0.027111,
+     "label": "steering angle",
+     "unit": "°",
+     "role": "steering.angle"
     }
    }
   },
@@ -477,9 +525,45 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x27",
+   "data": "00 D2 00",
+   "expect": {
+    "outside.temp": 21,
+    "outside_f": null
+   }
+  },
+  {
+   "cmd": "0x27",
+   "data": "01 46 03",
+   "expect": {
+    "outside_f": 83.8,
+    "outside.temp": null
+   }
+  },
+  {
+   "cmd": "0x29",
+   "data": "00 01",
+   "expect": {
+    "steering.angle": -6.94
+   }
+  },
+  {
+   "cmd": "0x24",
+   "data": "41 05",
+   "expect": {
+    "door.front_left": true,
+    "door.front_right": false,
+    "lights.on": true,
+    "gear.reverse": true
+   }
+  }
+ ]
 }

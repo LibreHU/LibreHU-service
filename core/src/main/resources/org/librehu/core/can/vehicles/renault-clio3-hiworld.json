@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "renault-clio3-hiworld",
  "name": "Renault, Dacia, LADA, Samsung, Nissan, Mercedes (Hiworld LNP002)",
  "description": "Hiworld box, protocol LNP002 (Renault / LADA / Samsung full compatible): Clio 3 by default, the other models in the list (car type from Hiworld's own app, HdRenaultProtocolLNP002). Like that app, the head unit also sends its audio source (0xE1, AUX here) and Bluetooth state (0xCD, not connected) for the car's display, and asks the box for its version (0x6A [5, 1, 0xF0], the Hiworld request, HdProtocol.txRequestCmdId) every 30 s: an F0 message right after each request shows that the box hears the head unit.",
@@ -642,10 +642,22 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "ACC": 0,
-      "lights": 1,
-      "reverse": 2,
-      "handbrake": 3,
+      "ACC": {
+       "bit": 0,
+       "role": "ignition.acc"
+      },
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
+      "handbrake": {
+       "bit": 3,
+       "role": "handbrake"
+      },
       "SOS mute": 7
      }
     },
@@ -687,7 +699,8 @@
      "min_value": -540,
      "max_value": 540,
      "unit": "°",
-     "label": "steering"
+     "label": "steering",
+     "role": "steering.angle"
     }
    }
   },
@@ -697,11 +710,26 @@
     "doors": {
      "start_byte": 2,
      "bits": {
-      "front left": 7,
-      "front right": 6,
-      "rear left": 5,
-      "rear right": 4,
-      "trunk": 3
+      "front left": {
+       "bit": 7,
+       "role": "door.front_left"
+      },
+      "front right": {
+       "bit": 6,
+       "role": "door.front_right"
+      },
+      "rear left": {
+       "bit": 5,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 4,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      }
      }
     }
    }
@@ -715,7 +743,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "L/100 km",
-     "label": "average consumption"
+     "label": "average consumption",
+     "role": "fuel.average"
     },
     "avg_speed": {
      "start_byte": 2,
@@ -723,7 +752,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "km/h",
-     "label": "average speed"
+     "label": "average speed",
+     "role": "trip.average_speed"
     },
     "distance": {
      "start_byte": 4,
@@ -731,7 +761,8 @@
      "factor": 0.1,
      "max_value": 1677721.4,
      "unit": "km",
-     "label": "distance"
+     "label": "distance",
+     "role": "trip.distance"
     },
     "time_minutes": {
      "start_byte": 7,
@@ -752,7 +783,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "L",
-     "label": "fuel used"
+     "label": "fuel used",
+     "role": "trip.fuel_used"
     },
     "green_distance": {
      "start_byte": 12,
@@ -800,45 +832,67 @@
     "climate": {
      "start_byte": 0,
      "bits": {
-      "AC": 0,
+      "AC": {
+       "bit": 0,
+       "role": "hvac.ac"
+      },
       "sync": 2,
-      "auto": 3,
+      "auto": {
+       "bit": 3,
+       "role": "hvac.auto"
+      },
       "rear": 4,
-      "climate on": 6
+      "climate on": {
+       "bit": 6,
+       "role": "hvac.power"
+      }
      }
     },
     "air": {
      "start_byte": 1,
      "bits": {
       "auto recirculation": 3,
-      "recirculation": 4
+      "recirculation": {
+       "bit": 4,
+       "role": "hvac.recirculation"
+      }
      }
     },
     "defrost": {
      "start_byte": 2,
      "bits": {
-      "front defrost": 4,
-      "rear defrost": 5
+      "front defrost": {
+       "bit": 4,
+       "role": "hvac.defrost_front"
+      },
+      "rear defrost": {
+       "bit": 5,
+       "role": "hvac.defrost_rear"
+      }
      }
     },
     "seat_heat_left": {
      "start_byte": 2,
      "mask": "0x03",
-     "label": "seat heating L"
+     "label": "seat heating L",
+     "role": "hvac.seat_heat_left"
     },
     "seat_heat_right": {
      "start_byte": 2,
      "mask": "0x0C",
      "shift": 2,
-     "label": "seat heating R"
+     "label": "seat heating R",
+     "role": "hvac.seat_heat_right"
     },
     "air_mode": {
      "start_byte": 4,
-     "label": "air distribution"
+     "label": "air distribution",
+     "role": "hvac.airflow"
     },
     "fan": {
      "start_byte": 5,
-     "label": "fan"
+     "label": "fan",
+     "role": "hvac.fan"
     },
     "temp_left": {
      "start_byte": 6,
@@ -848,7 +902,8 @@
      "values": {
       "254": "LO",
       "255": "HI"
-     }
+     },
+     "role": "hvac.temp_left"
     },
     "temp_right": {
      "start_byte": 7,
@@ -858,14 +913,16 @@
      "values": {
       "254": "LO",
       "255": "HI"
-     }
+     },
+     "role": "hvac.temp_right"
     },
     "outside_temp": {
      "start_byte": 11,
      "factor": 0.5,
      "offset": -40,
      "unit": "°C",
-     "label": "outside"
+     "label": "outside",
+     "role": "outside.temp"
     }
    }
   },
@@ -874,63 +931,80 @@
    "signals": {
     "rear_left": {
      "start_byte": 0,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "rear L"
+     "label": "rear L",
+     "unit": "%",
+     "role": "radar.rear.left"
     },
     "rear_center_left": {
      "start_byte": 1,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "rear CL"
+     "label": "rear CL",
+     "unit": "%",
+     "role": "radar.rear.left_center"
     },
     "rear_center_right": {
      "start_byte": 2,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "rear CR"
+     "label": "rear CR",
+     "unit": "%",
+     "role": "radar.rear.right_center"
     },
     "rear_right": {
      "start_byte": 3,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "rear R"
+     "label": "rear R",
+     "unit": "%",
+     "role": "radar.rear.right"
     },
     "front_left": {
      "start_byte": 4,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "front L"
+     "label": "front L",
+     "unit": "%",
+     "role": "radar.front.left"
     },
     "front_center_left": {
      "start_byte": 5,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "front CL"
+     "label": "front CL",
+     "unit": "%",
+     "role": "radar.front.left_center"
     },
     "front_center_right": {
      "start_byte": 6,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "front CR"
+     "label": "front CR",
+     "unit": "%",
+     "role": "radar.front.right_center"
     },
     "front_right": {
      "start_byte": 7,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "front R"
+     "label": "front R",
+     "unit": "%",
+     "role": "radar.front.right"
     },
     "radar_shown": {
      "start_byte": 8,
-     "label": "radar shown"
+     "label": "radar shown",
+     "role": "radar.shown"
     }
    }
   },
@@ -939,59 +1013,75 @@
    "signals": {
     "right_front": {
      "start_byte": 0,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "right F"
+     "label": "right F",
+     "unit": "%",
+     "role": "radar.right.front"
     },
     "right_front_mid": {
      "start_byte": 1,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "right FM"
+     "label": "right FM",
+     "unit": "%",
+     "role": "radar.right.front_center"
     },
     "right_rear_mid": {
      "start_byte": 2,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "right RM"
+     "label": "right RM",
+     "unit": "%",
+     "role": "radar.right.rear_center"
     },
     "right_rear": {
      "start_byte": 3,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "right R"
+     "label": "right R",
+     "unit": "%",
+     "role": "radar.right.rear"
     },
     "left_front": {
      "start_byte": 4,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "left F"
+     "label": "left F",
+     "unit": "%",
+     "role": "radar.left.front"
     },
     "left_front_mid": {
      "start_byte": 5,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "left FM"
+     "label": "left FM",
+     "unit": "%",
+     "role": "radar.left.front_center"
     },
     "left_rear_mid": {
      "start_byte": 6,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "left RM"
+     "label": "left RM",
+     "unit": "%",
+     "role": "radar.left.rear_center"
     },
     "left_rear": {
      "start_byte": 7,
-     "factor": -1,
-     "offset": 4,
+     "factor": -25,
+     "offset": 100,
      "min_value": 0,
-     "label": "left R"
+     "label": "left R",
+     "unit": "%",
+     "role": "radar.left.rear"
     }
    }
   },
@@ -1004,7 +1094,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "kPa",
-     "label": "front L"
+     "label": "front L",
+     "role": "tpms.front_left.pressure"
     },
     "front_right": {
      "start_byte": 4,
@@ -1012,7 +1103,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "kPa",
-     "label": "front R"
+     "label": "front R",
+     "role": "tpms.front_right.pressure"
     },
     "rear_left": {
      "start_byte": 6,
@@ -1020,7 +1112,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "kPa",
-     "label": "rear L"
+     "label": "rear L",
+     "role": "tpms.rear_left.pressure"
     },
     "rear_right": {
      "start_byte": 8,
@@ -1028,7 +1121,8 @@
      "factor": 0.1,
      "max_value": 6553.4,
      "unit": "kPa",
-     "label": "rear R"
+     "label": "rear R",
+     "role": "tpms.rear_right.pressure"
     }
    }
   },
@@ -1054,7 +1148,8 @@
      "size": 2,
      "max_value": 65534,
      "unit": "km",
-     "label": "service in"
+     "label": "service in",
+     "role": "service.distance"
     }
    }
   },
@@ -1064,9 +1159,48 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x11",
+   "data": "09 00 22 01 00 00 80 7D",
+   "expect": {
+    "ignition.acc": true,
+    "handbrake": true,
+    "lights.on": false,
+    "steering.angle": -12.5,
+    "wheel_key": "volume -"
+   }
+  },
+  {
+   "cmd": "0x41",
+   "data": "00 01 04 07 04 04 04 04",
+   "expect": {
+    "radar.rear.left": 100,
+    "radar.rear.left_center": 75,
+    "radar.rear.right_center": 0,
+    "radar.rear.right": null
+   }
+  },
+  {
+   "cmd": "0x48",
+   "data": "00 00 08 FC 08 FC 08 98 08 98",
+   "expect": {
+    "tpms.front_left.pressure": 230,
+    "tpms.rear_right.pressure": 220
+   }
+  },
+  {
+   "cmd": "0x31",
+   "data": "00 00 00 00 00 00 00 00 00 00 00 64",
+   "expect": {
+    "outside.temp": 10
+   }
+  }
+ ]
 }

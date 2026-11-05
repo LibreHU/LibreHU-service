@@ -33,7 +33,8 @@ class CanVehicleTest {
         val radar = clio.decode(frame(0x41, 0, 1, 4, 7, 4, 4, 4, 4))
         // 7 is out of range (4 - 7 < 0): dropped, like CliOS' min_value.
         assertEquals(7, radar.size)
-        assertEquals(4.0, radar.first().number!!, 1e-9)
+        // Proximity in % (format 2, role radar.rear.left): level (4 - raw) × 25.
+        assertEquals(100.0, radar.first().number!!, 1e-9)
     }
 
     @Test

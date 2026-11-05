@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "vw-mqb-hiworld",
  "name": "Volkswagen, Skoda (Hiworld VWP004, MQB)",
  "description": "Hiworld box, protocol VWP004 (Volkswagen MQB), from Hiworld's own app (HdMQB7Protocol). This box needs no car type: the car chosen only names it. Older Volkswagen cars that Hiworld's catalogue lists with this box but its app decodes as VWP003 are in vw-pq-hiworld. Not tried on a car yet.",
@@ -156,11 +156,26 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "ACC": 0,
-      "lights": 1,
-      "reverse": 2,
-      "handbrake": 3,
-      "radar": 5,
+      "ACC": {
+       "bit": 0,
+       "role": "ignition.acc"
+      },
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
+      "handbrake": {
+       "bit": 3,
+       "role": "handbrake"
+      },
+      "radar": {
+       "bit": 5,
+       "role": "radar.shown"
+      },
       "mute": 7
      }
     },
@@ -191,7 +206,9 @@
      "endian": "little",
      "signed": true,
      "factor": -1,
-     "label": "steering (raw)"
+     "label": "steering angle",
+     "unit": "°",
+     "role": "steering.angle"
     }
    }
   },
@@ -201,25 +218,56 @@
     "doors": {
      "start_byte": 2,
      "bits": {
-      "front left": 7,
-      "front right": 6,
-      "rear left": 5,
-      "rear right": 4,
-      "trunk": 3,
-      "hood": 2
+      "front left": {
+       "bit": 7,
+       "role": "door.front_left"
+      },
+      "front right": {
+       "bit": 6,
+       "role": "door.front_right"
+      },
+      "rear left": {
+       "bit": 5,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 4,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      }
      }
     },
     "consumption": {
      "start_byte": 3,
-     "label": "instant consumption"
+     "label": "instant consumption",
+     "role": "fuel.instant"
     },
     "warnings": {
      "start_byte": 6,
      "bits": {
-      "low battery": 7,
-      "low oil": 6,
-      "seat belt": 5,
-      "washer fluid": 4
+      "low battery": {
+       "bit": 7,
+       "role": "battery.warning"
+      },
+      "low oil": {
+       "bit": 6,
+       "role": "engine.oil_warning"
+      },
+      "seat belt": {
+       "bit": 5,
+       "role": "seatbelt.warning"
+      },
+      "washer fluid": {
+       "bit": 4,
+       "role": "washer.warning"
+      }
      }
     },
     "fuel": {
@@ -229,7 +277,8 @@
     "battery": {
      "start_byte": 8,
      "unit": "V",
-     "label": "battery (whole volts)"
+     "label": "battery (whole volts)",
+     "role": "battery.voltage"
     }
    }
   },
@@ -240,19 +289,22 @@
      "start_byte": 6,
      "offset": -40,
      "unit": "°C",
-     "label": "oil temperature"
+     "label": "oil temperature",
+     "role": "engine.oil_temp"
     },
     "coolant": {
      "start_byte": 7,
      "offset": -40,
      "unit": "°C",
-     "label": "coolant temperature"
+     "label": "coolant temperature",
+     "role": "engine.coolant_temp"
     },
     "rpm": {
      "start_byte": 8,
      "size": 2,
      "unit": "rpm",
-     "label": "engine speed"
+     "label": "engine speed",
+     "role": "engine.rpm"
     }
    }
   },
@@ -262,8 +314,14 @@
     "turn": {
      "start_byte": 1,
      "bits": {
-      "right": 0,
-      "left": 1
+      "right": {
+       "bit": 0,
+       "role": "turn.right"
+      },
+      "left": {
+       "bit": 1,
+       "role": "turn.left"
+      }
      }
     }
    }
@@ -311,9 +369,38 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x19",
+   "data": "00 00 00 00 00 00 82 7D 03 20",
+   "expect": {
+    "engine.oil_temp": 90,
+    "engine.coolant_temp": 85,
+    "engine.rpm": 800
+   }
+  },
+  {
+   "cmd": "0x12",
+   "data": "00 00 80 00 00 00 20 00 0C",
+   "expect": {
+    "door.front_left": true,
+    "door.trunk": false,
+    "seatbelt.warning": true,
+    "battery.voltage": 12
+   }
+  },
+  {
+   "cmd": "0x11",
+   "data": "00 00 00 00 00 00 00 01",
+   "expect": {
+    "steering.angle": -256
+   }
+  }
+ ]
 }

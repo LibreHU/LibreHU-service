@@ -60,12 +60,21 @@ object CanMonitor {
             if (value.family !== field.family) synchronized(this) { parser = value.family.parser(::onFrame) }
             field = value
             _values.value = emptyMap()
+            _roles.value = emptyMap()
         }
 
     private val _values = MutableStateFlow<Map<String, CanValue>>(emptyMap())
 
     /** Last value of each decoded signal, keyed by message and signal. */
     val values: StateFlow<Map<String, CanValue>> = _values.asStateFlow()
+
+    private val _roles = MutableStateFlow<Map<String, CanValue>>(emptyMap())
+
+    /**
+     * Last value of each role (org.librehu.core.can.CanRoles: `steering.angle`, `radar.rear.left`, `door.front_left`…),
+     * whatever the car profile: what LibreHU's features read.
+     */
+    val roles: StateFlow<Map<String, CanValue>> = _roles.asStateFlow()
 
     private var parser: CanBoxParser = vehicle.family.parser(::onFrame)
 
@@ -110,6 +119,9 @@ object CanMonitor {
         while (history.size > 20_000) history.removeFirst()
         frameListener?.invoke(f)
         val decoded = vehicle.decode(f)
+        // Roles first: a feature collecting [values] reads [roles] of the same message.
+        val byRole = decoded.filter { it.role != null }
+        if (byRole.isNotEmpty()) _roles.value = _roles.value + byRole.associateBy { it.role!! }
         if (decoded.isNotEmpty()) _values.value = _values.value + decoded.associateBy { "%02X.%s".format(f.cmd, it.key) }
         if (paused) return
         val old = _byCmd.value[f.cmd]
@@ -129,6 +141,7 @@ object CanMonitor {
         _byCmd.value = emptyMap()
         _lines.value = emptyList()
         _values.value = emptyMap()
+        _roles.value = emptyMap()
         history.clear()
         sent.clear()
     }

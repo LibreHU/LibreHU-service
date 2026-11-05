@@ -1,6 +1,6 @@
 {
  "format": "librehu-can-vehicle",
- "version": 1,
+ "version": 2,
  "id": "vw-pq-hiworld",
  "name": "Volkswagen, Skoda, older Mercedes (Hiworld VWP003, PQ)",
  "description": "Hiworld box, protocol VWP003 (older Volkswagen / Skoda platforms, older Mercedes), from Hiworld's own app (HdMQB6Protocol). This box needs no car type: the car chosen only names it. Also the older Volkswagen cars (PQ platforms) that Hiworld's catalogue lists with the VWP004 box but its app decodes with this protocol. Not tried on a car yet.",
@@ -202,19 +202,35 @@
     "status": {
      "start_byte": 0,
      "bits": {
-      "ACC": 0,
-      "lights": 1,
-      "reverse": 2,
-      "handbrake": 3,
+      "ACC": {
+       "bit": 0,
+       "role": "ignition.acc"
+      },
+      "lights": {
+       "bit": 1,
+       "role": "lights.on"
+      },
+      "reverse": {
+       "bit": 2,
+       "role": "gear.reverse"
+      },
+      "handbrake": {
+       "bit": 3,
+       "role": "handbrake"
+      },
       "key in": 4,
-      "radar": 5,
+      "radar": {
+       "bit": 5,
+       "role": "radar.shown"
+      },
       "bluetooth": 6
      }
     },
     "speed": {
      "start_byte": 1,
      "unit": "km/h",
-     "label": "speed"
+     "label": "speed",
+     "role": "vehicle.speed"
     },
     "wheel_key": {
      "start_byte": 2,
@@ -285,17 +301,36 @@
      "factor": 0.5,
      "offset": -40,
      "unit": "°C",
-     "label": "outside temperature (0 = none)"
+     "label": "outside temperature (0 = none)",
+     "role": "outside.temp"
     },
     "doors": {
      "start_byte": 7,
      "bits": {
-      "front right": 7,
-      "front left": 6,
-      "rear left": 5,
-      "rear right": 4,
-      "trunk": 3,
-      "hood": 2
+      "front right": {
+       "bit": 7,
+       "role": "door.front_right"
+      },
+      "front left": {
+       "bit": 6,
+       "role": "door.front_left"
+      },
+      "rear left": {
+       "bit": 5,
+       "role": "door.rear_left"
+      },
+      "rear right": {
+       "bit": 4,
+       "role": "door.rear_right"
+      },
+      "trunk": {
+       "bit": 3,
+       "role": "door.trunk"
+      },
+      "hood": {
+       "bit": 2,
+       "role": "door.hood"
+      }
      }
     }
    }
@@ -306,11 +341,13 @@
     "oil_temp": {
      "start_byte": 2,
      "unit": "°C",
-     "label": "oil temperature (255 = none)"
+     "label": "oil temperature (255 = none)",
+     "role": "engine.oil_temp"
     },
     "consumption": {
      "start_byte": 3,
-     "label": "instant consumption (whole part)"
+     "label": "instant consumption (whole part)",
+     "role": "fuel.instant"
     },
     "gear": {
      "start_byte": 5,
@@ -319,10 +356,22 @@
     "warnings": {
      "start_byte": 6,
      "bits": {
-      "low oil": 7,
-      "low battery": 6,
-      "seat belt": 5,
-      "washer fluid": 4,
+      "low oil": {
+       "bit": 7,
+       "role": "engine.oil_warning"
+      },
+      "low battery": {
+       "bit": 6,
+       "role": "battery.warning"
+      },
+      "seat belt": {
+       "bit": 5,
+       "role": "seatbelt.warning"
+      },
+      "washer fluid": {
+       "bit": 4,
+       "role": "washer.warning"
+      },
       "engine oil": 3
      }
     },
@@ -333,7 +382,8 @@
     "battery": {
      "start_byte": 8,
      "unit": "V",
-     "label": "battery (whole volts)"
+     "label": "battery (whole volts)",
+     "role": "battery.voltage"
     }
    }
   },
@@ -344,20 +394,23 @@
      "start_byte": 0,
      "size": 3,
      "unit": "km",
-     "label": "mileage"
+     "label": "mileage",
+     "role": "vehicle.odometer"
     },
     "speed": {
      "start_byte": 3,
      "size": 2,
      "factor": 0.1,
      "unit": "km/h",
-     "label": "speed"
+     "label": "speed",
+     "role": "vehicle.speed"
     },
     "rpm": {
      "start_byte": 8,
      "size": 2,
      "unit": "rpm",
-     "label": "engine speed"
+     "label": "engine speed",
+     "role": "engine.rpm"
     }
    }
   },
@@ -367,21 +420,51 @@
     "lights": {
      "start_byte": 0,
      "bits": {
-      "low beam": 7,
-      "high beam": 6,
-      "side lights": 5,
-      "front fog": 4,
-      "rear fog": 3,
-      "brake": 2,
-      "reversing": 1
+      "low beam": {
+       "bit": 7,
+       "role": "lights.low_beam"
+      },
+      "high beam": {
+       "bit": 6,
+       "role": "lights.high_beam"
+      },
+      "side lights": {
+       "bit": 5,
+       "role": "lights.parking"
+      },
+      "front fog": {
+       "bit": 4,
+       "role": "lights.fog_front"
+      },
+      "rear fog": {
+       "bit": 3,
+       "role": "lights.fog_rear"
+      },
+      "brake": {
+       "bit": 2,
+       "role": "lights.brake"
+      },
+      "reversing": {
+       "bit": 1,
+       "role": "lights.reverse"
+      }
      }
     },
     "turn": {
      "start_byte": 1,
      "bits": {
-      "left": 7,
-      "right": 6,
-      "hazard": 3
+      "left": {
+       "bit": 7,
+       "role": "turn.left"
+      },
+      "right": {
+       "bit": 6,
+       "role": "turn.right"
+      },
+      "hazard": {
+       "bit": 3,
+       "role": "turn.hazard"
+      }
      }
     }
    }
@@ -429,9 +512,40 @@
     "version": {
      "start_byte": 0,
      "ascii": true,
-     "label": "version"
+     "label": "version",
+     "role": "box.version"
     }
    }
   }
- }
+ },
+ "examples": [
+  {
+   "cmd": "0x13",
+   "data": "01 00 00 03 E8 00 00 00 03 20",
+   "expect": {
+    "vehicle.odometer": 65536,
+    "speed": 100,
+    "engine.rpm": 800
+   }
+  },
+  {
+   "cmd": "0x73",
+   "data": "00 00 00 00 00 00 78 40",
+   "expect": {
+    "outside.temp": 20,
+    "door.front_left": true,
+    "door.front_right": false
+   }
+  },
+  {
+   "cmd": "0x18",
+   "data": "C0 80",
+   "expect": {
+    "lights.low_beam": true,
+    "lights.high_beam": true,
+    "turn.left": true,
+    "turn.right": false
+   }
+  }
+ ]
 }
