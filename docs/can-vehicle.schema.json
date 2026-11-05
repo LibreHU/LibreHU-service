@@ -22,6 +22,11 @@
     2
    ]
   },
+  "engine": {
+   "type": "string",
+   "pattern": "^(>=|\\^)?\\s*\\d{1,3}(\\.\\d{1,3}){0,2}$",
+   "description": "Engine the profile needs (Semantic Versioning), e.g. \">=2.1\""
+  },
   "id": {
    "type": "string",
    "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$"

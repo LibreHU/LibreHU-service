@@ -200,7 +200,7 @@ Hiworld ont besoin et ce qui rend un profil vérifiable ; un profil `"version": 
 | `start_bit` + `bit_length` | champ de bits à la façon DBC (bit 0 = poids faible des octets lus), au lieu de `mask` / `shift` |
 | `examples` | auto-tests du profil : message + valeurs attendues (par nom de signal, de bit ou par rôle ; `null` = aucune valeur). Les tests du service vérifient ceux de chaque profil intégré |
 
-**Rôles** (`core/src/main/kotlin/org/librehu/core/can/CanRoles.kt`, 94 rôles) : alignés sur la **COVESA Vehicle Signal
+**Rôles** (`core/src/main/kotlin/org/librehu/core/can/CanRoles.kt`, 105 rôles) : alignés sur la **COVESA Vehicle Signal
 Specification 4.2** (<https://github.com/COVESA/vehicle_signal_specification>, export `vss_rel_4.2.csv`) quand elle a
 l'équivalent, avec son unité et son sens (angle du volant : positif à gauche ; portes : chemins d'une voiture conduite
 à gauche) : `vehicle.speed` → `Vehicle.Speed`, `engine.rpm` → `Vehicle.Powertrain.CombustionEngine.Speed`,
@@ -275,6 +275,32 @@ un éditeur (VS Code…) complète et vérifie un profil qui commence par
 cette clé). Les 8
 profils intégrés y sont conformes (vérifié avec `jsonschema` 4.26). Le service, lui, vérifie en plus les rôles, les
 formules et les `examples` à l'import.
+
+**Version du moteur (service v168)** : le moteur des données voiture suit le [Semantic Versioning 2.0.0](https://semver.org/)
+(`CanEngine.VERSION`, aujourd'hui **2.5.0**) : MAJEURE si un profil de l'ancienne majeure pouvait être lu autrement
+(les anciens formats restent lus), MINEURE quand le format gagne quelque chose, CORRECTIF pour une correction. Un profil
+dit le moteur qu'il demande, `"engine": ">=2.1"` (cette version ou plus récente) ou `"^2.1"` (dans la majeure 2) ; un
+service trop ancien le refuse avec un message clair (« mettre à jour LibreHU service ») au lieu de le lire à moitié.
+L'export écrit le moteur minimum calculé d'après ce que le profil utilise (`CanEngine.requiredBy`).
+
+| Moteur | Apport | Service |
+|---|---|---|
+| 1.0.0 | format 1 (messages, signaux, link, variants, wheel_keys) | v17-v162 |
+| 2.0.0 | format 2 : rôles VSS, mux / cases, when, invalid, labels, start_bit, examples | v163 |
+| 2.1.0 | formules, extends, patch par voiture | v164 |
+| 2.2.0 | trame décrite dans le profil | v165 |
+| 2.3.0 | messages construits, on change, commandes | v166 |
+| 2.4.0 | plusieurs sources de touches, molettes | v167 |
+| 2.5.0 | champ `engine`, sources combinées (boîtier + OBD) | v168 |
+
+**Boîtier CAN et sonde OBD en même temps (service v168)** : `CarData` (cœur) et `CarDataHub` (service) réunissent les
+valeurs par rôle de toutes les sources : le boîtier CAN (profil choisi) et l'adaptateur OBD-II ELM327 (USB ou Bluetooth,
+onglet OBD). Pour un rôle donné par les deux, **le boîtier passe en premier** ; l'adaptateur complète ce que le boîtier
+ne donne pas (régime, température d'eau sur la Clio 3…) ; une source qui s'arrête retire ses valeurs, l'autre reste.
+Valeurs OBD (mode 01, SAE J1979) → rôles : vitesse, régime, eau, huile, carburant %, température extérieure, charge,
+pression d'admission, débit d'air, papillon, température d'admission, avance, temps moteur, débit de carburant, pression
+atmosphérique, distances voyant / depuis effacement (VSS `Vehicle.OBD.*` ou `CombustionEngine.*`), tension (PID 0x42,
+sinon la mesure `ATRV` de l'adaptateur). Les nouvelles fonctions (écran Voiture…) lisent ce hub.
 
 La caméra de recul lit maintenant `steering.angle` et `radar.rear.*` de **n'importe quel profil** (avant : clés du profil
 Clio 3 seulement). Les 8 profils intégrés ont leurs rôles et leurs `examples`. Correction au passage : l'angle du volant

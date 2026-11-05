@@ -1,6 +1,7 @@
 {
  "format": "librehu-can-vehicle",
  "version": 2,
+ "engine": ">=2.0",
  "id": "vw-mqb-raise",
  "name": "Volkswagen, Skoda (Raise / Oudi, MQB)",
  "description": "Raise (RZC) or Oudi box, Volkswagen MQB protocol, from the decoder Hiworld's own app uses for these boxes (ReMQB7Protocol); the cars are the ones that app decodes with it. The head unit says hello once (0x81 01) and acknowledges each message (FF); no car type. Not tried on a car yet.",

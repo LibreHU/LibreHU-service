@@ -1,6 +1,7 @@
 {
  "format": "librehu-can-vehicle",
  "version": 2,
+ "engine": ">=2.1",
  "id": "vw-pq-hiworld",
  "name": "Volkswagen, Skoda, older Mercedes (Hiworld VWP003, PQ)",
  "description": "Hiworld box, protocol VWP003 (older Volkswagen / Skoda platforms, older Mercedes), from Hiworld's own app (HdMQB6Protocol). This box needs no car type: the car chosen only names it. Also the older Volkswagen cars (PQ platforms) that Hiworld's catalogue lists with the VWP004 box but its app decodes with this protocol. Not tried on a car yet.",

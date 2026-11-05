@@ -134,6 +134,8 @@ class LibreHuService : Service() {
         org.librehu.service.atc.AtcTools
             .checkSecondPanelAtStart(this) // second LVDS panel left on without one: stripes from the boot logo
         obd = ObdManager.get(this).also { it.start() }
+        // The car's values by role from the CAN box and the OBD adapter together (box first).
+        org.librehu.service.car.CarDataHub.start(obd)
         // Engine sound made up from the OBD values (off by default).
         org.librehu.service.car.EngineSound.get(this).start()
         // Phone app (LibreHU bridge): Wi-Fi / Bluetooth server, paired phones only.

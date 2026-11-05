@@ -1,6 +1,7 @@
 {
  "format": "librehu-can-vehicle",
  "version": 2,
+ "engine": ">=2.0",
  "id": "vw-mqb-hiworld",
  "name": "Volkswagen, Skoda (Hiworld VWP004, MQB)",
  "description": "Hiworld box, protocol VWP004 (Volkswagen MQB), from Hiworld's own app (HdMQB7Protocol). This box needs no car type: the car chosen only names it. Older Volkswagen cars that Hiworld's catalogue lists with this box but its app decodes as VWP003 are in vw-pq-hiworld. Not tried on a car yet.",

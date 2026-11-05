@@ -1,6 +1,7 @@
 {
  "format": "librehu-can-vehicle",
  "version": 2,
+ "engine": ">=2.0",
  "id": "hyundai-kia-hiworld",
  "name": "Hyundai, Kia (Hiworld HYP001)",
  "description": "Hiworld box, protocol HYP001 (Hyundai / Kia full compatible), from Hiworld's own app (HdKoreaProtocol). Choose your car: its box needs its car type. Not tried on a car yet.",

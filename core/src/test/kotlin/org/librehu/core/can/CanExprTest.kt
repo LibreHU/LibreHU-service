@@ -367,3 +367,82 @@ class CanKeySourcesTest {
         }
     }
 }
+
+/** Version of the engine (Semantic Versioning) and what a profile needs. */
+class CanEngineVersionTest {
+    @Test
+    fun requirements() {
+        val v = CanEngine.Version(2, 5, 0)
+        assertTrue(CanEngine.satisfies(">=2.1", v))
+        assertTrue(CanEngine.satisfies(">=1", v))
+        assertTrue(!CanEngine.satisfies(">=2.6", v))
+        assertTrue(CanEngine.satisfies("^2.3", v))
+        assertTrue(!CanEngine.satisfies("^3.0", v))
+        assertTrue(!CanEngine.satisfies("^1.0", v))
+        assertTrue(CanEngine.satisfies("2.5.0", v))
+        assertTrue(CanEngine.satisfies(">=2.1", CanEngine.Version(3, 0, 0)))
+        assertTrue(!CanEngine.isRequirement("latest"))
+        assertEquals(CanEngine.VERSION, CanEngine.HISTORY.last().first)
+    }
+
+    @Test
+    fun aProfileTooNewIsRefusedClearly() {
+        try {
+            CanVehicles.fromJson("""{"format":"librehu-can-vehicle","version":2,"id":"future-car","engine":">=9.0"}""")
+            fail("accepted")
+        } catch (e: CanVehicleException) {
+            assertTrue(e.message!!, e.message!!.contains("update LibreHU service"))
+        }
+        CanVehicles.fromJson("""{"format":"librehu-can-vehicle","version":2,"id":"now-car","engine":">=2.0"}""")
+    }
+
+    @Test
+    fun smallestEngineOfEachProfile() {
+        assertEquals(">=2.1", CanEngine.requiredBy(CanVehicles.VW_PQ_HIWORLD))
+        assertEquals(">=2.0", CanEngine.requiredBy(CanVehicles.RENAULT_CLIO3_HIWORLD))
+        assertEquals(">=1.0", CanEngine.requiredBy(CanVehicles.GENERIC_HIWORLD))
+        // Written in the JSON, and read back.
+        val json = CanVehicles.toJson(CanVehicles.VW_PQ_HIWORLD)
+        assertTrue(json.contains("\"engine\": \">=2.1\""))
+        assertEquals(CanVehicles.VW_PQ_HIWORLD.messages, CanVehicles.fromJson(json).messages)
+        for (p in CanVehicles.BUILT_IN) assertTrue(p.id, CanEngine.satisfies(CanEngine.requiredBy(p)))
+    }
+}
+
+/** The car's values from the CAN box and an OBD adapter at once ([CarData]). */
+class CarDataTest {
+    private fun v(
+        role: String,
+        n: Double,
+    ) = CanValue(role, role, "test", n, role = role)
+
+    @Test
+    fun boxFirstObdFillsIn() {
+        val d = CarData()
+        d.put(CarData.CANBOX, mapOf("vehicle.speed" to v("vehicle.speed", 50.0), "door.front_left" to v("door.front_left", 1.0)), 0)
+        d.put(CarData.OBD, CarData.obdValues(mapOf("SPEED" to 49.0, "RPM" to 2000.0, "COOLANT_TEMP" to 88.0)), 0)
+        val m = d.merged()
+        assertEquals(50.0, m["vehicle.speed"]!!.value.number!!, 0.01)
+        assertEquals(CarData.CANBOX, m["vehicle.speed"]!!.source)
+        assertEquals(2000.0, m["engine.rpm"]!!.value.number!!, 0.01)
+        assertEquals(CarData.OBD, m["engine.rpm"]!!.source)
+        assertEquals(88.0, m["engine.coolant_temp"]!!.value.number!!, 0.01)
+        // The box gone: the adapter's speed.
+        d.clear(CarData.CANBOX)
+        assertEquals(49.0, d.merged()["vehicle.speed"]!!.value.number!!, 0.01)
+        assertTrue(d.merged()["door.front_left"] == null)
+        // Another priority.
+        val obdFirst = CarData(listOf(CarData.OBD, CarData.CANBOX))
+        obdFirst.put(CarData.CANBOX, mapOf("vehicle.speed" to v("vehicle.speed", 50.0)), 0)
+        obdFirst.put(CarData.OBD, CarData.obdValues(mapOf("SPEED" to 49.0)), 0)
+        assertEquals(CarData.OBD, obdFirst.merged()["vehicle.speed"]!!.source)
+    }
+
+    @Test
+    fun obdRolesExistAndBatteryPrefersThePid() {
+        for (role in CarData.OBD_ROLES.values) assertTrue(role, CanRoles.byId(role) != null)
+        val m = CarData.obdValues(mapOf("BATTERY" to 12.1, "MODULE_VOLTAGE" to 12.4))
+        assertEquals(12.4, m["battery.voltage"]!!.number!!, 0.01)
+        assertEquals("V", m["battery.voltage"]!!.unit)
+    }
+}

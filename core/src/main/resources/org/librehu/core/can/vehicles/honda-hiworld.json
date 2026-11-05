@@ -1,6 +1,7 @@
 {
  "format": "librehu-can-vehicle",
  "version": 2,
+ "engine": ">=2.0",
  "id": "honda-hiworld",
  "name": "Honda, Acura (Hiworld HDP004)",
  "description": "Hiworld box, protocol HDP004 (Honda & Acura full compatible), from Hiworld's own app (HdHondaDAProtocol). Choose your car: its box needs its car type. Accord 2018, Odyssey 2004-2008, Crosstour, Civic 2016-, CR-V 2017 not listed yet (car type from rules not read). Not tried on a car yet.",

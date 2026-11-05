@@ -90,6 +90,18 @@ object CanRoles {
             n("engine.oil_temp", "°C", "$ENGINE.EngineOil.Temperature", "oil temperature", "température d'huile"),
             f("engine.oil_warning", null, "engine oil warning", "alerte huile moteur"),
             n("battery.voltage", "V", "Vehicle.LowVoltageBattery.CurrentVoltage", "battery voltage", "tension batterie"),
+            // OBD-II mode 01 values (SAE J1979) without a role above: VSS has them in Vehicle.OBD or CombustionEngine.
+            n("engine.load", "%", "Vehicle.OBD.EngineLoad", "engine load", "charge moteur"),
+            n("engine.map", "kPa", "$ENGINE.MAP", "intake manifold pressure", "pression d'admission"),
+            n("engine.maf", "g/s", "$ENGINE.MAF", "air flow", "débit d'air"),
+            n("engine.throttle", "%", "$ENGINE.TPS", "throttle position", "position du papillon"),
+            n("engine.intake_temp", "°C", "Vehicle.OBD.IntakeTemp", "intake air temperature", "température d'admission"),
+            n("engine.timing_advance", "°", "Vehicle.OBD.TimingAdvance", "timing advance", "avance à l'allumage"),
+            n("engine.run_time", "s", "Vehicle.OBD.RunTime", "time since engine start", "temps depuis le démarrage"),
+            n("fuel.rate", "L/h", "Vehicle.OBD.FuelRate", "fuel rate", "débit de carburant"),
+            n("outside.pressure", "kPa", "Vehicle.OBD.BarometricPressure", "barometric pressure", "pression atmosphérique"),
+            n("obd.distance_mil", "km", "Vehicle.OBD.DistanceWithMIL", "distance with the engine light on", "distance avec voyant moteur"),
+            n("obd.distance_since_clear", "km", "Vehicle.OBD.DistanceSinceDTCClear", "distance since codes cleared", "distance depuis l'effacement des codes"),
             f("battery.warning", null, "low battery warning", "alerte batterie faible"),
             // Fuel and trip.
             n("fuel.level", "%", "$FUEL.RelativeLevel", "fuel left (% of the tank)", "carburant restant (% du réservoir)"),

@@ -509,6 +509,11 @@ object CanVehicles {
         }
         val version = (root["version"] as? JsonPrimitive)?.intOrNull ?: 0
         if (version > VERSION) throw CanVehicleException("Profile version $version is newer than this service")
+        // Semantic Versioning (CanEngine): the engine this profile needs.
+        root.str("engine")?.let { req ->
+            if (!CanEngine.isRequirement(req)) throw CanVehicleException("engine \"$req\": write it as \">=2.1\" or \"^2.1\"")
+            if (!CanEngine.satisfies(req)) throw CanVehicleException("This profile needs the car data engine $req; this service has ${CanEngine.VERSION}: update LibreHU service")
+        }
         val id = root.str("id")?.trim().orEmpty()
         if (!Regex("[a-z0-9][a-z0-9._-]{1,63}").matches(id)) throw CanVehicleException("Invalid id \"$id\" (a-z, 0-9, . _ -)")
         val box = root.str("box") ?: CanVehicle.BOX_HIWORLD
@@ -788,6 +793,7 @@ object CanVehicles {
             buildJsonObject {
                 put("format", FORMAT)
                 put("version", VERSION)
+                put("engine", CanEngine.requiredBy(v))
                 put("id", v.id)
                 put("name", v.name)
                 put("description", v.description)
