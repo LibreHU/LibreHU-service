@@ -19,6 +19,8 @@ data class CanPack(
     val revision: Int,
     val engine: String,
     val profiles: List<CanVehicle>,
+    /** SHA-256 of the pack file (hex), the one of `dist/index.json` and `dist/SHA256SUMS`. */
+    val sha256: String = "",
 )
 
 object CanPacks {
@@ -37,10 +39,8 @@ object CanPacks {
         sha256: String? = null,
     ): CanPack {
         if (bytes.size > MAX_BYTES) throw CanVehicleException("pack larger than ${MAX_BYTES / 1024} kB")
-        if (sha256 != null) {
-            val got = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-            if (!got.equals(sha256.trim(), ignoreCase = true)) throw CanVehicleException("pack damaged or not the published one (SHA-256 differs)")
-        }
+        val got = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        if (sha256 != null && !got.equals(sha256.trim(), ignoreCase = true)) throw CanVehicleException("pack damaged or not the published one (SHA-256 differs)")
         val root =
             try {
                 Json.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject
@@ -72,6 +72,6 @@ object CanPacks {
             val failures = p.selfTest()
             if (failures.isNotEmpty()) throw CanVehicleException("pack $id: ${p.id} fails its examples: ${failures.first()}")
         }
-        return CanPack(id, str("name") ?: id, (root["revision"] as? JsonPrimitive)?.intOrNull ?: 0, engine, profiles)
+        return CanPack(id, str("name") ?: id, (root["revision"] as? JsonPrimitive)?.intOrNull ?: 0, engine, profiles, got)
     }
 }

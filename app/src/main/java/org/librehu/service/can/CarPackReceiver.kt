@@ -11,8 +11,9 @@ import org.librehu.core.can.CanVehicleException
 /**
  * Packs of car profiles by make, for LibreHU Apps (signature permission `org.librehu.permission.HEADUNIT`), as ordered
  * broadcasts whose result carries the answer:
- * - [ACTION_QUERY]: result data = `{"engine": "2.5.0", "packs": {"renault": 3, …}}` (installed revisions), so that
- *   LibreHU Apps offers only the packs this engine reads and shows which are newer;
+ * - [ACTION_QUERY]: result data = `{"engine": "2.5.0", "packs": {"renault": 3, …}, "sha256": {"renault": "…", …}}`
+ *   (installed revisions and the SHA-256 of each installed file), so that LibreHU Apps offers only the packs this engine
+ *   reads and shows which differ from the published ones;
  * - [ACTION_INSTALL]: the pack, as extra [EXTRA_PACK] (its bytes; a pack is well under the 1 MB of a broadcast) or as
  *   data (a content URI, read permission granted), extra [EXTRA_SHA256] = its digest in the index; result code
  *   [Activity.RESULT_OK] and the revision installed, or [Activity.RESULT_CANCELED] and why;
@@ -27,8 +28,12 @@ class CarPackReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_QUERY -> {
                 val packs = JSONObject()
-                store.packs.value.forEach { (id, p) -> packs.put(id, p.revision) }
-                setResult(Activity.RESULT_OK, JSONObject().put("engine", CanEngine.VERSION).put("packs", packs).toString(), null)
+                val sums = JSONObject()
+                store.packs.value.forEach { (id, p) ->
+                    packs.put(id, p.revision)
+                    sums.put(id, p.sha256)
+                }
+                setResult(Activity.RESULT_OK, JSONObject().put("engine", CanEngine.VERSION).put("packs", packs).put("sha256", sums).toString(), null)
             }
             ACTION_INSTALL -> {
                 val uri = intent.data

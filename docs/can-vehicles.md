@@ -331,7 +331,8 @@ dans l'index. Le service installe un paquet **tout ou rien** (`CanPacks.read` : 
 `examples` passés) dans `files/can-packs/<marque>.json` ; une fiche d'un paquet remplace la fiche intégrée de même
 `id`, les intégrées restent en secours (paquet retiré ou illisible par ce moteur). Pour LibreHU Apps, récepteur
 `can/CarPackReceiver` (permission signature `org.librehu.permission.HEADUNIT`, diffusions ordonnées) :
-`org.librehu.service.QUERY_CAR_PACKS` → `{"engine": "2.5.0", "packs": {"renault": 1, …}}` ;
+`org.librehu.service.QUERY_CAR_PACKS` → `{"engine": "2.5.0", "packs": {"renault": 1, …}, "sha256": {"renault": "…", …}}`
+(révision et SHA-256 de chaque paquet installé ; empreintes publiées aussi dans `dist/SHA256SUMS`) ;
 `org.librehu.service.INSTALL_CAR_PACK` (extra `pack` = les octets du paquet, ou data = URI du fichier avec lecture accordée ; extra `sha256`) → OK + révision, ou
 annulé + raison ; `org.librehu.service.REMOVE_CAR_PACK` (extra `id`). `librehu-car-tool.jar pack <marque>.json
 [sha256]` fait la même vérification sur un ordinateur.

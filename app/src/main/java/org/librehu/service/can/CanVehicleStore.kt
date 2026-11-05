@@ -148,7 +148,7 @@ class CanVehicleStore private constructor(
         _packs.value = loadPacks()
         _vehicles.value = load()
         applySelected()
-        android.util.Log.i("LibreHU-CAN", "car pack ${p.id} revision ${p.revision} installed (${p.profiles.size} profiles)")
+        android.util.Log.i("LibreHU-CAN", "car pack ${p.id} revision ${p.revision} installed (${p.profiles.size} profiles, SHA-256 ${p.sha256})")
         return p
     }
 

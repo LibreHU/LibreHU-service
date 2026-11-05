@@ -490,6 +490,7 @@ class CanPacksTest {
         assertEquals("testmake", p.id)
         assertEquals(7, p.revision)
         assertEquals(listOf("test-car"), p.profiles.map { it.id })
+        assertEquals(sha, p.sha256)
     }
 
     @Test
