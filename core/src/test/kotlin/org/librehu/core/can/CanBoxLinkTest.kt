@@ -243,7 +243,7 @@ class Batch1ProfilesTest {
     @Test
     fun builtInsLoad() {
         val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "vw-pq-raise", "hiworld-generic"), ids)
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "vw-pq-raise", "psa-raise", "psa-raise-keep", "hiworld-generic"), ids)
         assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
         assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
         assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)

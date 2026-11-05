@@ -432,6 +432,12 @@ object CanVehicles {
     /** Volkswagen, Skoda (older PQ platforms), Raise or Oudi box: hello 0x81 01, keys in 0x20, speed, lights / reverse, radar. */
     val VW_PQ_RAISE: CanVehicle by lazy { builtIn("vw-pq-raise") }
 
+    /** Peugeot, Citroën, DS, Raise PSA box (FD framing, 19200 bit/s), original screen removed: car type 0xA7 every second. */
+    val PSA_RAISE: CanVehicle by lazy { builtIn("psa-raise") }
+
+    /** Peugeot, Citroën, Raise PSA box keeping the original small screen. */
+    val PSA_RAISE_KEEP: CanVehicle by lazy { builtIn("psa-raise-keep") }
+
     /** Any car: no decoding, the CAN viewer shows the raw messages. */
     val GENERIC_HIWORLD =
         CanVehicle(
@@ -440,7 +446,7 @@ object CanVehicles {
             description = "No decoding: raw messages, to find the fields of a new car.",
         )
 
-    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, VW_PQ_HIWORLD, VW_MQB_RAISE, VW_PQ_RAISE, GENERIC_HIWORLD) }
+    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, VW_PQ_HIWORLD, VW_MQB_RAISE, VW_PQ_RAISE, PSA_RAISE, PSA_RAISE_KEEP, GENERIC_HIWORLD) }
 
     val DEFAULT_ID = "renault-clio3-hiworld"
 

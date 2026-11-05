@@ -59,6 +59,18 @@ Profils intégrés :
   (petit-boutiste ÷ 16 km/h) ; `0x24` feux / frein / marche AR (D1 quand le message a 2 octets, D0 sinon : seul le cas
   à 2 octets est décodé) ; `0x26` volant D0-D1 (petit-boutiste, signé) ; radars `0x22`, `0x23`, `0x32`, `0x33` (brut,
   0 = rien) ; `0x30` version. Pas de portes ni de données moteur ici (`0x41` multiplexé non décodé) ;
+- `psa-raise` (lot 3, v173) : **Peugeot, Citroën, DS (Raise PSA, écran d'origine retiré)**, 97 voitures
+  (`RePsaProtocol` ; Oudi pour quelques Citroën) : trame **FD** (somme 8 bits), **19 200 bit/s**, pas d'accusé ; bonjour
+  `0x81 01`, puis le **type de voiture `0xA7 [a, b, 00]` chaque seconde** (comme l'appli, `getCarTypeIntervalTime`
+  1 000 ms), 17 types, calculés en rejouant `buildCarTypePacket` (non décompilé : listage `jadx -m fallback`) sur chaque
+  voiture ; aucun envoyé avant d'avoir choisi sa voiture. `0x02` touche D0 (appuyée tant que ≠ 0 ; 60 codes, table
+  `TranslateKey` relue au listage brut) ; `0x29` volant (petit-boutiste signé × 540 / 5 450) ; `0x36` température
+  extérieure (signe + valeur) ; `0x38` portes D0, veilleuses / P / marche AR D3 ; `0x33` conso instantanée, autonomie,
+  distance restante ; `0x34` / `0x35` trajets 1 et 2 ; `0x30` / `0x32` radar (0-4, 5 = rien) ; `0x7F` version. Voitures :
+  celles que choisissent `PeugeotRaiseManager`, `CitroenRaiseManager`, `DSRaiseManager`, `CitroenOudiManager` ;
+- `psa-raise-keep` (lot 3, v173) : **Peugeot, Citroën (Raise PSA, petit écran d'origine gardé)**, 14 voitures
+  (`RePsaProtocol_KeepOriginalDisplay`) : mêmes messages, radar en `0x08`, type `0xA7 [05, finition, 00]`, sa propre
+  table de touches ;
 - `hiworld-generic` : aucun décodage, messages bruts, pour étudier une nouvelle voiture.
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
@@ -79,6 +91,8 @@ version publiée : <https://librehu.github.io/docs.html#can-cars>) :
 | Hiworld VWP003 (`vw-pq-hiworld`) | Volkswagen, Skoda (PQ), Mercedes-Benz (anciens) | 42 | v159 ; 9 VW : v160 |
 | Raise / Oudi MQB (`vw-mqb-raise`) | Volkswagen, Skoda (MQB) | 61 | v161 |
 | Raise / Oudi PQ (`vw-pq-raise`) | Volkswagen, Skoda (PQ) | 49 | v162 |
+| Raise PSA (`psa-raise`) | Peugeot, Citroën, DS | 97 | v173 |
+| Raise PSA, écran gardé (`psa-raise-keep`) | Peugeot, Citroën | 14 | v173 |
 
 Clio 3 : profil sélectionnable en v17 (06/10/2026), décodage LNP002 complet en v23 ; touches du volant envoyées par
 un boîtier Hiworld seulement avec le dialogue (v144). Seule la Clio 3 est essayée sur une voiture.

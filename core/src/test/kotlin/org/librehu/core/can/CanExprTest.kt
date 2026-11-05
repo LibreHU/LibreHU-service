@@ -509,3 +509,30 @@ class CanPacksTest {
         }
     }
 }
+
+/** PSA with a Raise box (RePsaProtocol): FD framing, car type 0xA7 every second, no acknowledgement. */
+class PsaRaiseTest {
+    private fun hex(b: ByteArray) = b.joinToString(" ") { "%02X".format(it) }
+
+    @Test
+    fun linkAndCarType() {
+        val p = CanVehicles.PSA_RAISE
+        assertEquals(97, p.variants.size)
+        assertEquals(CanBoxFamilies.RAISE_FD, p.family)
+        assertEquals(19200, p.baud)
+        assertTrue(!p.link.ack)
+        // A Peugeot 308 2012-2015: hello 0x81 01, then its car type (getPacket(0xA7, [3, 0, 0]): FD 06 A7 03 00 00 B0) every second.
+        val car = p.withVariant("Peugeot 308 2012-2015, all trims")
+        val out = mutableListOf<String>()
+        val l = CanBoxLink(car.family, car.link, { b, w -> out += "$w ${hex(b)}" })
+        l.start(0)
+        l.tick(1_000)
+        l.tick(2_000)
+        assertEquals(listOf("connect FD 04 81 01 86", "car type FD 06 A7 03 00 00 B0", "car type FD 06 A7 03 00 00 B0"), out)
+        // Without a car chosen, no car type is sent.
+        val none = mutableListOf<String>()
+        CanBoxLink(p.family, p.link, { _, w -> none += w }).apply { start(0); tick(5_000) }
+        assertEquals(listOf("connect"), none)
+        assertEquals("05 02 00", CanVehicles.PSA_RAISE_KEEP.variants.first { it.name.contains("medium") }.send["car type"]!!.joinToString(" ") { "%02X".format(it) })
+    }
+}
