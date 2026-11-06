@@ -323,6 +323,8 @@ fait utiliser à distance, doit en donner le code source complet sous la même l
 Le correctif root de Reo Au In (`RootShell`, `su 0 sh -c`) est publié sous la même licence, avec son accord
 (06/11/2026).
 
+L'appli affiche ces mentions dans l'onglet **Infos** (section Système) : version, « Basé sur LibreHU », licence et termes additionnels, adresse du code source, contact, projets repris et texte de leurs licences.
+
 ### Code, ressources et données d'autres projets
 
 Ils gardent leur licence.

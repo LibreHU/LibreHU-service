@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Memory
@@ -99,6 +100,7 @@ enum class Tab(
     AUDIO_DIAG(Icons.Default.GraphicEq, R.string.tab_audio_diag),
     DIAG(Icons.Default.BugReport, R.string.tab_diag),
     ATC(Icons.Default.DeveloperBoard, R.string.tab_atc),
+    INFO(Icons.Default.Info, R.string.info_title),
 }
 
 /** Entries of the rail, Android Auto style; a section with several pages shows them as pills on top. */
@@ -113,7 +115,7 @@ enum class Section(
     BLUETOOTH(Icons.Default.Bluetooth, R.string.tab_bluetooth, listOf(Tab.BLUETOOTH, Tab.PHONE)),
     PROJECTION(Icons.Default.Smartphone, R.string.section_projection, listOf(Tab.ANDROID_AUTO, Tab.CARPLAY)),
     DISPLAY(Icons.Default.Brightness6, R.string.section_display, listOf(Tab.DISPLAY, Tab.TOUCH, Tab.LIGHTS)),
-    SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS, Tab.NETWORK, Tab.TWEAKS)),
+    SYSTEM(Icons.Default.Settings, R.string.tab_system, listOf(Tab.SYSTEM, Tab.GPS, Tab.NETWORK, Tab.TWEAKS, Tab.INFO)),
     ADVANCED(Icons.Default.Tune, R.string.section_advanced, listOf(Tab.MCU, Tab.MCU_TOOLS, Tab.AUDIO_DIAG, Tab.ATC, Tab.DIAG)),
     ;
 
@@ -181,6 +183,7 @@ fun AppScreen(
             Tab.AUDIO_DIAG -> AudioDiagScreen(client, actions)
             Tab.DIAG -> DiagScreen(client, actions)
             Tab.ATC -> AtcScreen(actions)
+            Tab.INFO -> InfoContent()
         }
     }
     // LibreHU Launcher's car styles (the launcher asks the app for them): the sections as soft keys or tabs.
