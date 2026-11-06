@@ -38,6 +38,20 @@ class CanVehicleStore private constructor(
     private val _selected = MutableStateFlow(prefs.getString(KEY_SELECTED, null) ?: CanVehicles.DEFAULT_ID)
     val selected: StateFlow<String> = _selected.asStateFlow()
 
+    /** What LibreHU's TWRP reads (`/sdcard/TWRP/ujc201_can.conf`, [TwrpCanConf]), shown in the CAN tab. */
+    data class TwrpSync(
+        val profile: String,
+        val box: String,
+        /** TWRP can read the box's framing. */
+        val readable: Boolean,
+        /** Keys of the profile with a TWRP action. */
+        val keys: Int,
+        val written: Boolean,
+    )
+
+    private val _twrp = MutableStateFlow<TwrpSync?>(null)
+    val twrp: StateFlow<TwrpSync?> = _twrp.asStateFlow()
+
     init {
         applySelected()
     }
@@ -53,12 +67,16 @@ class CanVehicleStore private constructor(
      * `/sdcard/TWRP/ujc201_can.conf` for LibreHU's TWRP ([TwrpCanConf]), written when it changes: directly, else as
      * root (the storage permission may not be granted).
      */
-    private fun writeTwrpConf(v: CanVehicle) {
+    private fun writeTwrpConf(
+        v: CanVehicle,
+        force: Boolean = false,
+    ) {
         val text = TwrpCanConf.of(v)
         val f = File(android.os.Environment.getExternalStorageDirectory(), "TWRP/ujc201_can.conf")
-        if (runCatching { f.readText() }.getOrNull() == text) return
+        val same = !force && runCatching { f.readText() }.getOrNull() == text
         val ok =
-            runCatching {
+            same ||
+                runCatching {
                 f.parentFile?.mkdirs()
                 f.writeText(text)
             }.isSuccess ||
@@ -67,7 +85,14 @@ class CanVehicleStore private constructor(
                         org.librehu.service.root.RootShell.run("mkdir -p /data/media/0/TWRP") != null &&
                         org.librehu.service.root.RootShell.write("/data/media/0/TWRP/ujc201_can.conf", text)
                 )
-        android.util.Log.i("LibreHU-CAN", if (ok) "TWRP CAN dialogue written for ${v.id}" else "TWRP CAN dialogue not written (storage)")
+        _twrp.value = TwrpSync(v.name, v.family.name, TwrpCanConf.framing(v) != null, text.lineSequence().count { it.startsWith("key ") }, ok)
+        if (!same) android.util.Log.i("LibreHU-CAN", if (ok) "TWRP CAN dialogue written for ${v.id}" else "TWRP CAN dialogue not written (storage)")
+    }
+
+    /** Writes TWRP's file again now (CAN tab). */
+    fun writeTwrpNow() {
+        val v = current()
+        Thread({ writeTwrpConf(v, force = true) }, "twrp-can-conf").start()
     }
 
     /** Built in, or from an installed pack (not removable one by one, not replaceable by an import). */

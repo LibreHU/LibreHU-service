@@ -194,17 +194,26 @@ class CanBoxFamiliesTest {
 }
 
 class TwrpCanConfTest {
+    private fun hex(b: ByteArray) = b.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+
     @Test
     fun clio3() {
         val c = TwrpCanConf.of(CanVehicles.RENAULT_CLIO3_HIWORLD)
+        assertTrue(c.contains("\nframe 5A A5\norder lc\nlenoff 0\nsum sum 1 -1 00 lcd\nackcmd FF\nnoack FE FF\nbaud 38400\n"))
         assertTrue(c.contains("\nack 1\n"))
         assertTrue(c.contains("\nsend 1000 30000 5A A5 02 24 00 31 56\n"))
         assertTrue(c.contains("\nsend 1500 10000 5A A5 0D E1 0A 20 20 20 20 20 20 20 20 20 20 20 20 77\n"))
         assertTrue(c.contains("\nkeys 11 02 03 01 01 08\n"))
+        // Key names of the profile -> TWRP actions (the table TWRP had built in).
+        assertTrue(c.contains("\nkey 01 volup volume_+\n"))
+        assertTrue(c.contains("\nkey 05 up previous\n"))
+        assertTrue(c.contains("\nkey 0A back mode\n"))
+        assertTrue(c.contains("\nkey 14 back hang_up\n"))
+        assertTrue(!c.contains("voice"))
     }
 
     @Test
-    fun raiseBoxNoAckNorKeysInTwrp() {
+    fun raiseBoxAcknowledgedAndKeysInTwrp() {
         val v =
             CanVehicles.fromJson(
                 """{"format":"librehu-can-vehicle","version":1,"id":"raise-car","box":"raise",
@@ -212,9 +221,42 @@ class TwrpCanConfTest {
                    "wheel_keys":{"cmd":"0x20","code_byte":0,"state_byte":1},"messages":{}}""",
             )
         val c = TwrpCanConf.of(v)
-        assertTrue(c.contains("\nack 0\n"))
+        assertTrue(c.contains("\nframe 2E\norder cl\nlenoff 0\nsum sum 1 0 FF lcd\nackraw FF\nnoack\n"))
+        assertTrue(c.contains("\nack 1\n"))
         assertTrue(c.contains("\nsend 1000 0 2E 81 01 01 7C\n"))
-        assertTrue(!c.contains("keys"))
+        assertTrue(c.contains("\nkeys 20 00 01 01 FF FF\n"))
+    }
+
+    @Test
+    fun builtInFamiliesReadTheSameInTwrp() {
+        val data = byteArrayOf(0x01, 0x7F, 0xFF.toByte(), 0x00, 0x42)
+        for (family in CanBoxFamilies.ALL) {
+            val f = TwrpCanConf.framing(family.id)!!
+            for (n in 0..data.size) {
+                val d = data.copyOf(n)
+                assertEquals(family.id, hex(family.encode(0x11, d)), hex(f.encode(0x11, d)))
+            }
+            val frame = CanboxFrame(0x11, byteArrayOf(0x08, 0x01), true)
+            val ack = family.ack(frame)
+            val twrp =
+                when {
+                    0x11 in f.noAckFor -> null
+                    f.ackRaw != null -> ByteArray(f.ackRaw!!.size) { f.ackRaw!![it].toByte() }
+                    f.ackCmd != null -> f.encode(f.ackCmd!!, byteArrayOf(0x11))
+                    else -> null
+                }
+            assertEquals(family.id, ack?.let(::hex), twrp?.let(::hex))
+        }
+    }
+
+    @Test
+    fun keyNamesToTwrpActions() {
+        assertEquals("volup", TwrpCanConf.action("volume +"))
+        assertEquals("up", TwrpCanConf.action("previous / answer"))
+        assertEquals("enter", TwrpCanConf.action("mute (hold: power)"))
+        assertEquals("back", TwrpCanConf.action("hang up / back"))
+        assertEquals("home", TwrpCanConf.action("navigation"))
+        assertEquals(null, TwrpCanConf.action("voice"))
     }
 }
 

@@ -1392,4 +1392,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="info_others">Code, resources and data of other projects</string>
     <string name="info_others_hint">Tap one to read its licence.</string>
     <string name="info_close">Close</string>
+    <string name="can_twrp">TWRP</string>
+    <string name="can_twrp_hint">LibreHU\'s TWRP reads the CAN box like Android does: the profile chosen above (box, dialogue, steering wheel keys and what each key does there) is written for it to /sdcard/TWRP/ujc201_can.conf each time it changes. Nothing to set in TWRP. TWRP build 13 reads Hiworld boxes only.</string>
+    <string name="can_twrp_state">Profile %1$s · %2$s · %3$d keys usable in TWRP</string>
+    <string name="can_twrp_pending">Not written yet.</string>
+    <string name="can_twrp_unreadable">TWRP cannot read this box (unknown framing): no keys there.</string>
+    <string name="can_twrp_not_written">The file could not be written (storage access or root).</string>
+    <string name="can_twrp_write">Write for TWRP again</string>
 </resources>

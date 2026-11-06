@@ -53,7 +53,7 @@ Profils intégrés :
   version. Voitures : celles que l'appli décode avec ce décodeur (`VolkswagenReManager`, `VolkswagenOudiManager`,
   `SkodaReManager`, `SkodaOudiManager`, par modèle et année), boîtiers Raise et Oudi réunis. Pas de régime ni de
   température moteur dans ce protocole ; les messages multiplexés (`0x40`, `0x50` : autonomie, consommations, TPMS
-  `0x66`) ne sont pas décodés. Dans TWRP, seul le bonjour est envoyé (accusés et touches : boîtiers Hiworld seulement) ;
+  `0x66`) ne sont pas décodés. TWRP lit aussi ce boîtier (trame, accusés `FF`, touches) ;
 - `vw-pq-raise` (lot 2, v162) : **Volkswagen, Skoda (Raise / Oudi, PQ)**, 49 voitures (`RePQProtocol`), même liaison
   que `vw-mqb-raise` (bonjour `0x81 01`, accusés `FF`) : `0x20` touche D0 / état D1 ; `0x16` vitesse D0-D1
   (petit-boutiste ÷ 16 km/h) ; `0x24` feux / frein / marche AR (D1 quand le message a 2 octets, D0 sinon : seul le cas
@@ -396,12 +396,18 @@ Hiworld accuse le type de voiture par `FF: 24` ; s'il n'apparaît jamais, les en
 vitesse du boîtier est envoyée au départ du dialogue puis 5 s plus tard (l'appli d'origine rouvre le port 5 à 10 s
 après sa connexion).
 
-**TWRP** (recovery LibreHU, branche bêta du dépôt `android_device_alps_ac8257_demo`, `tools/touchfix`) fait de même
-pour lire les touches du volant hors d'Android : le service écrit **`/sdcard/TWRP/ujc201_can.conf`** d'après le profil
-choisi, à chaque changement (`core/.../can/TwrpCanConf.kt`, en root si la permission de stockage manque) :
-`ack 1`, `send <premier ms> <période ms> <octets>` (trame déjà faite, 32 octets au plus), `keys <cmd> <octet code>
-<octet état> <valeur appui> <octet événement> <masque>` (hex, `FF` = aucun). TWRP ne lit que la trame Hiworld : pour
-une autre famille, ni accusé ni touches dans TWRP.
+**TWRP** (recovery LibreHU, dépôt `android_device_alps_ac8257_demo`, `tools/touchfix`) fait de même pour lire les
+touches du volant hors d'Android, sans réglage à lui : le service écrit **`/sdcard/TWRP/ujc201_can.conf`** d'après le
+profil choisi, à chaque changement (`core/.../can/TwrpCanConf.kt`, en root si la permission de stockage manque ; carte
+**TWRP** de l'onglet CAN : ce qui est envoyé, bouton « Réécrire pour TWRP »). Lignes : la trame de la famille (`frame
+<en-tête>`, `order lc|cl`, `lenoff <n>`, `sum <sum|xor> <1|2> <add> <xor> <champs hlcd>`, `ackcmd <cmd>` ou `ackraw
+<octets>`, `noack <cmds>`, `baud <bit/s>` ; les familles intégrées Hiworld `5A A5` / `AA 55`, Raise `2E`, Raise `FD`
+sont ramenées à cette description, `TwrpCanConf.framing`), `ack 1`, `send <premier ms> <période ms> <octets>` (trame
+déjà faite, 32 octets au plus), `keys <cmd> <octet code> <octet état> <valeur appui> <octet événement> <masque> [<masque
+du code>]` (hex, `FF` = aucun), et `key <code> <action> <nom>` pour chaque touche nommée du profil qui a une action dans
+TWRP (`TwrpCanConf.action` : volume +/- → volume, mute / OK / décrocher → valider, précédent / suivant → haut / bas,
+gauche / droite, mode / raccrocher → retour, navigation → accueil). TWRP jusqu'à la build 13 ne lit que la trame
+Hiworld.
 
 Dans un profil :
 ```json

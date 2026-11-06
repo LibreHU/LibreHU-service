@@ -108,6 +108,7 @@ fun CanScreen(actions: AppActions) {
         CanBoxPortCard()
         CanBoxTalkCard()
         CanWheelKeysCard()
+        CanTwrpCard()
         Card(stringResource(R.string.can_values)) {
             if (values.isEmpty()) Hint(stringResource(R.string.can_values_none))
             for ((message, list) in values.values.groupBy { it.message }) {
@@ -442,5 +443,24 @@ private fun ActionChoice(
                 Text(stringResource(if (a.action == TouchAction.KEYCODE) R.string.touch_keycode else R.string.touch_package))
             },
         )
+    }
+}
+
+/** What LibreHU's TWRP reads: the chosen profile's box, dialogue and keys, written for it automatically. */
+@Composable
+private fun CanTwrpCard() {
+    val store = CanVehicleStore.get(LocalContext.current)
+    val sync by store.twrp.collectAsStateWithLifecycle()
+    Card(stringResource(R.string.can_twrp)) {
+        Hint(stringResource(R.string.can_twrp_hint))
+        val s = sync
+        if (s == null) {
+            BodyText(stringResource(R.string.can_twrp_pending))
+        } else {
+            BodyText(stringResource(R.string.can_twrp_state, s.profile, s.box, s.keys))
+            if (!s.readable) Hint(stringResource(R.string.can_twrp_unreadable))
+            if (!s.written) Hint(stringResource(R.string.can_twrp_not_written))
+        }
+        Actions { Pill(stringResource(R.string.can_twrp_write)) { store.writeTwrpNow() } }
     }
 }
