@@ -446,3 +446,13 @@ dernière touche et la **trame brute** (D1 D2 D3) pour identifier un bouton.
 
 Actif par défaut quand ivi-services est désactivé (sinon `ivi-canbus` agit aussi et chaque appui compte double).
 Un bouton qui ne change pas « dernière touche » n'est pas transmis par le boîtier : rien à faire côté Android.
+
+## Brouillons tirés de l'appli Car Info (outil en cours)
+
+Le dépôt des fiches a un outil, [`tools/carinfo/`](https://github.com/LibreHU/LibreHU-car-profiles/tree/main/tools/carinfo),
+qui lit le listage jadx « fallback » de l'appli Car Info d'origine (jamais exécutée) et rejoue son code dans un petit
+interpréteur : quel décodeur pour quelle voiture, quels messages, quels octets, quelle formule. État au 06/11/2026 :
+décodeur trouvé pour 6 658 des 6 970 entrées du catalogue (532 décodeurs), mêmes résultats que les analyses à la main
+pour PSA (111 / 111) et Volkswagen (174 / 174). Pas encore fait : l'écriture des fiches (famille de boîtier ou
+`framing`, rôles, touches, type de voiture, accusés) et leur vérification par `librehu-car-tool.jar check`. Les fiches
+qui en sortiront seront marquées **non testées** tant que personne ne les a essayées sur la voiture.
