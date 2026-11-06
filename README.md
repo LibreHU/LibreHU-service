@@ -312,6 +312,38 @@ but non lucratif, dons récurrents) :
 [![Faire un don avec Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/DokT/donate)
 [![Donateurs sur Liberapay](https://img.shields.io/liberapay/patrons/DokT.svg?logo=liberapay)](https://liberapay.com/DokT/)
 
+## Licence
+
+Copyright (C) 2026 les contributeurs de LibreHU.
+
+Le code de ce dépôt est sous **GNU AGPL v3 ou ultérieure** (`AGPL-3.0-or-later`, fichier [`LICENSE`](LICENSE)), avec les
+[termes additionnels](LICENSE-ADDITIONAL-TERMS.md) de son article 7 : garder la mention « Basé sur LibreHU –
+https://github.com/LibreHU » et marquer une version modifiée comme telle. Qui distribue une version modifiée, ou la
+fait utiliser à distance, doit en donner le code source complet sous la même licence.
+Le correctif root de Reo Au In (`RootShell`, `su 0 sh -c`) est publié sous la même licence, avec son accord
+(06/11/2026).
+
+### Code, ressources et données d'autres projets
+
+Ils gardent leur licence.
+
+| Quoi | Où | Auteur | Licence |
+|---|---|---|---|
+| Noms des véhicules de sa base ECU, identification des calculateurs, adressage CAN de l'ELM327 (portés de son code Python) | `core/src/main/kotlin/org/librehu/core/obd/Ddt4allProjects.kt`, `Ddt4allDb.kt`, `app/src/main/java/org/librehu/service/obd/ObdManager.kt` | [ddt4all](https://github.com/cedricp/ddt4all) (cedricp et contributeurs) | GPL-3.0-or-later |
+| Syntaxe des signaux de ses dictionnaires CAN ; signaux d'essai tirés de son dictionnaire Clio 3 | `core/src/main/kotlin/org/librehu/core/can/CanVehicle.kt`, `core/src/test/kotlin/org/librehu/core/can/CanVehicleTest.kt` | [CliOS](https://github.com/Tanchouteur/CliOS) (Tanchouteur) | GPL-3.0 |
+| Méthode de l'écran partagé (affichage `SurfaceControl`, encodeur H.264 matériel) | `app/src/main/java/org/librehu/service/screen/ScreenHelper.kt` | [scrcpy](https://github.com/Genymobile/scrcpy) (Genymobile) | Apache-2.0 |
+| Noms des rôles des signaux (Vehicle Signal Specification 4.2) | `core/src/main/kotlin/org/librehu/core/can/CanRoles.kt` | [COVESA](https://github.com/COVESA/vehicle_signal_specification) | MPL-2.0 |
+| [usb-serial-for-android](https://github.com/mik3y/usb-serial-for-android) 3.10.0 | bibliothèque (adaptateurs USB-série) | Mike Wakerly, Google | MIT |
+| [ZXing](https://github.com/zxing/zxing) core 3.5.3 | bibliothèque (codes QR) | les auteurs de ZXing | Apache-2.0 |
+| kotlinx.serialization | bibliothèque | JetBrains | Apache-2.0 |
+| Jetpack Compose, Material 3 et ses icônes, AndroidX (Activity, Core, Lifecycle) | bibliothèques | Google, The Android Open Source Project | Apache-2.0 |
+| Kotlin, kotlinx.coroutines | bibliothèques | JetBrains | Apache-2.0 |
+| Police Source Sans 3 | `app/src/main/res/font/` | Adobe | SIL OFL 1.1, `third_party/SourceSans3-LICENSE.md` |
+| Police « LibreHU Seg14 », tirée de DSEG14 | `app/src/main/res/font/` | [keshikan](https://github.com/keshikan/DSEG) | SIL OFL 1.1, `third_party/DSEG-LICENSE.txt` |
+| Sons des touches `Effect_Tick`, `KeypressStandard`, `KeypressSpacebar` | `app/src/main/res/raw/click_aosp_*` | The Android Open Source Project | Apache-2.0, `third_party/AOSP-NOTICE.txt` |
+| Sons des touches « Interface Sounds » (version WAV de Hugo Locurcio) | `app/src/main/res/raw/click_kenney_*` | [Kenney](https://kenney.nl/assets/interface-sounds) | CC0 1.0, `third_party/Kenney-Interface-Sounds-LICENSE.txt` |
+| Enveloppe Gradle | `gradlew`, `gradlew.bat`, `gradle/wrapper/` | Gradle | Apache-2.0 |
+
 ## Contact
 
 [librehu@proton.me](mailto:librehu@proton.me)
