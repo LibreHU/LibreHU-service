@@ -453,6 +453,7 @@ Le dépôt des fiches a un outil, [`tools/carinfo/`](https://github.com/LibreHU/
 qui lit le listage jadx « fallback » de l'appli Car Info d'origine (jamais exécutée) et rejoue son code dans un petit
 interpréteur : quel décodeur pour quelle voiture, quels messages, quels octets, quelle formule. État au 06/11/2026 :
 décodeur trouvé pour 6 658 des 6 970 entrées du catalogue (532 décodeurs), mêmes résultats que les analyses à la main
-pour PSA (111 / 111) et Volkswagen (174 / 174). Pas encore fait : l'écriture des fiches (famille de boîtier ou
+pour PSA (111 / 111) et Volkswagen (174 / 174) ; sondage : 517 des 532 décodeurs donnent des messages (4 526). Pas
+encore fait : l'écriture des fiches (famille de boîtier ou
 `framing`, rôles, touches, type de voiture, accusés) et leur vérification par `librehu-car-tool.jar check`. Les fiches
 qui en sortiront seront marquées **non testées** tant que personne ne les a essayées sur la voiture.
