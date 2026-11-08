@@ -661,25 +661,43 @@ object CanVehicles {
         return CanBoxType(o.str("name")?.trim()?.ifEmpty { null } ?: box, aliases.distinct() - box)
     }
 
-    /** `"framing": { "head", "order", "len_offset", "checksum": { "algo", "over", "size", "add", "xor" }, "ack", "no_ack_for", "box_answers", "baud" }`. */
-    private fun framing(o: JsonObject): CanFraming {
-        val w = "framing"
+    /**
+     * `"framing": { "head", "order", "len_offset", "data_len", "starts", "tail", "checksum": { "algo", "over", "size", "add",
+     * "xor" }, "out", "ack", "no_ack_for", "box_answers", "baud" }`; `"out"`: the same fields but the acknowledgement ones
+     * and `"baud"`, for what the head unit sends ([CanFraming]).
+     */
+    private fun framing(
+        o: JsonObject,
+        w: String = "framing",
+    ): CanFraming {
         val head = bytes(o.str("head").orEmpty(), "$w.head")
-        if (head.isEmpty() || head.size > 4) throw CanVehicleException("$w.head: 1 to 4 bytes")
         val order = o.str("order") ?: "len,cmd"
-        if (order != "len,cmd" && order != "cmd,len") throw CanVehicleException("$w.order: \"len,cmd\" or \"cmd,len\"")
+        if (order !in setOf("len,cmd", "cmd,len", "len", "cmd")) throw CanVehicleException("$w.order: \"len,cmd\", \"cmd,len\", \"len\" or \"cmd\"")
+        val starts = ((o["starts"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).map { code(it, "$w.starts") }.toSet()
+        if (head.size > 4 || (head.isEmpty() && (starts.isEmpty() || !order.startsWith("cmd")))) {
+            throw CanVehicleException("$w.head: 1 to 4 bytes, or none with \"starts\" (the commands a frame starts with) and CMD first")
+        }
+        val dataLen = o.int("data_len")
+        if (order == "cmd" && (dataLen == null || dataLen !in 0..64)) throw CanVehicleException("$w.data_len: 0..64, needed without LEN (order \"cmd\")")
+        val tail = bytes(o.str("tail").orEmpty(), "$w.tail")
+        if (tail.size > 4) throw CanVehicleException("$w.tail: 4 bytes at most")
         val c = o["checksum"] as? JsonObject ?: JsonObject(emptyMap())
         val algo = c.str("algo") ?: "sum"
-        if (algo != "sum" && algo != "xor") throw CanVehicleException("$w.checksum.algo: sum or xor")
+        if (algo !in setOf("sum", "xor", "none")) throw CanVehicleException("$w.checksum.algo: sum, xor or none")
         val over = (c.str("over") ?: "len,cmd,data").split(",").map { it.trim() }.toSet()
         if (!over.all { it in setOf("head", "len", "cmd", "data") }) throw CanVehicleException("$w.checksum.over: head, len, cmd, data")
         val size = c.int("size") ?: 1
         if (size !in 1..2) throw CanVehicleException("$w.checksum.size: 1 or 2")
+        val out =
+            (o["out"] as? JsonObject)?.let {
+                if (w != "framing") throw CanVehicleException("$w.out: no \"out\" in \"out\"")
+                framing(it, "$w.out")
+            }
         val ack = o["ack"] as? JsonObject
         fun codes(k: String) = ((o[k] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).map { code(it, "$w.$k") }.toSet()
         return CanFraming(
             head = head,
-            lenFirst = order == "len,cmd",
+            lenFirst = order.startsWith("len"),
             lenOffset = (o.int("len_offset") ?: 0).also { if (it !in -2..8) throw CanVehicleException("$w.len_offset: -2..8") },
             sumAlgo = algo,
             sumOver = over,
@@ -691,6 +709,12 @@ object CanVehicles {
             noAckFor = codes("no_ack_for"),
             boxAnswers = codes("box_answers"),
             baud = o.int("baud") ?: 38400,
+            hasLen = order != "cmd",
+            hasCmd = order != "len",
+            dataLen = dataLen ?: 0,
+            tail = tail,
+            starts = starts,
+            out = out,
         )
     }
 

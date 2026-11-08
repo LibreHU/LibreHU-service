@@ -51,7 +51,8 @@ object TwrpCanConf {
 
     fun of(v: CanVehicle): String =
         buildString {
-            val f = framing(v)
+            // A framing of engine 2.7 (no CMD, LEN, head or checksum, a tail, another one out): TWRP's reader does not have it.
+            val f = framing(v)?.takeUnless { it.needs27 }
             append("# LibreHU service: CAN box dialogue for TWRP (touchfix), car profile ${v.id}\n")
             append("# ${v.name.replace('\n', ' ')}; box ${v.family.name}. Written again when the profile changes.\n")
             if (f != null) {

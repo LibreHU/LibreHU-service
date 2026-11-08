@@ -9,7 +9,7 @@ package org.librehu.core.can
  * [CanVehicles.toJson], checked by the profiles repository).
  */
 object CanEngine {
-    const val VERSION = "2.6.0"
+    const val VERSION = "2.7.0"
 
     /** What each version brought (service versionCode in brackets), newest last. */
     val HISTORY =
@@ -22,6 +22,7 @@ object CanEngine {
             "2.4.0" to "several key sources, knobs (v167)",
             "2.5.0" to "engine requirement of a profile (\"engine\"), CAN box and OBD together (v169)",
             "2.6.0" to "box types as data: the generic profile of each type (\"box_type\" + \"framing\"), built in or from the boxes pack; no car profile built in (v184)",
+            "2.7.0" to "framings without CMD, LEN, head or checksum, with a tail, and the head unit's own (\"out\"): CYT's BYD and Ford boxes, Simple's Audi box (v190)",
         )
 
     data class Version(
@@ -75,6 +76,7 @@ object CanEngine {
                 "2.3".takeIf { v.link.send.any { it.template != null } || v.link.commands.isNotEmpty() },
                 "2.4".takeIf { v.moreKeys.isNotEmpty() },
                 "2.6".takeIf { v.boxType != null },
+                "2.7".takeIf { v.framing?.needs27 == true },
             )
         return ">=" + (needs.maxByOrNull { parse(it)!! } ?: "1.0")
     }

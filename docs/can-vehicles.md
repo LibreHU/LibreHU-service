@@ -286,6 +286,22 @@ xor `xor` ; accusé `ack.cmd` (données : la commande reçue, tramé pareil, com
 Raise), sauf pour `no_ack_for` ; `box_answers` : octets seuls que le boîtier envoie entre ses messages. Vérifié : mêmes
 octets que les familles Hiworld, Raise et Raise FD 16 bits écrites dans le code (tests `CanFramingTest`).
 
+**Trames incomplètes (moteur 2.7, service v190)** : pour les boîtiers dont la trame n'a pas toutes ses parties, relevés
+dans le décodeur de l'appli d'origine (sa fonction de découpage `parsePacket`, sens boîtier → autoradio, vérifié par
+`tools/carinfo/receive.py` du dépôt des fiches) :
+
+| Champ | Effet | Exemple |
+|---|---|---|
+| `order` `len` | pas d'octet CMD : la longueur sert de commande | Simple, Audi : `AA 55 LEN D… SUM` |
+| `order` `cmd` + `data_len` | pas d'octet LEN : toujours `data_len` octets de données | CYT, BYD : `55 D0..D5 AA` |
+| `head` `""` + `starts` | pas d'en-tête : une trame commence par une des commandes `starts` (CMD d'abord) | CYT, Ford : `55\|57 LEN D…` |
+| `tail` | octets après la somme (1 à 4) ; faux = message refusé | CYT, BYD : `AA` |
+| `checksum.algo` `none` | pas de somme | CYT |
+| `out` | la trame de ce que l'autoradio envoie, quand elle diffère (mêmes champs, sans accusés ni `baud`) | Simple : `55 AA` vers le boîtier ; Besturn X80 : `FD CMD LEN` vers le boîtier, `FD LEN CMD` reçu |
+
+Un profil qui s'en sert demande le moteur 2.7 (`"engine": ">=2.7"`, calculé par `librehu-car-tool.jar`). TWRP ne lit
+pas ces trames : pas de touches au volant dans TWRP pour ces boîtiers (`TwrpCanConf` l'écrit en commentaire).
+
 **Messages construits et commandes (service v166)** : dans `link.send`, des `data` avec des champs entre accolades
 sont construits à chaque envoi depuis ce que sait l'autoradio ; `"on": "change"` les envoie aussi dès qu'ils changent
 (500 ms au moins entre deux) ; `link.commands` = messages envoyés à la demande avec une valeur.

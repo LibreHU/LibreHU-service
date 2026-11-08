@@ -244,6 +244,91 @@ class CanFramingTest {
             }
         }
     }
+
+    private fun frames(
+        family: CanBoxFamily,
+        vararg chunks: String,
+    ): List<CanboxFrame> {
+        val got = mutableListOf<CanboxFrame>()
+        val p = family.parser { got += it }
+        chunks.joinToString(" ").split(" ").filter { it.isNotEmpty() }.map { it.toInt(16).toByte() }.chunked(3).forEach { p.feed(it.toByteArray()) }
+        return got
+    }
+
+    /** CYT's BYD box (CytBydF3Protocol): `55 D0..D5 AA`, no LEN, no checksum (engine 2.7). */
+    @Test
+    fun fixedFramesWithATail() {
+        val cyt = fam("""{"head":"","starts":["0x55"],"order":"cmd","data_len":6,"tail":"AA","checksum":{"algo":"none"}}""")
+        val got = frames(cyt, "00 13", "55 01 02 03 04 05 06 AA", "55 11 12 13 14 15 16 AB")
+        assertEquals(listOf(0x55, 0x55), got.map { it.cmd })
+        assertEquals(listOf(true, false), got.map { it.checksumOk })
+        assertEquals("01 02 03 04 05 06", hex(got[0].data))
+        assertEquals("55 01 02 03 00 00 00 AA", hex(cyt.encode(0x55, byteArrayOf(1, 2, 3))))
+    }
+
+    /** CYT's Ford box (CytFordProtocol): `55|57 LEN D…`, no head, no checksum. */
+    @Test
+    fun framesWithoutHead() {
+        val cyt = fam("""{"head":"","starts":["0x55","0x57"],"order":"cmd,len","checksum":{"algo":"none"}}""")
+        val got = frames(cyt, "57 02 01 02", "00", "55 03 0A 0B 0C")
+        assertEquals(listOf(0x57, 0x55), got.map { it.cmd })
+        assertEquals("0A 0B 0C", hex(got[1].data))
+        assertTrue(got.all { it.checksumOk })
+        assertEquals("55 01 01", hex(cyt.encode(0x55, byteArrayOf(1))))
+    }
+
+    /** Simple's Audi box (SpAudiProtocol): the length is the command; `AA 55` from the box, `55 AA` to it. */
+    @Test
+    fun lengthAsCommandAndAnotherFramingOut() {
+        val audi =
+            fam(
+                """{"head":"AA 55","order":"len","checksum":{"algo":"sum","over":"len,data","add":-1},""" +
+                    """"out":{"head":"55 AA","order":"len","checksum":{"algo":"sum","over":"len,data","add":-1}}}""",
+            )
+        val got = frames(audi, "AA 55 06 01 02 03 04 05 06 1A", "AA 55 02 07 08 00")
+        assertEquals(listOf(6, 2), got.map { it.cmd })
+        assertEquals(listOf(true, false), got.map { it.checksumOk })
+        assertEquals("55 AA 06 01 02 03 04 05 06 1A", hex(audi.encode(6, byteArrayOf(1, 2, 3, 4, 5, 6))))
+    }
+
+    /** Besturn X80 (ReBentengProtocolX80): `FD LEN CMD` from the box, `FD CMD LEN` to it. */
+    @Test
+    fun anotherOrderOut() {
+        val x80 =
+            fam(
+                """{"head":"FD","order":"len,cmd","len_offset":3,"checksum":{"algo":"sum","over":"len,cmd,data"},""" +
+                    """"out":{"head":"FD","order":"cmd,len","checksum":{"algo":"sum","over":"cmd,len,data"}}}""",
+            )
+        val got = frames(x80, "FD 06 10 01 02 03 1C")
+        assertEquals(0x10, got.single().cmd)
+        assertTrue(got.single().checksumOk)
+        assertEquals("FD 81 01 01 83", hex(x80.encode(0x81, byteArrayOf(1))))
+    }
+
+    @Test
+    fun framingsOfEngine27() {
+        val v =
+            CanVehicles.fromJson(
+                """{"format":"librehu-can-vehicle","version":2,"id":"cyt-car","box":"cyt","framing":""" +
+                    """{"head":"","starts":["0x55"],"order":"cmd","data_len":6,"tail":"AA","checksum":{"algo":"none"}}}""",
+            )
+        assertEquals(">=2.7", CanEngine.requiredBy(v))
+        assertTrue(TwrpCanConf.of(v).contains("no framing TWRP can read"))
+        for (bad in listOf(
+            """{"head":"","order":"cmd,len"}""",
+            """{"head":"","starts":["0x55"],"order":"len,cmd"}""",
+            """{"head":"55","order":"cmd"}""",
+            """{"head":"55","tail":"01 02 03 04 05"}""",
+            """{"head":"55","out":{"head":"AA","out":{"head":"BB"}}}""",
+        )) {
+            try {
+                fam(bad)
+                fail("accepted: $bad")
+            } catch (e: CanVehicleException) {
+                assertTrue(e.message!!, e.message!!.contains("framing"))
+            }
+        }
+    }
 }
 
 /** Messages built from the head unit's state ([CanTemplate]) and commands. */
