@@ -1421,4 +1421,11 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_missing_retry">Download its pack</string>
     <string name="can_generic">fallback</string>
     <string name="can_from_pack">pack %1$s</string>
+    <string name="keepalive_title">Service always on</string>
+    <string name="keepalive_hint">The MCU cuts the head unit when nobody answers it: LibreHU service must never stay stopped. It is a foreground service that Android starts again; as a system app (LineageOS ROM) it keeps the persistent priority. With root, a guard outside the app starts it again within 3 s after any force stop (Autochips QuickBoot, Settings, RAM cleaners) and keeps the low memory killer away; with Magisk or KernelSU a boot script starts it after a reboot even after a force stop.</string>
+    <string name="keepalive_switch">Start the service again whatever stops it</string>
+    <string name="keepalive_state">Root guard: %1$s · boot script: %2$s · system app (persistent): %3$s</string>
+    <string name="keepalive_yes">yes</string>
+    <string name="keepalive_no">no</string>
+    <string name="keepalive_no_root">No root: only Android restarts the service (not after a force stop).</string>
 </resources>

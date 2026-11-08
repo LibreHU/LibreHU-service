@@ -120,6 +120,14 @@ class LibreHuService : Service() {
             .runAtStart(this) // data directories left to an old uid (ViPER crashing at boot): given back, boot resent
         org.librehu.service.power.EarlyStart
             .start(this) // ViPER started when the storage unlocks, not after the slow BOOT_COMPLETED queue
+        // Never stopped for long: root guard outside this app (force stops, RAM cleaners), boot script (power/Keepalive)
+        Thread({
+            Thread.sleep(10_000)
+            runCatching {
+                org.librehu.service.power.Keepalive
+                    .start(this)
+            }
+        }, "keepalive").start()
         org.librehu.service.projection.AndroidAuto
             .start(this) // Open Headunit: session state, day / night from the headlights
         org.librehu.service.projection.CarPlay

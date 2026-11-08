@@ -1421,4 +1421,11 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_missing_retry">Télécharger son paquet</string>
     <string name="can_generic">repli</string>
     <string name="can_from_pack">paquet %1$s</string>
+    <string name="keepalive_title">Service toujours actif</string>
+    <string name="keepalive_hint">Le MCU coupe l\'autoradio quand personne ne lui répond : LibreHU service ne doit jamais rester arrêté. C\'est un service de premier plan qu\'Android relance ; en appli système (ROM LineageOS) il garde la priorité « persistante ». Avec le root, une garde hors de l\'appli le relance en moins de 3 s après tout arrêt forcé (QuickBoot d\'Autochips, Paramètres, nettoyeurs de RAM) et le tient hors de portée du tueur de mémoire ; avec Magisk ou KernelSU, un script de démarrage le lance après un redémarrage même après un arrêt forcé.</string>
+    <string name="keepalive_switch">Relancer le service quoi qui l\'arrête</string>
+    <string name="keepalive_state">Garde root : %1$s · script de démarrage : %2$s · appli système (persistante) : %3$s</string>
+    <string name="keepalive_yes">oui</string>
+    <string name="keepalive_no">non</string>
+    <string name="keepalive_no_root">Pas de root : seul Android relance le service (pas après un arrêt forcé).</string>
 </resources>

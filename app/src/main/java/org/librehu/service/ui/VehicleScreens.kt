@@ -373,6 +373,7 @@ private fun ColourChoices(
 fun SystemScreen() {
     Page(stringResource(R.string.tab_system)) {
         RootCard()
+        KeepaliveCard()
         StandbyCard()
         StandbyJournalCard()
         BootAppsCard()

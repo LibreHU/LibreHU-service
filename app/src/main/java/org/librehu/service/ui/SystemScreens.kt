@@ -437,6 +437,38 @@ internal fun WatchdogCard() {
     }
 }
 
+/** The service kept running whatever stops it ([org.librehu.service.power.Keepalive]): switch and what protects it now. */
+@Composable
+internal fun KeepaliveCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf<org.librehu.service.power.Keepalive.Status?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        status = withContext(Dispatchers.IO) { org.librehu.service.power.Keepalive.status(context) }
+    }
+    Card(stringResource(R.string.keepalive_title)) {
+        Hint(stringResource(R.string.keepalive_hint))
+        val on = status?.enabled ?: org.librehu.service.power.Keepalive.enabled(context)
+        SwitchRow(stringResource(R.string.keepalive_switch), on, enabled = !busy) { v ->
+            busy = true
+            scope.launch {
+                status =
+                    withContext(Dispatchers.IO) {
+                        org.librehu.service.power.Keepalive.setEnabled(context, v)
+                        org.librehu.service.power.Keepalive.status(context)
+                    }
+                busy = false
+            }
+        }
+        status?.let { st ->
+            fun yes(b: Boolean) = context.getString(if (b) R.string.keepalive_yes else R.string.keepalive_no)
+            BodyText(stringResource(R.string.keepalive_state, yes(st.guard), yes(st.bootScript), yes(st.persistent)))
+            if (!st.root) Hint(stringResource(R.string.keepalive_no_root))
+        }
+    }
+}
+
 /** Apps using the service's API: LibreHU ones allowed automatically, others allowed or denied here. */
 @Composable
 internal fun AccessCard() {

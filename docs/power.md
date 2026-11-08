@@ -124,6 +124,21 @@ lancé juste avant l'extinction de l'écran en veille, qui relance le service s'
 relance l'accueil, les applis LibreHU (leurs récepteurs de démarrage) et ViPER4Android. Le **test de suspension contact
 mis est désactivé** : avec le contact mis, rien ne réveillerait le SoC.
 
+### Service toujours actif (08/11, `power/Keepalive.kt`)
+
+Demande : « faire en sorte qu'il soit impossible à tuer l'application (gestionnaire de ram, android etc) ». Le MCU coupe
+le SoC quand personne ne lui répond : le service ne doit jamais rester arrêté. Couches, **actives par défaut** (onglet
+Système → « Service toujours actif », interrupteur) :
+
+| Couche | Ce qu'elle couvre | Limite |
+|---|---|---|
+| Service de premier plan, `START_STICKY`, démarré au boot (`LOCKED_BOOT_COMPLETED`) | plantage, tueur de mémoire (lmkd) : Android le relance | pas un arrêt forcé (`forceStopPackage`) |
+| `android:persistent="true"` | **appli système** (ROM LineageOS, `/system/app`) : priorité « persistante » (`oom_score_adj` -800), relancé aussitôt, pas de bouton « Forcer l'arrêt » | ignoré pour une appli utilisateur (ROM stock) |
+| **Garde root** (`files/keepalive.sh`, hors du groupe de processus de l'appli comme le gardien de QuickBoot) | toutes les 3 s : relance le service s'il n'existe plus (QuickBoot, Paramètres, nettoyeurs de RAM, `am force-stop`), remet son `oom_score_adj` à -800 si Android l'a remonté ; une seule garde à la fois (fichier `keepalive.pid`) | root nécessaire ; s'arrête avec le fichier `keepalive` (interrupteur) |
+| **Script de démarrage** `/data/adb/service.d/librehu-keepalive.sh` (Magisk, KernelSU : scripts généraux du mode late_start service, exécutables) | après un redémarrage, lance le service et la garde même si un arrêt forcé a laissé l'appli « arrêtée » (Android n'envoie alors aucun BOOT_COMPLETED) ; s'efface seul si l'appli est désinstallée | Magisk / KernelSU seulement ([doc KernelSU](https://kernelsu.org/guide/module.html)) |
+
+L'interrupteur coupé arrête la garde et efface le script de démarrage.
+
 **Le réveil refusé (29/10, logcat du test A)** : 1 s après l'arrêt forcé, Android relance le service (« Scheduling
 restart of crashed service ») ; le service reçoit bien le contact (ACC on) et envoie `input keyevent KEYCODE_WAKEUP`
 en root, mais le PowerManagerService modifié par Autochips répond **« implicit intent to wakeup, reject! »** : après
