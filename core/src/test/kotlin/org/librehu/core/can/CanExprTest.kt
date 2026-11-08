@@ -126,7 +126,7 @@ class CanExprTest {
                      "0x50":{"name":"Driving data","mux":0,"cases":{"0x10":{"signals":{"range":{"start_byte":2,"size":2,"endian":"little","role":"fuel.range"}}}}}},
                    "examples":[{"cmd":"0x50","data":"10 00 2C 01","expect":{"fuel.range":300}}]}""",
             )
-        val base = CanVehicles.VW_MQB_RAISE
+        val base = TestProfiles.VW_MQB_RAISE
         assertEquals("my-golf", child.id)
         assertEquals("My Golf", child.name)
         assertEquals(base.family, child.family)
@@ -398,14 +398,15 @@ class CanEngineVersionTest {
 
     @Test
     fun smallestEngineOfEachProfile() {
-        assertEquals(">=2.1", CanEngine.requiredBy(CanVehicles.VW_PQ_HIWORLD))
-        assertEquals(">=2.0", CanEngine.requiredBy(CanVehicles.RENAULT_CLIO3_HIWORLD))
-        assertEquals(">=1.0", CanEngine.requiredBy(CanVehicles.GENERIC_HIWORLD))
+        assertEquals(">=2.1", CanEngine.requiredBy(TestProfiles.VW_PQ_HIWORLD))
+        assertEquals(">=2.0", CanEngine.requiredBy(TestProfiles.RENAULT_CLIO3_HIWORLD))
+        // A box type's generic profile: "box_type" came with 2.6.
+        assertEquals(">=2.6", CanEngine.requiredBy(CanVehicles.GENERIC_HIWORLD))
         // Written in the JSON, and read back.
-        val json = CanVehicles.toJson(CanVehicles.VW_PQ_HIWORLD)
+        val json = CanVehicles.toJson(TestProfiles.VW_PQ_HIWORLD)
         assertTrue(json.contains("\"engine\": \">=2.1\""))
-        assertEquals(CanVehicles.VW_PQ_HIWORLD.messages, CanVehicles.fromJson(json).messages)
-        for (p in CanVehicles.BUILT_IN) assertTrue(p.id, CanEngine.satisfies(CanEngine.requiredBy(p)))
+        assertEquals(TestProfiles.VW_PQ_HIWORLD.messages, CanVehicles.fromJson(json).messages)
+        for (p in TestProfiles.ALL + CanVehicles.BUILT_IN) assertTrue(p.id, CanEngine.satisfies(CanEngine.requiredBy(p)))
     }
 }
 
@@ -517,7 +518,7 @@ class PsaRaiseTest {
 
     @Test
     fun linkAndCarType() {
-        val p = CanVehicles.PSA_RAISE
+        val p = TestProfiles.PSA_RAISE
         assertEquals(97, p.variants.size)
         assertEquals(CanBoxFamilies.RAISE_FD, p.family)
         assertEquals(19200, p.baud)
@@ -534,6 +535,6 @@ class PsaRaiseTest {
         val none = mutableListOf<String>()
         CanBoxLink(p.family, p.link, { _, w -> none += w }).apply { start(0); tick(5_000) }
         assertEquals(listOf("connect"), none)
-        assertEquals("05 02 00", CanVehicles.PSA_RAISE_KEEP.variants.first { it.name.contains("medium") }.send["car type"]!!.joinToString(" ") { "%02X".format(it) })
+        assertEquals("05 02 00", TestProfiles.PSA_RAISE_KEEP.variants.first { it.name.contains("medium") }.send["car type"]!!.joinToString(" ") { "%02X".format(it) })
     }
 }

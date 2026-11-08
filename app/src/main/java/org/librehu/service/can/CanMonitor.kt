@@ -54,7 +54,7 @@ object CanMonitor {
 
     /** Car profile decoding the messages (set by [CanVehicleStore]); a change clears the decoded values. */
     @Volatile
-    var vehicle: CanVehicle = CanVehicles.RENAULT_CLIO3_HIWORLD
+    var vehicle: CanVehicle = CanVehicles.GENERIC_HIWORLD
         set(value) {
             // Another box family frames its messages its own way.
             if (value.family != field.family) synchronized(this) { parser = value.family.parser(::onFrame) }

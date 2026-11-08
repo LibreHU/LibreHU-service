@@ -9,7 +9,8 @@ import kotlin.system.exitProcess
  *
  * - `version`: the engine version (Semantic Versioning, [CanEngine]).
  * - `check <file or folder>…`: reads every profile (`extends` resolved among the built-in ones and those given), runs
- *   its `examples`, checks its `"engine"` against what it uses; exit code 1 on any problem.
+ *   its `examples`, checks its `"engine"` against what it uses; exit code 1 on any problem. The box types given
+ *   (generic profiles with `"box_type"`, the repository's `boxes/`) are known to the car profiles given with them.
  * - `decode <profile> <CAN export>`: decodes each message of an export of the CAN tab (`HH:MM:SS.mmm  CC: DD DD…`)
  *   with the profile, one line per message that gives values.
  */
@@ -61,6 +62,9 @@ object CarTool {
             Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(t)?.let { byId.putIfAbsent(it.groupValues[1], t) }
         }
         val resolve: (String) -> String? = { id -> byId[id] ?: CanVehicles.builtInText(id) }
+        // Box types first: the car profiles given may name one that only they define.
+        val types = list.mapNotNull { f -> runCatching { CanVehicles.fromJson(f.readText(), resolve) }.getOrNull()?.takeIf { it.boxType != null } }
+        if (types.isNotEmpty()) CanBoxFamilies.register(types)
         var bad = 0
         val ids = HashMap<String, File>()
         for (f in list) {
@@ -77,8 +81,10 @@ object CarTool {
                     declared == null -> problems += "no \"engine\": write \"engine\": \"$needed\""
                     lower(declared, needed) -> problems += "\"engine\": \"$declared\" but the profile uses what $needed brought: write \"engine\": \"$needed\""
                 }
-                if (v.examples.isEmpty()) problems += "no \"examples\": add at least one message and the values it gives"
-                out((if (problems.isEmpty()) "ok    " else "FAIL  ") + "${f.path}  ${v.id}  ${v.variants.size} cars  engine $needed")
+                // A box type's generic profile decodes nothing: no examples to give.
+                if (v.examples.isEmpty() && v.boxType == null) problems += "no \"examples\": add at least one message and the values it gives"
+                val what = if (v.boxType != null) "box type ${v.box} (${v.boxType.name})" else "${v.variants.size} cars"
+                out((if (problems.isEmpty()) "ok    " else "FAIL  ") + "${f.path}  ${v.id}  $what  engine $needed")
             } catch (e: CanVehicleException) {
                 problems += e.message ?: "unreadable"
                 out("FAIL  ${f.path}")

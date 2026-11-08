@@ -127,7 +127,7 @@ class CanEngineV2Test {
 
     @Test
     fun builtInProfilesPassTheirExamples() {
-        for (v in CanVehicles.BUILT_IN) assertEquals(v.id, emptyList<String>(), v.selfTest())
+        for (v in TestProfiles.ALL + CanVehicles.BUILT_IN) assertEquals(v.id, emptyList<String>(), v.selfTest())
     }
 
     @Test

@@ -17,28 +17,13 @@ object TwrpCanConf {
     const val MAX_FRAME = 32
 
     /** Hiworld `5A A5 LEN CMD D0..Dn-1 CS`, CS = (LEN + CMD + ΣD) - 1, acknowledged with `FF <cmd>` ([CanBoxFamilies.HIWORLD]). */
-    val HIWORLD_FRAMING = CanFraming(head = listOf(0x5A, 0xA5), sumAdd = -1, ackCmd = 0xFF, noAckFor = setOf(0xFF, 0xFE))
+    val HIWORLD_FRAMING: CanFraming get() = CanBoxFamilies.framing(CanVehicle.BOX_HIWORLD)!!
 
-    /** The framing of the profile's box as TWRP reads it: the profile's own, else the built-in family's equivalent. */
-    fun framing(v: CanVehicle): CanFraming? = v.framing ?: framing(v.family.id)
+    /** The framing of the profile's box as TWRP reads it: the profile's own, else its box type's ([CanBoxFamilies]). */
+    fun framing(v: CanVehicle): CanFraming? = v.framing ?: framing(v.box)
 
-    /** The [CanFraming] equivalent of a built-in family ([CanBoxFamilies.ALL]); null for an unknown id. */
-    fun framing(familyId: String): CanFraming? =
-        when (familyId) {
-            CanVehicle.BOX_HIWORLD -> HIWORLD_FRAMING
-            "hiworld-aa55" -> HIWORLD_FRAMING.copy(head = listOf(0xAA, 0x55), ackCmd = null, noAckFor = emptySet())
-            "raise" ->
-                CanFraming(
-                    head = listOf(0x2E),
-                    lenFirst = false,
-                    sumXor = 0xFF,
-                    ackRaw = listOf(0xFF),
-                    boxAnswers = setOf(0xFF, 0xF0, 0xF3, 0xFC),
-                )
-            "raise-fd" -> CanFraming(head = listOf(0xFD), lenOffset = 3)
-            "raise-fd2" -> CanFraming(head = listOf(0xFD), lenOffset = 4, sumSize = 2)
-            else -> null
-        }
+    /** The framing of the box type [familyId] (built in or from the boxes pack, a maker's name works too); null when unknown. */
+    fun framing(familyId: String): CanFraming? = CanBoxFamilies.framing(familyId)
 
     /**
      * TWRP's action for a key of the profile, from its name ("volume +", "previous / answer", "hang up"…): the first

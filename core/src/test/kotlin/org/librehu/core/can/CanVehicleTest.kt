@@ -7,7 +7,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class CanVehicleTest {
-    private val clio = CanVehicles.RENAULT_CLIO3_HIWORLD
+    private val clio = TestProfiles.RENAULT_CLIO3_HIWORLD
 
     private fun frame(
         cmd: Int,

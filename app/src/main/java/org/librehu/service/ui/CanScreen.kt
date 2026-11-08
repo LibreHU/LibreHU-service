@@ -51,6 +51,9 @@ fun CanScreen(actions: AppActions) {
     val store = CanVehicleStore.get(context)
     val vehicles by store.vehicles.collectAsStateWithLifecycle()
     val selected by store.selected.collectAsStateWithLifecycle()
+    val missing by store.missing.collectAsStateWithLifecycle()
+    val fetch by store.fetch.collectAsStateWithLifecycle()
+    val packs by store.packs.collectAsStateWithLifecycle()
     val values by CanMonitor.values.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     val byCmd by CanMonitor.byCmd.collectAsStateWithLifecycle()
@@ -79,15 +82,31 @@ fun CanScreen(actions: AppActions) {
         }
         Card(stringResource(R.string.can_vehicle)) {
             Hint(stringResource(R.string.can_vehicle_hint))
+            missing?.let { id ->
+                Hint(stringResource(R.string.can_missing, id))
+                when (val f = fetch) {
+                    is CanVehicleStore.Fetch.Running -> BodyText(stringResource(R.string.can_missing_running))
+                    is CanVehicleStore.Fetch.Failed -> Hint(stringResource(R.string.can_missing_failed, f.why))
+                    null -> {}
+                }
+                Actions {
+                    Pill(stringResource(R.string.can_missing_retry), selected = true, enabled = fetch !is CanVehicleStore.Fetch.Running) { store.fetchMissing() }
+                }
+            }
             for (v in vehicles) {
                 val builtIn = store.isBuiltIn(v.id)
+                val pack = packs.values.firstOrNull { p -> p.profiles.any { it.id == v.id } }
                 ListRow(
                     v.name,
                     listOfNotNull(
                         v.id,
                         v.family.name + (v.baud?.let { " · $it bit/s" } ?: ""),
                         stringResource(R.string.can_vehicle_messages, v.messages.values.count { it.signals.isNotEmpty() }),
-                        if (builtIn) stringResource(R.string.mcu_builtin) else null,
+                        when {
+                            v.boxType != null -> stringResource(R.string.can_generic)
+                            pack != null -> stringResource(R.string.can_from_pack, pack.name)
+                            else -> null
+                        },
                         v.description.ifEmpty { null },
                     ).joinToString("  ·  "),
                     onClick = { store.select(v.id) },
@@ -105,6 +124,7 @@ fun CanScreen(actions: AppActions) {
             Actions { Pill(stringResource(R.string.mcu_import), icon = Icons.Default.FileDownload, onClick = actions.importCanVehicle) }
             CanVariantRow(store)
         }
+        CanPacksCard()
         CanBoxPortCard()
         CanBoxTalkCard()
         CanWheelKeysCard()

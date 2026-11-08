@@ -31,127 +31,79 @@ interface CanBoxFamily {
     fun ack(f: CanboxFrame): ByteArray?
 }
 
-/** The CAN box families LibreHU knows. */
+/**
+ * The CAN box types LibreHU knows, described as data, not in code: each one is the generic profile of its type (a
+ * profile with `"box_type"` and its `"framing"`, engine 2.6), so a new box needs a profile, not a new service. The
+ * service has one built in per type (Hiworld 5A A5 and AA 55, Raise 2E, Raise FD with an 8-bit or a 16-bit sum,
+ * [CanVehicles.BUILT_IN]: also the fallback profile of each type); the box types of the `boxes` pack of
+ * LibreHU-car-profiles ([register]) add new ones and replace the built-in ones of the same id. A car profile names its
+ * type (`"box": "hiworld"`, or one of its makers: `"simple"`, `"bagoo"`…) or describes its own framing.
+ */
 object CanBoxFamilies {
-    /**
-     * Hiworld, `5A A5 LEN CMD D0..Dn-1 CS`, CS = ((LEN + CMD + ΣD) & 0xFF) - 1, 38400 bit/s. The head unit acknowledges
-     * every message `5A A5 01 FF <cmd> CS`, except the box's own acknowledgements (commands 0xFF and 0xFE): Hiworld's
-     * app "Car Info" 1.0.3991 (`HdProtocol.acknowledge`, `isAckPacket`, `shouldSendAck` = true, sent by
-     * `JancarRx.onHandlerOkData` for each good message).
-     */
-    val HIWORLD =
-        object : CanBoxFamily {
-            override val id = CanVehicle.BOX_HIWORLD
-            override val name = "Hiworld (5A A5)"
-            override val defaultBaud = 38400
+    /** A box type: its family (how it frames and acknowledges), its framing, its generic profile. */
+    private class Entry(
+        val family: CanBoxFamily,
+        val framing: CanFraming,
+        val profile: CanVehicle,
+    )
 
-            override fun parser(onFrame: (CanboxFrame) -> Unit): CanBoxParser = HiworldParser(onFrame = onFrame)
+    /** The built-in box types (the service's generic profiles), by id and by maker. */
+    private val builtIn: Map<String, Entry> by lazy { entries(CanVehicles.BUILT_IN) }
 
-            override fun encode(
-                cmd: Int,
-                data: ByteArray,
-            ) = HiworldParser.encode(cmd, data)
+    /** The box types in use: the built-in ones, then those of the installed `boxes` pack. */
+    @Volatile
+    private var types: Map<String, Entry>? = null
 
-            override fun ack(f: CanboxFrame): ByteArray? = if (f.cmd == 0xFF || f.cmd == 0xFE) null else encode(0xFF, byteArrayOf(f.cmd.toByte()))
+    private fun types(): Map<String, Entry> = types ?: synchronized(this) { types ?: builtIn.also { types = it } }
+
+    private fun entries(profiles: List<CanVehicle>): Map<String, Entry> {
+        val out = LinkedHashMap<String, Entry>()
+        for (p in profiles) {
+            val t = p.boxType ?: continue
+            val f = p.framing ?: continue
+            val e = Entry(f.family(p.box, t.name), f, p)
+            out[p.box] = e
+            for (a in t.aliases) out.putIfAbsent(a, e)
         }
-
-    /** Hiworld's other framing, `AA 55 LEN CMD D0..Dn-1 CS` (same checksum); the head unit sends no acknowledgement (`HdAA55Protocol`). */
-    val HIWORLD_AA55 =
-        object : CanBoxFamily {
-            override val id = "hiworld-aa55"
-            override val name = "Hiworld (AA 55)"
-            override val defaultBaud = 38400
-
-            override fun parser(onFrame: (CanboxFrame) -> Unit): CanBoxParser = HiworldParser(0xAA, 0x55, onFrame)
-
-            override fun encode(
-                cmd: Int,
-                data: ByteArray,
-            ) = HiworldParser.encode(cmd, data, 0xAA, 0x55)
-
-            override fun ack(f: CanboxFrame): ByteArray? = null
-        }
-
-    /**
-     * Raise (RZC) and most other makers (Simple, Bagoo, Binary, Oudi, Luzheng, Keyichuang, Xinbas, Daojun, BSJ, CYT…):
-     * `2E CMD LEN D0..Dn-1 CS`, CS = (CMD + LEN + ΣD) XOR 0xFF; the head unit acknowledges each message with the single
-     * byte `FF`, the box answers with single bytes too (FF, F0, F3, FC) (`ReBaseProtocol`, `BnrProtocol`, `LzProtocol`,
-     * `KcyProtocol`: `acknowledge` = `[FF]`, `haveNoPackageAck`).
-     */
-    val RAISE =
-        object : CanBoxFamily {
-            override val id = "raise"
-            override val name = "Raise (2E)"
-            override val defaultBaud = 38400
-
-            override fun parser(onFrame: (CanboxFrame) -> Unit): CanBoxParser = RaiseParser(onFrame)
-
-            override fun encode(
-                cmd: Int,
-                data: ByteArray,
-            ) = RaiseParser.encode(cmd, data)
-
-            override fun ack(f: CanboxFrame): ByteArray = byteArrayOf(0xFF.toByte())
-        }
-
-    /** Raise's `FD LEN CMD D0..Dn-1 CS` (LEN = n + 3, CS = (LEN + CMD + ΣD) & 0xFF), no acknowledgement (`ReFDProtocol`). */
-    val RAISE_FD = fd("raise-fd", "Raise (FD, 8-bit sum)", 1)
-
-    /** Raise's `FD LEN CMD D0..Dn-1 CSH CSL` (LEN = n + 4, 16-bit sum of LEN, CMD and D), no acknowledgement (`ReFD2Protocol`). */
-    val RAISE_FD2 = fd("raise-fd2", "Raise (FD, 16-bit sum)", 2)
-
-    private fun fd(
-        id: String,
-        name: String,
-        sumBytes: Int,
-    ) = object : CanBoxFamily {
-        override val id = id
-        override val name = name
-        override val defaultBaud = 38400
-
-        override fun parser(onFrame: (CanboxFrame) -> Unit): CanBoxParser = FdParser(onFrame, sumBytes)
-
-        override fun encode(
-            cmd: Int,
-            data: ByteArray,
-        ) = FdParser.encode(cmd, data, sumBytes)
-
-        override fun ack(f: CanboxFrame): ByteArray? = null
+        return out
     }
 
-    val ALL: List<CanBoxFamily> = listOf(HIWORLD, HIWORLD_AA55, RAISE, RAISE_FD, RAISE_FD2)
+    /** The box types of the installed `boxes` pack ([CanVehicle.boxType] profiles), over the built-in ones; empty: built-in only. */
+    fun register(profiles: List<CanVehicle>) {
+        synchronized(this) { types = builtIn + entries(profiles) }
+    }
 
-    /**
-     * Box makers of Hiworld's app ("Car Info" `assets/canbus.db`, table `canbox`) → the framing most of their
-     * protocols use (the base class their decoders extend). A profile may name the maker (`"box": "simple"`).
-     */
-    val MAKERS: Map<String, CanBoxFamily> =
-        mapOf(
-            "hiworld" to HIWORLD,
-            "wy" to HIWORLD,
-            "raise" to RAISE,
-            "simple" to RAISE,
-            "bagoo" to RAISE,
-            "binary" to RAISE,
-            "oudi" to RAISE,
-            "luzheng" to RAISE,
-            "keyichuang" to RAISE,
-            "xinbas" to RAISE,
-            "dogen" to RAISE,
-            "hcy" to RAISE,
-            "bsj" to RAISE,
-            "cyt" to RAISE,
-            "autoai" to RAISE,
-            "rcw" to RAISE,
-            "hechi" to RAISE,
-            "xfy" to RAISE,
-            "hangdao" to RAISE,
-        )
+    /** One family per box type, built-in ones first. */
+    val ALL: List<CanBoxFamily> get() = types().values.map { it.family }.distinct()
+
+    /** Box makers of Hiworld's app ("Car Info" `assets/canbus.db`, table `canbox`) and the type each one uses. */
+    val MAKERS: Map<String, CanBoxFamily> get() = types().filter { (k, e) -> k != e.family.id }.mapValues { it.value.family }
+
+    fun byId(id: String): CanBoxFamily? = types()[id.trim().lowercase()]?.family
+
+    /** The framing of the box type [id] (TWRP's file, [TwrpCanConf]). */
+    fun framing(id: String): CanFraming? = types()[id.trim().lowercase()]?.framing
+
+    /** The generic profile of the box type [id]: raw messages, the fallback when no car profile is installed. */
+    fun generic(id: String): CanVehicle? = types()[id.trim().lowercase()]?.profile
+
+    /** Hiworld, `5A A5 LEN CMD D0..Dn-1 CS`, CS = ((LEN + CMD + ΣD) & 0xFF) - 1, each message acknowledged with `FF <cmd>`. */
+    val HIWORLD: CanBoxFamily get() = byId(CanVehicle.BOX_HIWORLD)!!
+
+    /** Hiworld's other framing, `AA 55 LEN CMD D0..Dn-1 CS`, no acknowledgement. */
+    val HIWORLD_AA55: CanBoxFamily get() = byId("hiworld-aa55")!!
+
+    /** Raise (RZC) and most other makers: `2E CMD LEN D0..Dn-1 CS`, CS = (CMD + LEN + ΣD) XOR 0xFF, acknowledged with `FF`. */
+    val RAISE: CanBoxFamily get() = byId("raise")!!
+
+    /** Raise's `FD LEN CMD D0..Dn-1 CS` (LEN = n + 3, 8-bit sum), no acknowledgement. */
+    val RAISE_FD: CanBoxFamily get() = byId("raise-fd")!!
+
+    /** Raise's `FD LEN CMD D0..Dn-1 CSH CSL` (LEN = n + 4, 16-bit sum), no acknowledgement. */
+    val RAISE_FD2: CanBoxFamily get() = byId("raise-fd2")!!
 
     /** Speeds of the box's serial link the Jancar MCU knows (`0F 00 <index>`, MCU-tools-app docs/mcu_firmware.md). */
     val BAUDS: List<Int> get() = org.librehu.core.mcu.JacDebug.CAN_BAUDS
-
-    fun byId(id: String): CanBoxFamily? = ALL.firstOrNull { it.id == id } ?: MAKERS[id]
 }
 
 /** Raise framing, `2E CMD LEN D0..Dn-1 CS`; the box's single-byte answers (FF, F0, F3, FC) are not messages. */

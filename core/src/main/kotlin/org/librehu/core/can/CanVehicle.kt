@@ -197,6 +197,16 @@ data class CanLink(
 )
 
 /**
+ * What makes a profile the generic one of a box type (`"box_type"`, engine 2.6): the type it defines is its [CanVehicle.box],
+ * framed as its [CanVehicle.framing]; [name] is shown for the box, [aliases] are the box makers that use it (a car
+ * profile may name one of them: `"box": "simple"`).
+ */
+data class CanBoxType(
+    val name: String,
+    val aliases: List<String> = emptyList(),
+)
+
+/**
  * How to read the messages of one car's CAN box. The box (Hiworld here) is set for a car model and translates its
  * CAN bus into its own messages, so the decoding depends on the car: one profile per car, selectable and importable.
  */
@@ -222,6 +232,8 @@ data class CanVehicle(
     val framing: CanFraming? = null,
     /** More key sources (format 2, `"keys"`): media keys, front panel, knobs ([WheelKeySpec.codeBase]). */
     val moreKeys: List<WheelKeySpec> = emptyList(),
+    /** Not null: this is the generic profile of the box type [box] ([CanBoxFamilies]), which it describes with [framing]. */
+    val boxType: CanBoxType? = null,
 ) {
     /** Every key source: the steering wheel's ([keys]) then [moreKeys]. */
     val allKeys: List<WheelKeySpec> get() = listOfNotNull(keys) + moreKeys
@@ -234,10 +246,10 @@ data class CanVehicle(
         return base.copy(link = base.link.copy(send = base.link.send.map { s -> v.send[s.name]?.let { s.copy(data = it, template = null) } ?: s }))
     }
 
-    /** The box family named by [box] (checked when the profile is read). */
+    /** The box type named by [box] (checked when the profile is read), or the framing of this profile. */
     val family: CanBoxFamily get() = framingFamily ?: CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
 
-    private val framingFamily: CanBoxFamily? by lazy { framing?.family(box) }
+    private val framingFamily: CanBoxFamily? by lazy { framing?.family(box, boxType?.name) }
 
     /**
      * The steering wheel keys of this profile: its [wheelKeys], else Hiworld LNP002's when the profile names a
@@ -247,7 +259,7 @@ data class CanVehicle(
         get() =
             wheelKeys
                 ?: WheelKeySpec.HIWORLD_LNP002.takeIf {
-                    family === CanBoxFamilies.HIWORLD && messages[HiworldWheelKeys.CMD]?.signals?.any { s -> s.name == "wheel_key" } == true
+                    family.id == BOX_HIWORLD && messages[HiworldWheelKeys.CMD]?.signals?.any { s -> s.name == "wheel_key" } == true
                 }
 
     /** Every value of [f] this profile knows; empty when the command is unknown. */
@@ -397,7 +409,12 @@ class CanVehicleException(
     message: String,
 ) : Exception(message)
 
-/** Built-in car profiles and the JSON format of the importable ones (docs/can-vehicles.md). */
+/**
+ * The profiles built into the service and the JSON format of all of them (docs/can-vehicles.md). No car profile is
+ * built in any more: the cars come in packs by make (LibreHU-car-profiles), downloaded in the CAN tab or by LibreHU
+ * Apps; the service only has the generic profile of each box type ([BUILT_IN]), which is the fallback and the
+ * description of that box type ([CanBoxFamilies]).
+ */
 object CanVehicles {
     const val FORMAT = "librehu-can-vehicle"
     /** 2: roles, conditions, multiplexed messages, invalid values, labels per language, examples (1 is still read). */
@@ -405,53 +422,44 @@ object CanVehicles {
 
     private val json = Json { prettyPrint = true }
 
-    /** A built-in profile, a JSON file next to this class (`vehicles/<id>.json`, generated from Hiworld's app: docs/can-vehicles.md). */
+    /** The generic profiles built in, one per box type (`boxes/<id>.json` next to this class), the first one being the default. */
+    val BUILT_IN_IDS = listOf("hiworld-generic", "hiworld-aa55-generic", "raise-generic", "raise-fd-generic", "raise-fd2-generic")
+
+    /** A built-in profile (`boxes/<id>.json`). */
     private fun builtIn(id: String): CanVehicle = fromJson(builtInText(id) ?: throw CanVehicleException("Built-in profile $id missing"))
 
-    /** Renault, Dacia, LADA, Samsung, Nissan, Mercedes, Hiworld protocol LNP002 (docs/ivi-services/12-canbus.md §12.4); Clio 3 by default. */
-    val RENAULT_CLIO3_HIWORLD: CanVehicle by lazy { builtIn("renault-clio3-hiworld") }
+    /** The built-in profiles: the generic one of each box type (raw messages, no decoding). */
+    val BUILT_IN: List<CanVehicle> by lazy { BUILT_IN_IDS.map(::builtIn) }
 
-    /** Hyundai, Kia, Hiworld protocol HYP001. */
-    val HYUNDAI_KIA_HIWORLD: CanVehicle by lazy { builtIn("hyundai-kia-hiworld") }
+    /** Any car with a Hiworld box: no decoding, the CAN tab shows the raw messages (the default profile). */
+    val GENERIC_HIWORLD: CanVehicle get() = BUILT_IN.first()
 
-    /** Toyota, Lexus ES, Hiworld protocol TYP001. */
-    val TOYOTA_HIWORLD: CanVehicle by lazy { builtIn("toyota-hiworld") }
+    /** Selected when nothing else is: the generic Hiworld profile. */
+    val DEFAULT_ID = "hiworld-generic"
 
-    /** Honda, Acura, Hiworld protocol HDP004. */
-    val HONDA_HIWORLD: CanVehicle by lazy { builtIn("honda-hiworld") }
-
-    /** Volkswagen, Skoda (MQB), Hiworld protocol VWP004: no car type, engine data (coolant, oil, engine speed). */
-    val VW_MQB_HIWORLD: CanVehicle by lazy { builtIn("vw-mqb-hiworld") }
-
-    /** Volkswagen, Skoda (older PQ platforms), older Mercedes, Hiworld protocol VWP003: no car type, keys without a state byte. */
-    val VW_PQ_HIWORLD: CanVehicle by lazy { builtIn("vw-pq-hiworld") }
-
-    /** Volkswagen, Skoda (MQB), Raise or Oudi box (Raise framing): hello 0x81 01, keys in 0x20, doors, outside temperature, radar. */
-    val VW_MQB_RAISE: CanVehicle by lazy { builtIn("vw-mqb-raise") }
-
-    /** Volkswagen, Skoda (older PQ platforms), Raise or Oudi box: hello 0x81 01, keys in 0x20, speed, lights / reverse, radar. */
-    val VW_PQ_RAISE: CanVehicle by lazy { builtIn("vw-pq-raise") }
-
-    /** Peugeot, Citroën, DS, Raise PSA box (FD framing, 19200 bit/s), original screen removed: car type 0xA7 every second. */
-    val PSA_RAISE: CanVehicle by lazy { builtIn("psa-raise") }
-
-    /** Peugeot, Citroën, Raise PSA box keeping the original small screen. */
-    val PSA_RAISE_KEEP: CanVehicle by lazy { builtIn("psa-raise-keep") }
-
-    /** Any car: no decoding, the CAN viewer shows the raw messages. */
-    val GENERIC_HIWORLD =
-        CanVehicle(
-            id = "hiworld-generic",
-            name = "Hiworld (raw messages only)",
-            description = "No decoding: raw messages, to find the fields of a new car.",
+    /**
+     * The box type of the car profiles built into the service up to versionCode 183 (in packs since): the generic
+     * profile of that type replaces the one a head unit had chosen until its make's pack is installed.
+     */
+    val FORMER_BUILT_IN_BOX: Map<String, String> =
+        mapOf(
+            "renault-clio3-hiworld" to "hiworld",
+            "hyundai-kia-hiworld" to "hiworld",
+            "toyota-hiworld" to "hiworld",
+            "honda-hiworld" to "hiworld",
+            "vw-mqb-hiworld" to "hiworld",
+            "vw-pq-hiworld" to "hiworld",
+            "vw-mqb-raise" to "raise",
+            "vw-pq-raise" to "raise",
+            "psa-raise" to "raise-fd",
+            "psa-raise-keep" to "raise-fd",
         )
 
-    val BUILT_IN: List<CanVehicle> by lazy { listOf(RENAULT_CLIO3_HIWORLD, HYUNDAI_KIA_HIWORLD, TOYOTA_HIWORLD, HONDA_HIWORLD, VW_MQB_HIWORLD, VW_PQ_HIWORLD, VW_MQB_RAISE, VW_PQ_RAISE, PSA_RAISE, PSA_RAISE_KEEP, GENERIC_HIWORLD) }
-
-    val DEFAULT_ID = "renault-clio3-hiworld"
+    /** The generic profile of the box type [box] (one of its makers works too), the Hiworld one when unknown. */
+    fun genericFor(box: String?): CanVehicle = box?.let { CanBoxFamilies.generic(it) } ?: GENERIC_HIWORLD
 
     /** The text of a built-in profile, or null. */
-    fun builtInText(id: String): String? = CanVehicles::class.java.getResourceAsStream("vehicles/$id.json")?.use { it.readBytes().toString(Charsets.UTF_8) }
+    fun builtInText(id: String): String? = CanVehicles::class.java.getResourceAsStream("boxes/$id.json")?.use { it.readBytes().toString(Charsets.UTF_8) }
 
     /**
      * Reads a profile. `"extends": "<id>"` (format 2) starts from that profile ([resolve]: built-in ones by default),
@@ -522,11 +530,13 @@ object CanVehicles {
         }
         val id = root.str("id")?.trim().orEmpty()
         if (!Regex("[a-z0-9][a-z0-9._-]{1,63}").matches(id)) throw CanVehicleException("Invalid id \"$id\" (a-z, 0-9, . _ -)")
-        val box = root.str("box") ?: CanVehicle.BOX_HIWORLD
+        val box = (root.str("box") ?: CanVehicle.BOX_HIWORLD).trim().lowercase()
         val framing = (root["framing"] as? JsonObject)?.let(::framing)
+        val boxType = (root["box_type"] as? JsonObject)?.let { parseBoxType(it, box, framing) }
         if (framing == null && CanBoxFamilies.byId(box) == null) {
             throw CanVehicleException(
-                "Unknown box \"$box\" (supported: ${(CanBoxFamilies.ALL.map { it.id } + CanBoxFamilies.MAKERS.keys).distinct().joinToString()})",
+                "Unknown box \"$box\" (known: ${(CanBoxFamilies.ALL.map { it.id } + CanBoxFamilies.MAKERS.keys).distinct().joinToString()}; " +
+                    "a new box type comes with its generic profile, \"box_type\" and \"framing\", or the profile describes its \"framing\")",
             )
         }
         val messages =
@@ -574,6 +584,7 @@ object CanVehicles {
                 },
             source = CanSource(root),
             framing = framing,
+            boxType = boxType,
             examples =
                 ((root["examples"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
                     val o = e as? JsonObject ?: throw CanVehicleException("examples[$i] is not an object")
@@ -627,6 +638,23 @@ object CanVehicles {
         val p = e as? JsonPrimitive ?: throw CanVehicleException("$where: bad byte value $e")
         val v = if (p.isString) p.content.removePrefix("0x").removePrefix("0X").toIntOrNull(16) else p.intOrNull
         return v?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$where: bad byte value $e")
+    }
+
+    /** `"box_type": { "name": "Hiworld (5A A5)", "aliases": ["wy"] }`: this profile is the generic one of the box type [box]. */
+    private fun parseBoxType(
+        o: JsonObject,
+        box: String,
+        framing: CanFraming?,
+    ): CanBoxType {
+        if (framing == null) throw CanVehicleException("box_type: a box type needs its \"framing\"")
+        if (!Regex("[a-z0-9][a-z0-9-]{0,31}").matches(box)) throw CanVehicleException("box_type: bad box id \"$box\" (a-z, 0-9, -)")
+        val aliases =
+            ((o["aliases"] as? kotlinx.serialization.json.JsonArray) ?: emptyList()).mapIndexed { i, e ->
+                val a = (e as? JsonPrimitive)?.contentOrNull?.trim()?.lowercase().orEmpty()
+                if (!Regex("[a-z0-9][a-z0-9-]{0,31}").matches(a)) throw CanVehicleException("box_type.aliases[$i]: bad name \"$a\"")
+                a
+            }
+        return CanBoxType(o.str("name")?.trim()?.ifEmpty { null } ?: box, aliases.distinct() - box)
     }
 
     /** `"framing": { "head", "order", "len_offset", "checksum": { "algo", "over", "size", "add", "xor" }, "ack", "no_ack_for", "box_answers", "baud" }`. */
@@ -804,6 +832,7 @@ object CanVehicles {
                 put("name", v.name)
                 put("description", v.description)
                 put("box", v.box)
+                v.source.json?.get("box_type")?.let { put("box_type", it) }
                 v.source.json?.get("framing")?.let { put("framing", it) }
                 v.baud?.let { put("baud", it) }
                 put("link", linkJson(v.link))

@@ -487,7 +487,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="risk_blocked_title">Command 80 blocked</string>
     <string name="risk_blocked">80 starts the MCU bootloader and can leave it unusable: it is never sent from here.</string>
     <string name="can_vehicle">Car model (decoding)</string>
-    <string name="can_vehicle_hint">The CAN box (Hiworld) translates the car\'s CAN bus into its own messages, which depend on the car and on the protocol set in the box. The selected profile tells how to read them; import a JSON profile for another car (docs/can-vehicles.md).</string>
+    <string name="can_vehicle_hint">The CAN box (Hiworld, Raise…) translates the car\'s CAN bus into its own messages, which depend on the car and on the protocol set in the box. The selected profile tells how to read them: install your make\'s pack (below) or import a JSON profile (docs/can-vehicles.md).</string>
     <string name="can_vehicle_messages">%1$d decoded messages</string>
     <string name="can_values">Decoded values</string>
     <string name="can_values_none">No known message received yet with this profile.</string>
@@ -1399,4 +1399,26 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="can_twrp_unreadable">TWRP cannot read this box (unknown framing): no keys there.</string>
     <string name="can_twrp_not_written">The file could not be written (storage access or root).</string>
     <string name="can_twrp_write">Write for TWRP again</string>
+    <string name="can_packs">Car profiles to download</string>
+    <string name="can_packs_hint">The cars\' profiles come in packs by make from LibreHU-car-profiles (GitHub), with the box types: install your make\'s pack, then choose your car above. The service itself only has one generic profile per box type (raw messages), as a fallback.</string>
+    <string name="can_packs_refresh">Refresh</string>
+    <string name="can_packs_loading">Reading the list…</string>
+    <string name="can_packs_running">Downloading and checking…</string>
+    <string name="can_packs_failed">Failed: %1$s</string>
+    <string name="can_packs_ok">%1$s installed</string>
+    <string name="can_packs_cars">%1$d cars</string>
+    <string name="can_packs_boxes">%1$d box types</string>
+    <string name="can_packs_not_installed">not installed</string>
+    <string name="can_packs_up_to_date">installed, up to date (revision %1$d)</string>
+    <string name="can_packs_update_ready">update: revision %1$d</string>
+    <string name="can_packs_needs_service">needs a newer LibreHU service</string>
+    <string name="can_packs_install">Install</string>
+    <string name="can_packs_update">Update</string>
+    <string name="can_packs_remove">Remove</string>
+    <string name="can_missing">The profile « %1$s » is not installed: it comes with its make\'s pack (list below). Meanwhile the generic profile of its box shows the raw messages only.</string>
+    <string name="can_missing_running">Downloading its pack…</string>
+    <string name="can_missing_failed">Download failed: %1$s</string>
+    <string name="can_missing_retry">Download its pack</string>
+    <string name="can_generic">fallback</string>
+    <string name="can_from_pack">pack %1$s</string>
 </resources>

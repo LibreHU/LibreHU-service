@@ -42,7 +42,7 @@ class CanBoxLinkTest {
     @Test
     fun clio3CarTypeAtOneSecondThenEveryThirty() {
         val out = mutableListOf<Sent>()
-        val l = link(CanVehicles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
+        val l = link(TestProfiles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
         l.start(0)
         l.tick(999)
         assertTrue(out.isEmpty())
@@ -58,7 +58,7 @@ class CanBoxLinkTest {
     @Test
     fun clio3SourceAndBluetoothForTheCarDisplay() {
         val out = mutableListOf<Sent>()
-        val l = link(CanVehicles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
+        val l = link(TestProfiles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
         l.start(0)
         l.tick(2_000)
         // HdRenaultProtocolLNP002.getSource (source 3: [10, 12 spaces], 0xE1) and getBtInfo (6 = not connected, 0xCD).
@@ -72,7 +72,7 @@ class CanBoxLinkTest {
     @Test
     fun clio3AsksTheBoxItsVersion() {
         val out = mutableListOf<Sent>()
-        val l = link(CanVehicles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
+        val l = link(TestProfiles.RENAULT_CLIO3_HIWORLD.link.copy(ack = false), out)
         l.start(0)
         l.tick(3_000)
         // Hiworld request (HdProtocol.txRequestCmdId 0x6A, data [5, 1, cmd]): the box sends message F0 again.
@@ -99,7 +99,7 @@ class CanBoxLinkTest {
 
     @Test
     fun linkSurvivesTheJsonRoundTrip() {
-        val v = CanVehicles.RENAULT_CLIO3_HIWORLD
+        val v = TestProfiles.RENAULT_CLIO3_HIWORLD
         val again = CanVehicles.fromJson(CanVehicles.toJson(v))
         assertEquals(v.link, again.link)
         assertEquals(listOf(0x00, 0x31), again.link.send.single { it.name == "car type" }.data)
@@ -189,7 +189,7 @@ class CanBoxFamiliesTest {
         // Written back as it was read.
         assertEquals(spec, CanVehicles.fromJson(CanVehicles.toJson(v)).keys)
         // The Clio 3 profile states its keys; an old Hiworld profile with only the 0x11 wheel_key signal gets LNP002's.
-        assertEquals(0x08, CanVehicles.RENAULT_CLIO3_HIWORLD.keys!!.eventMask)
+        assertEquals(0x08, TestProfiles.RENAULT_CLIO3_HIWORLD.keys!!.eventMask)
     }
 }
 
@@ -198,7 +198,7 @@ class TwrpCanConfTest {
 
     @Test
     fun clio3() {
-        val c = TwrpCanConf.of(CanVehicles.RENAULT_CLIO3_HIWORLD)
+        val c = TwrpCanConf.of(TestProfiles.RENAULT_CLIO3_HIWORLD)
         assertTrue(c.contains("\nframe 5A A5\norder lc\nlenoff 0\nsum sum 1 -1 00 lcd\nackcmd FF\nnoack FE FF\nbaud 38400\n"))
         assertTrue(c.contains("\nack 1\n"))
         assertTrue(c.contains("\nsend 1000 30000 5A A5 02 24 00 31 56\n"))
@@ -263,7 +263,7 @@ class TwrpCanConfTest {
 class CanVariantsTest {
     @Test
     fun lnp002CarsSetTheCarType() {
-        val p = CanVehicles.RENAULT_CLIO3_HIWORLD
+        val p = TestProfiles.RENAULT_CLIO3_HIWORLD
         assertEquals(94, p.variants.size)
         // Default and Clio 3: car code 0 (HdRenaultProtocolLNP002.buildCarTypePacket, renault.xml).
         assertEquals(listOf(0x00, 0x31), p.link.send.single { it.name == "car type" }.data)
@@ -284,29 +284,31 @@ class Batch1ProfilesTest {
 
     @Test
     fun builtInsLoad() {
-        val ids = CanVehicles.BUILT_IN.map { it.id }
-        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "vw-pq-raise", "psa-raise", "psa-raise-keep", "hiworld-generic"), ids)
-        assertEquals(94, CanVehicles.RENAULT_CLIO3_HIWORLD.variants.size)
-        assertEquals(152, CanVehicles.HYUNDAI_KIA_HIWORLD.variants.size)
-        assertEquals(142, CanVehicles.TOYOTA_HIWORLD.variants.size)
-        assertEquals(79, CanVehicles.HONDA_HIWORLD.variants.size)
+        val ids = TestProfiles.ALL.map { it.id }
+        assertEquals(listOf("renault-clio3-hiworld", "hyundai-kia-hiworld", "toyota-hiworld", "honda-hiworld", "vw-mqb-hiworld", "vw-pq-hiworld", "vw-mqb-raise", "vw-pq-raise", "psa-raise", "psa-raise-keep"), ids)
+        // Built into the service: one generic profile per box type only.
+        assertEquals(listOf("hiworld-generic", "hiworld-aa55-generic", "raise-generic", "raise-fd-generic", "raise-fd2-generic"), CanVehicles.BUILT_IN.map { it.id })
+        assertEquals(94, TestProfiles.RENAULT_CLIO3_HIWORLD.variants.size)
+        assertEquals(152, TestProfiles.HYUNDAI_KIA_HIWORLD.variants.size)
+        assertEquals(142, TestProfiles.TOYOTA_HIWORLD.variants.size)
+        assertEquals(79, TestProfiles.HONDA_HIWORLD.variants.size)
         // HdKoreaProtocol.acknowledge() is null; Toyota and Honda keep Hiworld's acknowledgement.
-        assertEquals(false, CanVehicles.HYUNDAI_KIA_HIWORLD.link.ack)
-        assertEquals(true, CanVehicles.TOYOTA_HIWORLD.link.ack)
-        assertEquals(true, CanVehicles.HONDA_HIWORLD.link.ack)
+        assertEquals(false, TestProfiles.HYUNDAI_KIA_HIWORLD.link.ack)
+        assertEquals(true, TestProfiles.TOYOTA_HIWORLD.link.ack)
+        assertEquals(true, TestProfiles.HONDA_HIWORLD.link.ack)
     }
 
     @Test
     fun noCarTypeBeforeACarIsChosen() {
         val out = mutableListOf<String>()
-        val l = CanBoxLink(CanBoxFamilies.HIWORLD, CanVehicles.TOYOTA_HIWORLD.link.copy(ack = false), { b, _ -> out += hex(b) })
+        val l = CanBoxLink(CanBoxFamilies.HIWORLD, TestProfiles.TOYOTA_HIWORLD.link.copy(ack = false), { b, _ -> out += hex(b) })
         l.start(0)
         l.tick(60_000)
         assertTrue(out.isEmpty())
-        assertTrue(!TwrpCanConf.of(CanVehicles.TOYOTA_HIWORLD).contains("\nsend "))
+        assertTrue(!TwrpCanConf.of(TestProfiles.TOYOTA_HIWORLD).contains("\nsend "))
         // A car chosen: its car type, as its decoder builds it (getPacket(0x24, [code, 0x01])).
-        val v = CanVehicles.TOYOTA_HIWORLD.variants.first()
-        val withCar = CanVehicles.TOYOTA_HIWORLD.withVariant(v.name)
+        val v = TestProfiles.TOYOTA_HIWORLD.variants.first()
+        val withCar = TestProfiles.TOYOTA_HIWORLD.withVariant(v.name)
         assertEquals(0x01, withCar.link.send.single { it.name == "car type" }.data[1])
         val l2 = CanBoxLink(CanBoxFamilies.HIWORLD, withCar.link, { b, _ -> out += hex(b) })
         l2.start(0)
@@ -316,11 +318,11 @@ class Batch1ProfilesTest {
 
     @Test
     fun carTypesOfEachProtocol() {
-        assertEquals(listOf(0x0A, 0x09), CanVehicles.HYUNDAI_KIA_HIWORLD.withVariant("Hyundai Accent 2010-2019, all trims").link.send.single { it.name == "car type" }.data)
-        assertTrue(CanVehicles.HONDA_HIWORLD.variants.all { it.send.getValue("car type").let { d -> d[1] == 0x02 && d[0] != 0 } })
-        assertTrue(CanVehicles.HYUNDAI_KIA_HIWORLD.variants.all { it.send.getValue("car type")[1] == 0x09 })
+        assertEquals(listOf(0x0A, 0x09), TestProfiles.HYUNDAI_KIA_HIWORLD.withVariant("Hyundai Accent 2010-2019, all trims").link.send.single { it.name == "car type" }.data)
+        assertTrue(TestProfiles.HONDA_HIWORLD.variants.all { it.send.getValue("car type").let { d -> d[1] == 0x02 && d[0] != 0 } })
+        assertTrue(TestProfiles.HYUNDAI_KIA_HIWORLD.variants.all { it.send.getValue("car type")[1] == 0x09 })
         // Keys: same layout (0x11, D2 code, D3 = 1 pressed) without LNP002's event bit.
-        val k = CanVehicles.HONDA_HIWORLD.keys!!
+        val k = TestProfiles.HONDA_HIWORLD.keys!!
         assertEquals(null, k.eventByte)
         assertEquals("volume +", k.name(1))
     }
@@ -340,7 +342,7 @@ class Batch2ProfilesTest {
 
     @Test
     fun vwMqbHiworld() {
-        val v = CanVehicles.VW_MQB_HIWORLD
+        val v = TestProfiles.VW_MQB_HIWORLD
         assertEquals(29, v.variants.size)
         // HdMQB7Protocol: no buildCarTypePacket, Hiworld's acknowledgement (shouldSendAck).
         assertTrue(v.link.ack)
@@ -361,7 +363,7 @@ class Batch2ProfilesTest {
 
     @Test
     fun vwPqHiworld() {
-        val v = CanVehicles.VW_PQ_HIWORLD
+        val v = TestProfiles.VW_PQ_HIWORLD
         assertEquals(42, v.variants.size)
         // HdMQB6Protocol: no buildCarTypePacket, Hiworld's acknowledgement.
         assertTrue(v.link.ack)
@@ -389,7 +391,7 @@ class Batch2ProfilesTest {
 
     @Test
     fun vwMqbRaise() {
-        val v = CanVehicles.VW_MQB_RAISE
+        val v = TestProfiles.VW_MQB_RAISE
         assertEquals(61, v.variants.size)
         assertEquals(CanBoxFamilies.RAISE, v.family)
         // ReBaseProtocol: acknowledge = [FF], hello buildConnectPacket = getPacket(0x81, [1]), no car type.
@@ -414,7 +416,7 @@ class Batch2ProfilesTest {
 
     @Test
     fun vwPqRaise() {
-        val v = CanVehicles.VW_PQ_RAISE
+        val v = TestProfiles.VW_PQ_RAISE
         assertEquals(49, v.variants.size)
         assertEquals(CanBoxFamilies.RAISE, v.family)
         assertTrue(v.link.ack)

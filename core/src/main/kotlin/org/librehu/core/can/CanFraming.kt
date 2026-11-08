@@ -1,8 +1,8 @@
 package org.librehu.core.can
 
 /**
- * A box family described in the profile (`"framing"`, format 2) instead of in code, for a box maker LibreHU has no
- * family for: `HEAD… [LEN CMD | CMD LEN] D0..Dn-1 SUM`. LEN = n + [lenOffset]; SUM over [sumOver] (the fields
+ * How a box type frames its messages (`"framing"`, format 2), described in the box type's generic profile (engine
+ * 2.6, [CanBoxFamilies]) or in a car profile for a box of its own: `HEAD… [LEN CMD | CMD LEN] D0..Dn-1 SUM`. LEN = n + [lenOffset]; SUM over [sumOver] (the fields
  * `len`, `cmd`, `data`, `head`), `sum` (added) or `xor` (xored) on [sumSize] bytes (big-endian), then + [sumAdd] and
  * xor [sumXor]. The head unit acknowledges each good message with [ackCmd] (data: the message's command) framed the
  * same way, or the raw bytes [ackRaw], except the commands [noAckFor]; the single bytes [boxAnswers] the box sends
@@ -66,11 +66,14 @@ data class CanFraming(
         return out.toByteArray()
     }
 
-    /** As a family (`"box"` of the profile), named [id]. */
-    fun family(id: String): CanBoxFamily =
+    /** As a family (`"box"` of the profile), named [id]; [name]: the box type's (`box_type.name`), else made from the head. */
+    fun family(
+        id: String,
+        name: String? = null,
+    ): CanBoxFamily =
         object : CanBoxFamily {
             override val id = id
-            override val name = "Profile framing (" + head.joinToString(" ") { "%02X".format(it) } + ")"
+            override val name = name ?: ("Profile framing (" + head.joinToString(" ") { "%02X".format(it) } + ")")
             override val defaultBaud = baud
 
             override fun parser(onFrame: (CanboxFrame) -> Unit): CanBoxParser = FramingParser(this@CanFraming, onFrame)

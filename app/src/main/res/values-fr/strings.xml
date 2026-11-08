@@ -487,7 +487,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="risk_blocked_title">Commande 80 bloquée</string>
     <string name="risk_blocked">80 lance le bootloader du MCU et peut le rendre inutilisable : elle n\'est jamais envoyée d\'ici.</string>
     <string name="can_vehicle">Modèle de voiture (décodage)</string>
-    <string name="can_vehicle_hint">Le boîtier CAN (Hiworld) traduit le bus CAN de la voiture en ses propres messages, qui dépendent de la voiture et du protocole réglé dans le boîtier. Le profil choisi indique comment les lire ; importer un profil JSON pour une autre voiture (docs/can-vehicles.md).</string>
+    <string name="can_vehicle_hint">Le boîtier CAN (Hiworld, Raise…) traduit le bus CAN de la voiture en ses propres messages, qui dépendent de la voiture et du protocole réglé dans le boîtier. Le profil choisi indique comment les lire : installez le paquet de votre marque (plus bas) ou importez un profil JSON (docs/can-vehicles.md).</string>
     <string name="can_vehicle_messages">%1$d messages décodés</string>
     <string name="can_values">Valeurs décodées</string>
     <string name="can_values_none">Aucun message connu reçu pour l\'instant avec ce profil.</string>
@@ -1399,4 +1399,26 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="can_twrp_unreadable">TWRP ne sait pas lire ce boîtier (trame inconnue) : pas de touches là-bas.</string>
     <string name="can_twrp_not_written">Le fichier n\'a pas pu être écrit (accès au stockage ou root).</string>
     <string name="can_twrp_write">Réécrire pour TWRP</string>
+    <string name="can_packs">Profils voiture à télécharger</string>
+    <string name="can_packs_hint">Les profils des voitures viennent en paquets par marque de LibreHU-car-profiles (GitHub), avec les types de boîtiers : installez le paquet de votre marque, puis choisissez votre voiture plus haut. Le service n\'a lui-même qu\'un profil générique par type de boîtier (messages bruts), en repli.</string>
+    <string name="can_packs_refresh">Actualiser</string>
+    <string name="can_packs_loading">Lecture de la liste…</string>
+    <string name="can_packs_running">Téléchargement et vérification…</string>
+    <string name="can_packs_failed">Échec : %1$s</string>
+    <string name="can_packs_ok">%1$s installé</string>
+    <string name="can_packs_cars">%1$d voitures</string>
+    <string name="can_packs_boxes">%1$d types de boîtiers</string>
+    <string name="can_packs_not_installed">non installé</string>
+    <string name="can_packs_up_to_date">installé, à jour (révision %1$d)</string>
+    <string name="can_packs_update_ready">mise à jour : révision %1$d</string>
+    <string name="can_packs_needs_service">demande un LibreHU service plus récent</string>
+    <string name="can_packs_install">Installer</string>
+    <string name="can_packs_update">Mettre à jour</string>
+    <string name="can_packs_remove">Retirer</string>
+    <string name="can_missing">Le profil « %1$s » n\'est pas installé : il vient avec le paquet de sa marque (liste plus bas). En attendant, le profil générique de son boîtier montre seulement les messages bruts.</string>
+    <string name="can_missing_running">Téléchargement de son paquet…</string>
+    <string name="can_missing_failed">Échec du téléchargement : %1$s</string>
+    <string name="can_missing_retry">Télécharger son paquet</string>
+    <string name="can_generic">repli</string>
+    <string name="can_from_pack">paquet %1$s</string>
 </resources>

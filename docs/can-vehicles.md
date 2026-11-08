@@ -9,7 +9,18 @@ dans ses trames `10` (voir [ivi-services/12-canbus.md](ivi-services/12-canbus.md
 dépend du protocole du boîtier pour la marque (Renault : LNP002). Le profil de voiture dit comment lire ces
 messages ; on le choisit dans l'onglet **CAN** et il s'applique tout de suite.
 
-Profils intégrés :
+**Depuis le service v184 (moteur 2.6.0), aucun profil de voiture n'est intégré au service.** Les voitures viennent en
+**paquets par marque** de <https://github.com/LibreHU/LibreHU-car-profiles>, téléchargés par le service lui-même
+(onglet CAN, carte « Profils voiture à télécharger » : index, empreinte SHA-256, installation tout ou rien) ou par
+LibreHU Apps (onglet « Voitures »). Le service n'a plus qu'**un profil générique par type de boîtier**
+(`hiworld-generic`, `hiworld-aa55-generic`, `raise-generic`, `raise-fd-generic`, `raise-fd2-generic` : messages bruts,
+aucun décodage), qui sert de **repli** et de **description du type de boîtier** (voir
+[Types de boîtiers](#familles-de-boîtiers)). Une unité qui avait choisi une voiture intégrée jusqu'à la v183 passe sur
+le profil générique de son boîtier, et le service télécharge tout de suite le paquet de sa marque (nouvel essai après
+30 s, 2 min et 10 min si le réseau n'est pas encore là ; bouton « Télécharger son paquet » sinon) : la voiture et le
+type choisi reviennent seuls.
+
+Profils publiés (paquets de LibreHU-car-profiles ; intégrés au service jusqu'à la v183) :
 - `renault-clio3-hiworld` : **Renault, Dacia, LADA, Samsung, Nissan, Mercedes (Hiworld LNP002)**, le protocole
   « Renault / LADA / Samsung tout compatible » de Hiworld (état ACC / feux / marche AR / frein, touche volant, angle de
   volant, portes, ordinateur de bord, température extérieure, radar, pneus, version du boîtier). Il sert **94 voitures
@@ -75,8 +86,9 @@ Profils intégrés :
 
 Ces trois profils (lot 1) n'ont **pas de voiture par défaut** : rien n'est envoyé au boîtier tant que la voiture n'est
 pas choisie dans l'onglet CAN (un boîtier ne doit pas recevoir le type d'une autre voiture). **Pas encore essayés sur une
-voiture** : retours et captures bienvenus. Les profils intégrés sont des fichiers JSON
-(`core/src/main/resources/org/librehu/core/can/vehicles/`).
+voiture** : retours et captures bienvenus. Ces profils sont des fichiers JSON de LibreHU-car-profiles
+(`brands/<marque>/`) ; le service en garde une copie pour ses tests seulement (`core/src/test/resources/.../cars/`).
+Les profils génériques intégrés sont dans `core/src/main/resources/org/librehu/core/can/boxes/`.
 
 **Voitures décodées** (résumé ; liste par marque et modèle, tenue à jour seule depuis les profils de la dernière
 version publiée : <https://librehu.github.io/docs.html#can-cars>) :
@@ -106,11 +118,29 @@ ne suit que des entiers (affectations, comparaisons, sauts) ; validé sur LNP002
 
 ## Familles de boîtiers
 
-Le profil nomme son boîtier (`"box"`) : une **famille** (trame, somme de contrôle, accusé) ou le **fabricant**, qui
-renvoie à la famille de la plupart de ses protocoles. Relevé dans l'appli Hiworld « Car Info » 1.0.3991
+**Les types de boîtiers sont des données (moteur 2.6.0, service v184)**, plus du code : chacun est décrit par **son
+profil générique**, un profil normal avec `"box_type"` (nom affiché, fabricants qui l'utilisent) et sa `"framing"`
+(voir le format plus bas). Le service en a cinq intégrés (le tableau ci-dessous) ; le paquet `boxes` de
+LibreHU-car-profiles (dossier `boxes/`) en ajoute et remplace les intégrés de même `id`, sans nouveau service :
+**un nouveau boîtier = un fichier JSON**. Il est installé avant les paquets des marques (leurs fiches peuvent nommer un
+type qu'il apporte).
+
+```json
+{ "format": "librehu-can-vehicle", "version": 2, "engine": ">=2.6", "id": "raise-generic",
+  "name": "Raise (2E): any car (raw messages)", "box": "raise",
+  "box_type": { "name": "Raise (2E)", "aliases": ["simple", "bagoo", "oudi"] },
+  "framing": { "head": "2E", "order": "cmd,len", "checksum": { "algo": "sum", "over": "cmd,len,data", "xor": "0xFF" },
+               "ack": { "raw": "FF" }, "box_answers": ["FF", "F0", "F3", "FC"] },
+  "link": { "ack": true, "send": [ { "name": "connect", "cmd": "0x81", "data": "01", "first_ms": 500 } ] },
+  "messages": {} }
+```
+
+Le profil d'une voiture nomme son boîtier (`"box"`) : un **type** (trame, somme de contrôle, accusé) ou le
+**fabricant**, qui renvoie au type de la plupart de ses protocoles ; il peut aussi décrire sa propre `framing`. Relevé dans l'appli Hiworld « Car Info » 1.0.3991
 (`com.can.activity`, lue sans être exécutée : classes de base `HdProtocol`, `HdAA55Protocol`, `ReBaseProtocol`,
 `ReFDProtocol`, `ReFD2Protocol`, `BnrProtocol`, `LzProtocol`, `KcyProtocol` ; fabricants de la table `canbox` de
-`assets/canbus.db`). `core/.../can/CanBox.kt`, testé (`CanBoxFamiliesTest`).
+`assets/canbus.db`). Registre : `core/.../can/CanBox.kt` (`CanBoxFamilies`) ; testé (`CanBoxTypesTest` : mêmes octets
+que les trames codées avant la 2.6, accusés, type apporté par un paquet).
 
 | `box` | Trame | Somme | L'autoradio répond | Fabricants (`box` accepté aussi) |
 |---|---|---|---|---|
@@ -329,7 +359,9 @@ publie `dist/index.json` et un paquet par marque (`"format": "librehu-car-pack"`
 commits du dossier de la marque, `engine` = le plus récent demandé par ses fiches, `profiles`), avec taille et SHA-256
 dans l'index. Le service installe un paquet **tout ou rien** (`CanPacks.read` : empreinte, moteur, chaque fiche lue et ses
 `examples` passés) dans `files/can-packs/<marque>.json` ; une fiche d'un paquet remplace la fiche intégrée de même
-`id`, les intégrées restent en secours (paquet retiré ou illisible par ce moteur). Pour LibreHU Apps, récepteur
+`id` (le paquet `boxes` remplace ainsi les profils génériques). Le service télécharge lui-même les paquets depuis la
+v184 (`can/CarPackIndex`, carte de l'onglet CAN : mêmes vérifications que LibreHU Apps, paquet `boxes` d'abord). Pour
+LibreHU Apps, récepteur
 `can/CarPackReceiver` (permission signature `org.librehu.permission.HEADUNIT`, diffusions ordonnées) :
 `org.librehu.service.QUERY_CAR_PACKS` → `{"engine": "2.5.0", "packs": {"renault": 1, …}, "sha256": {"renault": "…", …}}`
 (révision et SHA-256 de chaque paquet installé ; empreintes publiées aussi dans `dist/SHA256SUMS`) ;
