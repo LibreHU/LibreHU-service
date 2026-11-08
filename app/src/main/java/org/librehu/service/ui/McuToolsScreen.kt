@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import org.librehu.core.mcu.McuProfiles
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
+import org.librehu.service.mcu.ProfileStore
 import java.time.LocalDateTime
 
 /**
@@ -77,6 +79,7 @@ fun McuToolsScreen(client: ServiceClient) {
         }
         if (!jancar) {
             Card { Hint(stringResource(R.string.tools_not_jancar)) }
+            ProfileCommands(sender, running, link.protocol)
         } else {
             Commands(sender, running)
             Simulation(running, scope) { f -> ServiceState.simulator?.invoke(f) }
@@ -169,6 +172,27 @@ private fun Commands(
             JacDebug.CAN_BAUDS.forEachIndexed { i, b -> Pill(b.toString(), enabled = running) { sender.send(JacDebug.canBaud(i)) } }
         }
         Hint(stringResource(R.string.tools_can_hint))
+    }
+}
+
+/** The named frames of the MCU profile in use (`"commands"`: KSW's screen, sound source, voice…), one button each. */
+@Composable
+private fun ProfileCommands(
+    sender: McuSender,
+    running: Boolean,
+    protocolName: String,
+) {
+    val store = ProfileStore.get(LocalContext.current)
+    val profiles by store.profiles.collectAsStateWithLifecycle()
+    val p = profiles.firstOrNull { it.name == protocolName } ?: return
+    if (p.commands.isEmpty()) return
+    Card(stringResource(R.string.tools_profile_commands, p.name)) {
+        Hint(stringResource(R.string.tools_profile_commands_hint))
+        Actions {
+            for ((name, template) in p.commands) {
+                Pill(name, enabled = running) { sender.send(McuProfiles.template(template, emptyMap(), ByteArray(0))) }
+            }
+        }
     }
 }
 

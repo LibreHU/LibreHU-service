@@ -89,7 +89,9 @@ object TwrpCanConf {
                 append("send ${s.firstMs} ${s.everyMs} ${frame.joinToString(" ") { hex(it.toInt()) }}\n")
             }
             val k = v.keys
-            if (f != null && k != null && k.codeBase == 0 && k.stepsByte == null) {
+            if (k != null && k.needs28) {
+                append("# wheel keys: event_value / pressed_for (engine 2.8), not read by TWRP\n")
+            } else if (f != null && k != null && k.codeBase == 0 && k.stepsByte == null) {
                 val mask = if (k.codeMask != 0xFF) " ${hex(k.codeMask)}" else ""
                 append(
                     "keys %s %s %s %s %s %s%s\n".format(

@@ -186,6 +186,9 @@ class HeadUnit(
         }
         executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
         executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
+        // The heartbeat some MCUs want from the head unit (KSW: without it the MCU takes the SoC for dead).
+        val beat = protocol.beatMs
+        if (beat > 0 && protocol.beat() != null) executor.scheduleWithFixedDelay({ sendIf(protocol.beat()) }, beat, beat, TimeUnit.MILLISECONDS)
     }
 
     /**
@@ -274,11 +277,17 @@ class HeadUnit(
 
     override fun onFrame(frame: McuFrame) {
         listener.onMcuFrame(frame, true)
-        executor.execute { handle(protocol.decode(frame)) }
+        executor.execute { received(frame) }
     }
 
     /** Debug: handles [frame] as if the MCU had sent it. Nothing is written to the port. */
-    fun simulate(frame: McuFrame) = executor.execute { handle(protocol.decode(frame)) }
+    fun simulate(frame: McuFrame) = executor.execute { received(frame) }
+
+    private fun received(frame: McuFrame) {
+        handle(protocol.decode(frame))
+        // KSW: the MCU's own frames are the car data, read by the car profile as well.
+        protocol.canCopy(frame)?.let { listener.onCanData(it) }
+    }
 
     override fun onAckTimeout(frame: McuFrame) = log("MCU: no ACK for $frame")
 
@@ -348,8 +357,8 @@ class HeadUnit(
 
     /** Android time to the MCU RTC every minute, once the MCU clock has been read (as ivi-services does). */
     private fun syncClockToMcu() {
-        // Wait for the MCU clock first (it may be the better one at boot), unless it is not used.
-        if (!clockToMcu() || (!clockReceived && clockFromMcu())) return
+        // Wait for the MCU clock first (it may be the better one at boot), unless it is not used or cannot be read (KSW).
+        if (!clockToMcu() || (!clockReceived && clockFromMcu() && protocol.readsClock)) return
         pushClockToMcu()
     }
 

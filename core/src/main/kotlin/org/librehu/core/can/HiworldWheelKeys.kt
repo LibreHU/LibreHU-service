@@ -28,13 +28,15 @@ class HiworldWheelKeys(
         }
         if (f.cmd != spec.cmd || f.data.size <= maxOf(spec.codeByte, spec.stateByte ?: 0, spec.eventByte ?: 0)) return
         val ev = spec.eventByte?.let { f.u(it) } ?: 0
+        // Engine 2.8: another message under the same command, not a frame without a key (KSW: A1 19 car data, A1 17 keys).
+        if (spec.eventByte != null && spec.eventValue != null && (ev and spec.eventMask) != spec.eventValue) return
         val key = f.u(spec.codeByte) and spec.codeMask
         val st = spec.stateByte?.let { f.u(it) } ?: 0
         val raw = (ev shl 16) or (key shl 8) or st
         if (raw != lastRaw) onRaw?.invoke(ev, key, st)
         lastRaw = raw
-        val event = spec.eventByte == null || ev and spec.eventMask != 0
-        val down = event && key != 0 && (spec.stateByte == null || st in spec.pressed)
+        val event = spec.eventByte == null || spec.eventValue != null || (ev and spec.eventMask) != 0
+        val down = event && key != 0 && (spec.stateByte == null || st in (spec.pressedFor[key] ?: spec.pressed))
         if (pressed != 0 && (!down || pressed != key)) onRelease(spec.codeBase + pressed)
         if (down && pressed != key) onPress(spec.codeBase + key)
         pressed = if (down) key else 0
@@ -115,7 +117,17 @@ data class WheelKeySpec(
     val codeBase: Int = 0,
     val stepsByte: Int? = null,
     val stepsSigned: Boolean = true,
+    /**
+     * Engine 2.8: the key frames are those whose [eventByte] (masked by [eventMask]) is this value, instead of any
+     * with a bit of [eventMask] (KSW: `A1 17 code state`, the other `A1` frames are car data).
+     */
+    val eventValue: Int? = null,
+    /** Engine 2.8: codes pressed on other values of [stateByte] than [pressed] (KSW: 0 for volume, tracks, play). */
+    val pressedFor: Map<Int, Set<Int>> = emptyMap(),
 ) {
+    /** Uses what engine 2.8 brought: older services and TWRP's reader cannot read it. */
+    val needs28: Boolean get() = eventValue != null || pressedFor.isNotEmpty()
+
     /** True when [code] is one of this source's. */
     fun owns(code: Int): Boolean = code - codeBase in 0 until if (stepsByte != null) 512 else 256
 

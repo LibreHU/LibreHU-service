@@ -305,6 +305,51 @@ class CanFramingTest {
         assertEquals("FD 81 01 01 83", hex(x80.encode(0x81, byteArrayOf(1))))
     }
 
+    /**
+     * KSW (engine 2.8): the MCU's own frames `F2 00 A1 LEN D…`, as the MCU profile copies them; keys `A1 17 code
+     * state` among the car data of the other `A1` frames, volume, tracks and play pressed on 0 (McuCommunicator).
+     */
+    @Test
+    fun kswKeysOfEngine28() {
+        val v =
+            CanVehicles.fromJson(
+                """{"format":"librehu-can-vehicle","version":2,"id":"ksw-car","box":"ksw-mcu",""" +
+                    """"framing":{"head":"F2 00","order":"cmd,len","checksum":{"algo":"sum","over":"cmd,len,data","xor":"0xFF"}},""" +
+                    """"wheel_keys":{"cmd":"0xA1","event_byte":0,"event_value":"0x17","code_byte":1,"state_byte":2,"pressed":[1],""" +
+                    """"pressed_for":{"21":[0],"25":[0]},"names":{"5":"knob press","21":"volume +"}}}""",
+            )
+        val mcu = org.librehu.core.mcu.ProfileProtocol(org.librehu.core.mcu.McuProfiles.KSW_PX6)
+        val copies =
+            listOf(
+                org.librehu.core.mcu.McuFrame.of(0xA1, 0x17, 0x05, 0x01),
+                org.librehu.core.mcu.McuFrame.of(0xA1, 0x19, 0, 0, 0, 0, 0, 0, 0, 0x32, 0x0B, 0xB8, 0, 0, 0, 0xC8, 0),
+                org.librehu.core.mcu.McuFrame.of(0xA1, 0x17, 0x05, 0x00),
+                org.librehu.core.mcu.McuFrame.of(0xA1, 0x17, 0x15, 0x00),
+                org.librehu.core.mcu.McuFrame.of(0xA1, 0x17, 0x15, 0x01),
+            ).map { hex(mcu.canCopy(it)!!) }
+        val got = frames(v.family, *copies.toTypedArray())
+        assertEquals(5, got.size)
+        assertTrue(got.all { it.cmd == 0xA1 && it.checksumOk })
+        val events = mutableListOf<String>()
+        val keys = HiworldWheelKeys(null, { events += "up$it" }, v.keys!!) { events += "down$it" }
+        got.forEach(keys::onFrame)
+        // The car data frame between press and release does not release the knob.
+        assertEquals(listOf("down5", "up5", "down21", "up21"), events)
+        assertEquals(">=2.8", CanEngine.requiredBy(v))
+        assertTrue(TwrpCanConf.of(v).contains("not read by TWRP"))
+        val back = CanVehicles.fromJson(CanVehicles.toJson(v))
+        assertEquals(v.wheelKeys, back.wheelKeys)
+        assertTrue(CanVehicles.toJson(v).contains("\"event_value\": \"0x17\""))
+        try {
+            CanVehicles.fromJson(
+                """{"format":"librehu-can-vehicle","version":2,"id":"bad","box":"hiworld","wheel_keys":{"cmd":"0xA1","code_byte":1,"event_value":"0x17"}}""",
+            )
+            fail("event_value without event_byte")
+        } catch (e: CanVehicleException) {
+            assertTrue(e.message!!, e.message!!.contains("event_value"))
+        }
+    }
+
     @Test
     fun framingsOfEngine27() {
         val v =

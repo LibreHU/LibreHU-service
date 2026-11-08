@@ -429,6 +429,8 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="tools_last_key">Last key</string>
     <string name="tools_frames">Frames rx / tx / ACK / sim</string>
     <string name="tools_not_jancar">MCU commands and simulation are for the Jancar JAC_V1 MCU; the selected profile uses another protocol. The raw frame console of Diagnostics still works.</string>
+    <string name="tools_profile_commands">Commands of %1$s</string>
+    <string name="tools_profile_commands_hint">Frames of the MCU profile in use, framed by it and sent as they are (KSW: from the KSW API v2.12, McuCommunicator and KSW\'s own service). Not tried on a head unit yet: watch what the MCU does.</string>
     <string name="tools_outputs">MCU outputs</string>
     <string name="tools_outputs_hint">Sent as is: the service sets these outputs again by itself on the next ACC, volume or radio change.</string>
     <string name="tools_mute_cmd">Mute (08)</string>

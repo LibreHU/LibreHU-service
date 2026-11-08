@@ -429,6 +429,8 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="tools_last_key">Dernière touche</string>
     <string name="tools_frames">Trames reçues / envoyées / ACK / sim</string>
     <string name="tools_not_jancar">Les commandes et la simulation visent le MCU Jancar JAC_V1 ; le profil choisi utilise un autre protocole. La console de trames brutes de Diagnostic reste utilisable.</string>
+    <string name="tools_profile_commands">Commandes de %1$s</string>
+    <string name="tools_profile_commands_hint">Trames du profil MCU en service, encadrées par lui et envoyées telles quelles (KSW : d\'après la KSW API v2.12, McuCommunicator et le service de KSW lui-même). Pas encore essayées sur un autoradio : surveillez ce que fait le MCU.</string>
     <string name="tools_outputs">Sorties du MCU</string>
     <string name="tools_outputs_hint">Envoyé tel quel : le service repositionne lui-même ces sorties au prochain changement d\'ACC, de volume ou de radio.</string>
     <string name="tools_mute_cmd">Mute (08)</string>

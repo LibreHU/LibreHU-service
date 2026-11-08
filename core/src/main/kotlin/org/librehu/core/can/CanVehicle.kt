@@ -718,7 +718,10 @@ object CanVehicles {
         )
     }
 
-    /** `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`. */
+    /**
+     * `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`;
+     * engine 2.8: `"event_value": "0x17"`, `"pressed_for": { "21": [0] }`.
+     */
     private fun wheelKeys(
         o: JsonObject,
         defaultBase: Int = 0,
@@ -732,6 +735,7 @@ object CanVehicles {
                 m.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 1..0xFF } ?: throw CanVehicleException("$w: bad $k $m")
             }
         if (code !in 0..63) throw CanVehicleException("$w: code_byte 0..63")
+        if (o["event_value"] != null && o["event_byte"] == null) throw CanVehicleException("$w: event_value needs event_byte")
         val base = (o.int("code_base") ?: defaultBase).also { if (it < 0 || it > 0xFFFF || (w != "wheel_keys" && it < 256)) throw CanVehicleException("$w: code_base 256..65535 (codes under 256 are the steering wheel's)") }
         return WheelKeySpec(
             cmd = cmd,
@@ -751,6 +755,19 @@ object CanVehicles {
             codeBase = if (w == "wheel_keys") 0 else base,
             stepsByte = byte("steps_byte"),
             stepsSigned = (o["steps_signed"] as? JsonPrimitive)?.booleanOrNull ?: true,
+            eventValue =
+                o.str("event_value")?.let { m ->
+                    m.removePrefix("0x").removePrefix("0X").toIntOrNull(16)?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$w: bad event_value $m")
+                },
+            pressedFor =
+                (o["pressed_for"] as? JsonObject)
+                    ?.map { (k, v) ->
+                        val c = k.toIntOrNull()?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$w: pressed_for code \"$k\" (0..255, as in names)")
+                        val states = (v as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.intOrNull }?.toSet()
+                        if (states.isNullOrEmpty()) throw CanVehicleException("$w: pressed_for $k: a list of values")
+                        c to states
+                    }?.toMap()
+                    .orEmpty(),
         )
     }
 
@@ -767,6 +784,15 @@ object CanVehicles {
             if (w.codeBase != 0) put("code_base", w.codeBase)
             w.stepsByte?.let { put("steps_byte", it) }
             if (!w.stepsSigned) put("steps_signed", false)
+            w.eventValue?.let { put("event_value", "0x%02X".format(it)) }
+            if (w.pressedFor.isNotEmpty()) {
+                put(
+                    "pressed_for",
+                    buildJsonObject {
+                        w.pressedFor.toSortedMap().forEach { (k, v) -> put(k.toString(), kotlinx.serialization.json.JsonArray(v.sorted().map { JsonPrimitive(it) })) }
+                    },
+                )
+            }
         }
 
     /** `"link": { "ack": true, "send": [ { "name", "cmd": "0x24", "data": "00 31", "first_ms", "every_ms" } ] }`. */

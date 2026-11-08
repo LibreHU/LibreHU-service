@@ -128,6 +128,12 @@ LEN D… SUM`, la longueur sert de commande, `55 AA` vers le boîtier), relevés
 décodeurs Car Info. Il est installé avant les paquets des marques (leurs fiches peuvent nommer un
 type qu'il apporte).
 
+**KSW (service v194)** : sur les écrans Android KSW (BMW, Mercedes-Benz…), il n'y a pas de boîtier à part, la MCU
+décode la voiture et envoie les données dans ses propres trames `F2 00 A1 LEN D… SUM` (sous-commande en D0). Le profil
+MCU `ksw-px6` ([mcu-profiles.md](mcu-profiles.md#ksw-ksw-px6)) les copie entières au moteur CAN (réglage CAN « par le
+MCU ») ; le paquet `boxes` apporte le type `ksw-mcu` (`F2 00`, `order` `cmd,len`, somme sur CMD, LEN et données, xor
+`0xFF`, sans accusé) et les fiches KSW le nomment.
+
 ```json
 { "format": "librehu-can-vehicle", "version": 2, "engine": ">=2.6", "id": "raise-generic",
   "name": "Raise (2E): any car (raw messages)", "box": "raise",
@@ -340,7 +346,7 @@ profils intégrés y sont conformes (vérifié avec `jsonschema` 4.26). Le servi
 formules et les `examples` à l'import.
 
 **Version du moteur (service v169)** : le moteur des données voiture suit le [Semantic Versioning 2.0.0](https://semver.org/)
-(`CanEngine.VERSION`, aujourd'hui **2.5.0**) : MAJEURE si un profil de l'ancienne majeure pouvait être lu autrement
+(`CanEngine.VERSION`, aujourd'hui **2.8.0**) : MAJEURE si un profil de l'ancienne majeure pouvait être lu autrement
 (les anciens formats restent lus), MINEURE quand le format gagne quelque chose, CORRECTIF pour une correction. Un profil
 dit le moteur qu'il demande, `"engine": ">=2.1"` (cette version ou plus récente) ou `"^2.1"` (dans la majeure 2) ; un
 service trop ancien le refuse avec un message clair (« mettre à jour LibreHU service ») au lieu de le lire à moitié.
@@ -355,6 +361,9 @@ L'export écrit le moteur minimum calculé d'après ce que le profil utilise (`C
 | 2.3.0 | messages construits, on change, commandes | v166 |
 | 2.4.0 | plusieurs sources de touches, molettes | v167 |
 | 2.5.0 | champ `engine`, sources combinées (boîtier + OBD) | v169 |
+| 2.6.0 | types de boîtiers en données (`box_type` + `framing`), aucun profil de voiture intégré | v184 |
+| 2.7.0 | trames sans CMD, LEN, en-tête ou somme, avec une fin, et celle de l'autoradio (`out`) | v190 |
+| 2.8.0 | touches : `event_value`, `pressed_for` (MCU KSW) | v194 |
 
 **Sources combinées, sans se disputer un port (service v189)** : le boîtier CAN (par le MCU, un adaptateur USB-série,
 Bluetooth ou un port série) et l'adaptateur OBD-II (USB ou Bluetooth) marchent **ensemble**, chacun sur son port.
@@ -493,7 +502,14 @@ Le profil dit où le boîtier met les touches du volant :
 Message `cmd`, code à `code_byte` (masqué par `code_mask`), appuyé tant que l'octet `state_byte` vaut une des valeurs
 de `pressed` (sans `state_byte` : tant que le code n'est pas 0), et seulement si l'octet `event_byte` a un bit de
 `event_mask` ; octets comptés depuis D0 ; `names` : noms affichés. Exemple Raise courant :
-`{ "cmd": "0x20", "code_byte": 0, "state_byte": 1, "pressed": [1, 2] }`. Un profil Hiworld sans `wheel_keys` mais avec
+`{ "cmd": "0x20", "code_byte": 0, "state_byte": 1, "pressed": [1, 2] }`.
+
+**Moteur 2.8 (service v194)**, pour la MCU KSW (`A1 17 code état`, d'après McuCommunicator) : `"event_value": "0x17"`
+(avec `event_byte`) ne prend que les messages dont l'octet `event_byte` (masqué par `event_mask`) vaut cette valeur ;
+les autres messages de la même commande sont ignorés (les données voiture `A1 19` ne relâchent pas une touche tenue).
+`"pressed_for": { "21": [0] }` : codes (comme dans `names`) appuyés sur d'autres valeurs de `state_byte` que
+`pressed` (KSW : 0 pour volume ±, piste précédente / suivante et lecture, 1 pour les autres). TWRP ne lit pas ces
+deux champs : pas de ligne `keys` dans son fichier pour un tel profil. Un profil Hiworld sans `wheel_keys` mais avec
 un signal `wheel_key` dans `0x11` garde la lecture LNP002 : D1 bit 3 = événement touche, D2 = code, D3 = 1 à
 l'appui (`core/.../can/HiworldWheelKeys.kt`). Chaque code reçoit une action comme les touches de façade (onglet CAN,
 carte Touches du volant). Codes par défaut, d'après `HdRenaultProtocolLNP002` de l'appli Hiworld : 1 volume +,

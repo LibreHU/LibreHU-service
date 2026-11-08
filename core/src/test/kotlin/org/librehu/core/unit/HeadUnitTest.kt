@@ -1,11 +1,14 @@
 package org.librehu.core.unit
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.librehu.core.audio.Bd37534
 import org.librehu.core.mcu.Mcu
 import org.librehu.core.mcu.McuFrame
+import org.librehu.core.mcu.McuProfiles
+import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
@@ -174,5 +177,43 @@ class HeadUnitTest {
         settle()
         assertEquals(McuFrame.of(Mcu.CMD_SLEEP_TIMER, 8), sent.last())
         executor.shutdownNow()
+    }
+
+    /** KSW: version request, heartbeat every second, car frames copied to the CAN engine, date and time in one frame. */
+    @Test
+    fun kswHeartbeatCanCopyAndClock() {
+        val ksw = McuProfiles.protocolFor(McuProfiles.KSW_PX6)
+        val can = CopyOnWriteArrayList<ByteArray>()
+        val ex = Executors.newSingleThreadScheduledExecutor()
+        val u =
+            HeadUnit(
+                gpio,
+                null,
+                store,
+                ex,
+                object : HeadUnit.Listener {
+                    override fun onCanData(bytes: ByteArray) {
+                        can += bytes
+                    }
+                },
+                clock = { LocalDateTime.of(2026, 11, 8, 13, 45, 30) },
+                protocol = ksw,
+                board = McuProfiles.KSW_PX6.board,
+            )
+        val out = CopyOnWriteArrayList<McuFrame>()
+        u.start { out += it }
+        Thread.sleep(1300)
+        ex.submit {}.get(1, TimeUnit.SECONDS)
+        assertEquals(McuFrame.of(0x61, 0x00), out.first())
+        assertTrue(McuFrame.of(0x68, 0x08, 0x00) in out)
+        val brake = McuFrame.of(0xA1, 0x10, 0x08, 0x00)
+        u.onFrame(brake)
+        ex.submit {}.get(1, TimeUnit.SECONDS)
+        assertTrue(u.state.handbrake)
+        assertEquals(1, can.size)
+        assertArrayEquals(ksw.encode(brake), can[0])
+        u.pushClockToMcu()
+        assertTrue(McuFrame.of(0x64, 26, 11, 8, 13, 45, 30, 0) in out)
+        ex.shutdownNow()
     }
 }

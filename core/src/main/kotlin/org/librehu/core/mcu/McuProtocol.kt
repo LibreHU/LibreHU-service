@@ -68,6 +68,20 @@ interface McuProtocol {
     /** Asks the MCU for its date and time (answered with the date and time frames). */
     fun queryClock(): McuFrame?
 
+    /** True when the MCU tells its clock (time frames, asked with [queryClock] or sent by itself). KSW: no. */
+    val readsClock: Boolean get() = queryClock() != null
+
+    /** The head unit's heartbeat, sent every [beatMs] (KSW); null = none. */
+    fun beat(): McuFrame? = null
+
+    val beatMs: Long get() = 0
+
+    /**
+     * A copy of [frame] as received, for the CAN engine, whatever [decode] made of it; null = none. KSW: the MCU is
+     * the car's decoder, its own frames carry the car data and a car profile reads them.
+     */
+    fun canCopy(frame: McuFrame): ByteArray? = null
+
     /** Disarms (pauses) the MCU's watchdog on the SoC, when the protocol has one. */
     fun watchdogOff(): McuFrame? = null
 

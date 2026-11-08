@@ -48,9 +48,10 @@ enum class Signal { ACC, HANDBRAKE, HEADLIGHT, BACKLIGHT, REVERSE, VERSION, DATE
 
 /**
  * How frame [cmd] (whose data bytes match [match], index → value) gives [signal]. Booleans: data byte [byte] and
- * [mask] non zero (inverted by [invert]). VERSION: ASCII from [byte]. CAN: raw bytes from [byte]. KEY: channel at
- * [byte], values after. DATE / TIME: data indexes in [fields] (`year` or `yearHi` + `yearLo`, `month`, `day`;
- * `hour`, `minute`, `second`).
+ * [mask] non zero (inverted by [invert]). VERSION: ASCII from [byte]. CAN: raw bytes from [byte]; with [byte] -1, a
+ * copy of the whole frame as received, besides what the other inputs read from it (KSW: the car data are the MCU's
+ * own frames, read by a car profile). KEY: channel at [byte], values after. DATE / TIME: data indexes in [fields]
+ * (`year` or `yearHi` + `yearLo`, `month`, `day`; `hour`, `minute`, `second`).
  */
 data class InputSpec(
     val signal: Signal,
@@ -79,7 +80,8 @@ data class BoardSpec(
 /**
  * A head unit model's MCU protocol, stored as JSON ("librehu-mcu-profile", version 1) so that users can add other
  * head units without code: see docs/mcu-profiles.md. [outputs] are hex templates (`"08 01"`, first byte = command)
- * with placeholders `{yearHi} {yearLo} {month} {day} {hour} {minute} {second} {data}`.
+ * with placeholders `{yearHi} {yearLo} {month} {day} {hour} {minute} {second} {data}`; the clock ones work in the
+ * date and the time outputs alike (KSW sets both in one frame).
  */
 data class McuProfile(
     val id: String,
@@ -91,6 +93,10 @@ data class McuProfile(
     val inputs: List<InputSpec> = emptyList(),
     val outputs: Map<String, String> = emptyMap(),
     val board: BoardSpec = BoardSpec(),
+    /** Period of the « beat » output (the MCU's heartbeat from the head unit, KSW: 68 08 00 every second); 0 = none. */
+    val beatMs: Int = 0,
+    /** Named frames (command, then data, as [outputs]) the MCU tab sends on demand: what the profile's MCU also does. */
+    val commands: Map<String, String> = emptyMap(),
 ) {
     companion object {
         const val FORMAT = "librehu-mcu-profile"
@@ -111,6 +117,7 @@ data class McuProfile(
                 "watchdogOff",
                 "resetSoc",
                 "sleepTimer",
+                "beat",
             )
     }
 }
@@ -207,7 +214,71 @@ object McuProfiles {
                 ),
         )
 
-    val BUILT_IN = listOf(JANCAR_JAC_V1)
+    /**
+     * KSW, the MCU of the Android screens that sit in front of the car's own system (BMW, Mercedes-Benz…): frames
+     * `F2 00 CMD LEN DATA SUM`, SUM = (bytes 1 to the last data byte) xor 0xFF, the same both ways. From VincentZ4's
+     * « KSW API – Commands » v2.12 (PX6, Android 9, BMW F1x CIC: port, framing, commands 60-79), McuCommunicator
+     * (KswCarProject, GPL-3.0: heartbeat, events) and KSW's own centre service as KswCarProject published it
+     * (KswCenterService: 115200 baud, version request 61 00, ACC 10 / 11 05, reverse 11 01, screen and voice frames).
+     * The car data (frames A1, sub-command in D0) go whole to the CAN engine, read by a car profile; the handbrake is
+     * read here too. Left out: the commands that change what the MCU stores (car type, CAN protocol, cameras…), its
+     * upgrade mode and the power off.
+     */
+    val KSW_PX6 =
+        McuProfile(
+            id = "ksw-px6",
+            name = "KSW PX6",
+            description =
+                "KSW MCU (Android screens of BMW, Mercedes-Benz…), F2 00 frames. /dev/ttyS3 on PX6 (KSW API v2.12); Snapdragon " +
+                    "units: /dev/ttyMSM1 (/dev/ttyHSL1 on MSM8937, /dev/ttyHS1 on M600 with Android 11+): export, change port " +
+                    "and id, import. Not tried on a head unit yet.",
+            serial = SerialConfig("/dev/ttyS3", 115200),
+            frame =
+                FrameSpec(
+                    header = listOf(0xF2, 0x00),
+                    lengthOffset = 3,
+                    lengthCounts = LengthCounts.DATA,
+                    cmdOffset = 2,
+                    checksum = ChecksumType.TWOS8,
+                    checksumFrom = 1,
+                    checksumAdjust = -1,
+                ),
+            inputs =
+                listOf(
+                    InputSpec(Signal.ACC, 0x10, mask = 0x01),
+                    InputSpec(Signal.ACC, 0x11, match = mapOf(0 to 0x05), byte = 1, mask = 0x01),
+                    InputSpec(Signal.REVERSE, 0x11, match = mapOf(0 to 0x01), byte = 1, mask = 0x01),
+                    InputSpec(Signal.VERSION, 0x12),
+                    InputSpec(Signal.HANDBRAKE, 0xA1, match = mapOf(0 to 0x10), byte = 1, mask = 0x08),
+                    InputSpec(Signal.CAN, 0xA1, byte = -1),
+                ),
+            outputs =
+                mapOf(
+                    "pcReady" to "61 00",
+                    "time" to "64 {yearLo} {month} {day} {hour} {minute} {second} 00",
+                    "beat" to "68 08 00",
+                ),
+            beatMs = 1000,
+            commands =
+                mapOf(
+                    "Screen: Android" to "69 12 01",
+                    "Screen: car (OEM)" to "69 12 02",
+                    "Sound: car (OEM)" to "67 00",
+                    "Sound: Android music" to "67 01",
+                    "Screen on" to "6C 02 01",
+                    "Screen off" to "6C 02 00",
+                    "Voice control on" to "69 13 01 00",
+                    "Voice control off" to "69 13 00 00",
+                    "Playing" to "69 14 01",
+                    "Not playing" to "69 14 00",
+                    "A/C temperature +" to "60 01",
+                    "A/C temperature -" to "61 01 81",
+                    "Front camera on" to "66 01 01",
+                    "Front camera off" to "66 00 01",
+                ),
+        )
+
+    val BUILT_IN = listOf(JANCAR_JAC_V1, KSW_PX6)
 
     /** Protocol to run for [profile]: the native one for Jancar, the generic engine otherwise. */
     fun protocolFor(profile: McuProfile): McuProtocol = if (profile.id == JacProtocol.id) JacProtocol else ProfileProtocol(profile)
@@ -285,6 +356,8 @@ object McuProfiles {
                     },
                 )
                 put("outputs", buildJsonObject { p.outputs.forEach { (k, v) -> put(k, v) } })
+                if (p.beatMs > 0) put("beatMs", p.beatMs)
+                if (p.commands.isNotEmpty()) put("commands", buildJsonObject { p.commands.forEach { (k, v) -> put(k, v) } })
                 put(
                     "board",
                     buildJsonObject {
@@ -375,6 +448,11 @@ object McuProfiles {
                                 }.orEmpty(),
                     )
                 }.orEmpty()
+        for (i in inputs) {
+            if (i.byte < -1 || (i.byte == -1 && i.signal != Signal.CAN)) {
+                throw ProfileException("inputs.byte: 0 or more (-1, the whole frame: CAN inputs only)")
+            }
+        }
         val outputs =
             root
                 .obj("outputs")
@@ -393,6 +471,23 @@ object McuProfiles {
                 throw ProfileException("Bad output \"$k\": ${e.message}")
             }
         }
+        val commands =
+            root
+                .obj("commands")
+                ?.entries
+                ?.associate { (k, v) -> k to v.jsonPrimitive.content }
+                .orEmpty()
+        for ((k, v) in commands) {
+            if (k.isBlank() || k.length > 60) throw ProfileException("Bad command name \"$k\"")
+            try {
+                template(v, emptyMap(), ByteArray(0))
+            } catch (e: Exception) {
+                throw ProfileException("Bad command \"$k\": ${e.message}")
+            }
+        }
+        val beatMs = root.int("beatMs") ?: 0
+        if (beatMs != 0 && beatMs !in 100..60_000) throw ProfileException("beatMs: 100 to 60000 (or 0)")
+        if (beatMs > 0 && "beat" !in outputs) throw ProfileException("beatMs without a \"beat\" output")
         val b = root.obj("board")
         val board =
             BoardSpec(
@@ -417,6 +512,8 @@ object McuProfiles {
             inputs = inputs,
             outputs = outputs,
             board = board,
+            beatMs = beatMs,
+            commands = commands,
         )
     }
 
@@ -641,15 +738,19 @@ class ProfileProtocol(
 
     override fun decode(frame: McuFrame): McuEvent {
         if (ackedCommand(frame) != null) return McuEvent.Ack(ackedCommand(frame)!!)
-        val n = frame.data.size
         for (i in profile.inputs) {
-            if (i.cmd != frame.cmd) continue
-            if (i.match.any { (idx, v) -> idx >= n || frame.u(idx) != v }) continue
+            if (!i.matches(frame) || (i.signal == Signal.CAN && i.byte < 0)) continue
             val event = toEvent(i, frame) ?: continue
             return event
         }
         return McuEvent.Other(frame)
     }
+
+    private fun InputSpec.matches(frame: McuFrame): Boolean =
+        cmd == frame.cmd && match.none { (idx, v) -> idx >= frame.data.size || frame.u(idx) != v }
+
+    override fun canCopy(frame: McuFrame): ByteArray? =
+        if (profile.inputs.any { it.signal == Signal.CAN && it.byte < 0 && it.matches(frame) }) encode(frame) else null
 
     private fun toEvent(
         i: InputSpec,
@@ -729,21 +830,53 @@ class ProfileProtocol(
 
     override fun antenna(on: Boolean) = out(if (on) "antennaOn" else "antennaOff")
 
+    /**
+     * Every clock placeholder, from the system clock, for an output that sets the date and the time in one frame
+     * (KSW): the values given to [date] and [time] replace them, the date given last is kept for [time].
+     */
+    private fun clock(): Map<String, Int> {
+        val t = java.time.LocalDateTime.now()
+        return mapOf(
+            "yearHi" to t.year / 100,
+            "yearLo" to t.year % 100,
+            "month" to t.monthValue,
+            "day" to t.dayOfMonth,
+            "hour" to t.hour,
+            "minute" to t.minute,
+            "second" to t.second,
+        )
+    }
+
+    @Volatile
+    private var lastDate: Map<String, Int> = emptyMap()
+
     override fun date(
         year: Int,
         month: Int,
         day: Int,
-    ) = out("date", mapOf("yearHi" to year / 100, "yearLo" to year % 100, "month" to month, "day" to day))
+    ): McuFrame? {
+        lastDate = mapOf("yearHi" to year / 100, "yearLo" to year % 100, "month" to month, "day" to day)
+        return out("date", clock() + lastDate)
+    }
 
     override fun time(
         hour: Int,
         minute: Int,
         second: Int,
-    ) = out("time", mapOf("hour" to hour, "minute" to minute, "second" to second))
+    ) = out("time", clock() + lastDate + mapOf("hour" to hour, "minute" to minute, "second" to second))
+
+    override fun beat() = out("beat")
+
+    override val beatMs: Long get() = profile.beatMs.toLong()
+
+    /** The profile's command [name] as a frame, null when it has none. */
+    fun command(name: String): McuFrame? = profile.commands[name]?.let { McuProfiles.template(it, emptyMap(), ByteArray(0)) }
 
     override fun canData(bytes: ByteArray) = out("can", data = bytes)
 
     override fun queryClock() = out("queryClock")
+
+    override val readsClock: Boolean get() = "queryClock" in profile.outputs || profile.inputs.any { it.signal == Signal.TIME }
 
     override fun watchdogOff() = out("watchdogOff")
 
