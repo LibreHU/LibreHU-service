@@ -122,7 +122,10 @@ ne suit que des entiers (affectations, comparaisons, sauts) ; validé sur LNP002
 profil générique**, un profil normal avec `"box_type"` (nom affiché, fabricants qui l'utilisent) et sa `"framing"`
 (voir le format plus bas). Le service en a cinq intégrés (le tableau ci-dessous) ; le paquet `boxes` de
 LibreHU-car-profiles (dossier `boxes/`) en ajoute et remplace les intégrés de même `id`, sans nouveau service :
-**un nouveau boîtier = un fichier JSON**. Il est installé avant les paquets des marques (leurs fiches peuvent nommer un
+**un nouveau boîtier = un fichier JSON**. Le paquet ajoute depuis le moteur 2.7 (service v190) `cyt-55-fixed` (CYT,
+BYD : `55 D0..D5 AA`), `cyt-55` (CYT, Ford : `55|57 LEN D…`, sans somme) et `simple-aa55-len` (Simple, Audi : `AA 55
+LEN D… SUM`, la longueur sert de commande, `55 AA` vers le boîtier), relevés dans le découpage (`parsePacket`) de leurs
+décodeurs Car Info. Il est installé avant les paquets des marques (leurs fiches peuvent nommer un
 type qu'il apporte).
 
 ```json
