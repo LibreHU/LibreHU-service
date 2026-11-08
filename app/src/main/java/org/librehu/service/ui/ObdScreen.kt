@@ -101,6 +101,8 @@ fun ObdScreen(
             }
         }
 
+        CarSourcesCard()
+
         BatteryCard()
 
         EngineSoundCard()

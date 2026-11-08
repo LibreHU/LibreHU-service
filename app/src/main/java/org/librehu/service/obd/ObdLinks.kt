@@ -150,8 +150,10 @@ internal class UsbObdLink private constructor(
             deviceName: String,
             baud: Int,
             skip: Set<String> = emptySet(),
+            /** Adapters another source of this service holds (the CAN box): never tried. */
+            never: Set<String> = emptySet(),
         ): UsbObdLink {
-            val drivers = UsbSerialProber.getDefaultProber().findAllDrivers(usb)
+            val drivers = UsbSerialProber.getDefaultProber().findAllDrivers(usb).filter { it.device.deviceName !in never }
             val candidates =
                 if (deviceName.isNotEmpty()) {
                     drivers.filter { it.device.deviceName == deviceName }

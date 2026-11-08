@@ -22,6 +22,7 @@ import org.librehu.core.obd.ObdCarReading
 import org.librehu.core.obd.ObdCars
 import org.librehu.core.obd.ObdPid
 import org.librehu.service.LibreHu
+import org.librehu.service.car.PortBroker
 import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -284,6 +285,7 @@ class ObdManager private constructor(
             } finally {
                 link?.close()
                 if (this.link === link) this.link = null
+                PortBroker.releaseAll(PortBroker.OBD)
                 if (thread == null || thread === Thread.currentThread()) battery.onDisconnected()
                 ObdWidget.refresh(app)
             }
@@ -297,12 +299,33 @@ class ObdManager private constructor(
 
     private fun open(): ObdLink {
         val s = _settings.value
+        // One owner per port: the CAN box keeps its own (USB or Bluetooth), the adapter never takes it.
+        fun claim(
+            key: String,
+            label: String,
+        ) = PortBroker.claim(key, PortBroker.OBD, label)?.let { holder ->
+            throw IOException("this adapter is used by ${PortBroker.what(holder)}: choose another one for OBD")
+        }
         return when (s.transport) {
-            ObdTransport.BLUETOOTH -> BluetoothObdLink.open(s.bluetoothAddress)
+            ObdTransport.BLUETOOTH -> {
+                claim(PortBroker.bluetooth(s.bluetoothAddress), "Bluetooth ${s.bluetoothAddress}")
+                BluetoothObdLink.open(s.bluetoothAddress)
+            }
             ObdTransport.USB -> {
                 // Unplugged adapters leave the list (their device name is not used again before a while).
                 notElm.retainAll(usb.deviceList.keys)
-                UsbObdLink.open(usb, s.usbDevice, s.usbBaud, notElm)
+                if (s.usbDevice.isNotEmpty()) claim(PortBroker.usb(s.usbDevice), "USB ${s.usbDevice}")
+                // The automatic choice leaves out the adapters the CAN box holds.
+                val link = UsbObdLink.open(usb, s.usbDevice, s.usbBaud, notElm, never = PortBroker.usbHeldByOthers(PortBroker.OBD))
+                if (s.usbDevice.isEmpty()) {
+                    try {
+                        claim(PortBroker.usb(link.deviceName), link.description)
+                    } catch (e: IOException) {
+                        link.close()
+                        throw e
+                    }
+                }
+                link
             }
         }
     }

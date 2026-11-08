@@ -1428,4 +1428,12 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="keepalive_yes">oui</string>
     <string name="keepalive_no">non</string>
     <string name="keepalive_no_root">Pas de root : seul Android relance le service (pas après un arrêt forcé).</string>
+    <string name="car_sources">Sources des données voiture</string>
+    <string name="car_sources_hint">Le boîtier CAN et l\'adaptateur OBD-II marchent ensemble, chacun sur son port, et leurs valeurs se combinent par rôle : pour une valeur que les deux donnent, le boîtier passe en premier et l\'adaptateur complète le reste (régime moteur d\'une Clio 3…). Aucun port n\'est pris à une autre source ni à une autre appli (TPMS du launcher). Les autres applis reçoivent les valeurs combinées (org.librehu.action.CAR_DATA).</string>
+    <string name="car_sources_mcu">par le MCU</string>
+    <string name="car_sources_box">Boîtier CAN (%1$s) : %2$d valeurs</string>
+    <string name="car_sources_obd">OBD-II (%1$s) : %2$d valeurs</string>
+    <string name="car_sources_port">%1$s : %2$s</string>
+    <string name="car_sources_owner_obd">adaptateur OBD-II</string>
+    <string name="car_sources_owner_box">boîtier CAN</string>
 </resources>

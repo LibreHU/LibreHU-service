@@ -126,6 +126,7 @@ fun CanScreen(actions: AppActions) {
         }
         CanPacksCard()
         CanBoxPortCard()
+        CarSourcesCard()
         CanBoxTalkCard()
         CanWheelKeysCard()
         CanTwrpCard()

@@ -1428,4 +1428,12 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="keepalive_yes">yes</string>
     <string name="keepalive_no">no</string>
     <string name="keepalive_no_root">No root: only Android restarts the service (not after a force stop).</string>
+    <string name="car_sources">Car data sources</string>
+    <string name="car_sources_hint">The CAN box and the OBD-II adapter run together, each on its own port, and their values combine by role: for a value both give, the box comes first and the adapter fills in the rest (engine speed of a Clio 3…). No port is taken from another source or from another app (TPMS of the launcher). Other apps get the combined values (org.librehu.action.CAR_DATA).</string>
+    <string name="car_sources_mcu">through the MCU</string>
+    <string name="car_sources_box">CAN box (%1$s): %2$d values</string>
+    <string name="car_sources_obd">OBD-II (%1$s): %2$d values</string>
+    <string name="car_sources_port">%1$s: %2$s</string>
+    <string name="car_sources_owner_obd">OBD-II adapter</string>
+    <string name="car_sources_owner_box">CAN box</string>
 </resources>

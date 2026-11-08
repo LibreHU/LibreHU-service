@@ -1,5 +1,7 @@
 package org.librehu.service.car
 
+import android.content.Context
+import android.content.Intent
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.librehu.core.can.CarData
 import org.librehu.core.can.CarDataValue
+import org.librehu.service.LibreHu
 import org.librehu.service.can.CanMonitor
 import org.librehu.service.obd.ObdConnection
 import org.librehu.service.obd.ObdManager
@@ -18,7 +21,8 @@ import org.librehu.service.obd.ObdManager
  * The car's values by role (org.librehu.core.can.CanRoles, aligned on COVESA VSS), from every source the head unit
  * has at once: the CAN box (the selected car profile) and the OBD-II adapter (ELM327, USB or Bluetooth). The box comes
  * first, the adapter fills in what it does not give ([CarData]); one source stopping leaves the other's values. New
- * features read [values] rather than one source.
+ * features read [values] rather than one source; other apps get them in [LibreHu.ACTION_CAR_DATA] (at most once a
+ * second). The sources run together on their own ports ([PortBroker]: one owner per adapter).
  */
 object CarDataHub {
     private val data = CarData()
@@ -30,8 +34,15 @@ object CarDataHub {
     @Volatile
     private var scope: CoroutineScope? = null
 
-    fun start(obd: ObdManager) {
+    private var app: Context? = null
+    private var lastSent = 0L
+
+    fun start(
+        context: Context,
+        obd: ObdManager,
+    ) {
         if (scope != null) return
+        app = context.applicationContext
         val s = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         scope = s
         s.launch {
@@ -53,6 +64,27 @@ object CarDataHub {
     }
 
     private fun publish() {
-        _values.value = data.merged()
+        val merged = data.merged()
+        _values.value = merged
+        broadcast(merged)
     }
+
+    /** [LibreHu.ACTION_CAR_DATA] for other apps: at most once a second, nothing while no source gives values. */
+    private fun broadcast(merged: Map<String, CarDataValue>) {
+        val c = app ?: return
+        val now = SystemClock.elapsedRealtime()
+        if (merged.isEmpty() || now - lastSent < SEND_MS) return
+        lastSent = now
+        val i = Intent(LibreHu.ACTION_CAR_DATA)
+        for ((role, v) in merged) {
+            v.value.number?.let { i.putExtra("role:$role", it) }
+            v.value.flag?.let { i.putExtra("role:$role", if (it) 1.0 else 0.0) }
+            i.putExtra("text:$role", v.value.display())
+            i.putExtra("src:$role", v.source)
+        }
+        i.putExtra("sources", data.sources().toTypedArray())
+        runCatching { c.sendBroadcast(i, LibreHu.PERMISSION_VEHICLE) }
+    }
+
+    private const val SEND_MS = 1_000L
 }

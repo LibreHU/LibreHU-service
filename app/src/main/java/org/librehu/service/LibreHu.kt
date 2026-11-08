@@ -41,6 +41,14 @@ object LibreHu {
     /** Sent about once a second while the ELM327 is connected; extras as [ILibreHuService.getObdValues]. */
     const val ACTION_OBD = "org.librehu.action.OBD"
 
+    /**
+     * The car's values combined from every source at once (CAN box, OBD-II adapter…, [org.librehu.service.car.CarDataHub]),
+     * at most once a second while one gives values, permission [PERMISSION_VEHICLE]: `role:<role>` (Double, roles of
+     * org.librehu.core.can.CanRoles, e.g. `role:vehicle.speed`), `text:<role>` (the value as shown, with its unit),
+     * `src:<role>` (where it came from: `canbox`, `obd`) and `sources` (String[]).
+     */
+    const val ACTION_CAR_DATA = "org.librehu.action.CAR_DATA"
+
     const val EXTRA_FLAGS = "flags"
     const val EXTRA_ACC = "acc"
     const val EXTRA_REVERSE = "reverse"

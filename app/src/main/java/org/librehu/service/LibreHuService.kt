@@ -144,7 +144,7 @@ class LibreHuService : Service() {
             .checkSecondPanelAtStart(this) // second LVDS panel left on without one: stripes from the boot logo
         obd = ObdManager.get(this).also { it.start() }
         // The car's values by role from the CAN box and the OBD adapter together (box first).
-        org.librehu.service.car.CarDataHub.start(obd)
+        org.librehu.service.car.CarDataHub.start(this, obd)
         // The CAN box through the MCU (default) or another port (USB, Bluetooth, serial port of other head units).
         CanBoxPorts.init(this)
         // Engine sound made up from the OBD values (off by default).

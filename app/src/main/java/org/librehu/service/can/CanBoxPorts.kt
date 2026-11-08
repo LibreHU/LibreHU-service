@@ -21,6 +21,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
+import org.librehu.service.car.PortBroker
 
 /**
  * Where the CAN box's bytes come from: through the Jancar MCU (frames `10`, the default on this head unit), or
@@ -105,6 +106,7 @@ object CanBoxPorts {
         worker = null
         port?.close()
         port = null
+        PortBroker.releaseAll(PortBroker.CANBOX)
         _status.value = Status()
         val s = _settings.value
         if (s.kind == Kind.MCU) return
@@ -141,6 +143,7 @@ object CanBoxPorts {
             } finally {
                 port?.close()
                 port = null
+                PortBroker.releaseAll(PortBroker.CANBOX)
             }
             try {
                 Thread.sleep(RETRY_MS)
@@ -155,6 +158,17 @@ object CanBoxPorts {
         baud: Int,
     ): Port {
         val c = app ?: throw IOException("not started")
+        // One owner per port: the OBD adapter keeps its own, the box never takes it (and the other way round).
+        val (key, label) =
+            when (s.kind) {
+                Kind.USB -> PortBroker.usb(s.usbDevice) to "USB ${s.usbDevice}"
+                Kind.BLUETOOTH -> PortBroker.bluetooth(s.btAddress) to "Bluetooth ${s.btAddress}"
+                Kind.SERIAL -> PortBroker.serial(s.serialPath) to s.serialPath
+                Kind.MCU -> throw IOException("MCU")
+            }
+        PortBroker.claim(key, PortBroker.CANBOX, label)?.let { holder ->
+            throw IOException("this port is used by ${PortBroker.what(holder)}: choose another one for the CAN box")
+        }
         return when (s.kind) {
             Kind.USB -> UsbPort.open(c, s.usbDevice, baud)
             Kind.BLUETOOTH -> BtPort.open(s.btAddress)
@@ -207,6 +221,11 @@ object CanBoxPorts {
                     throw IOException("USB permission asked: allow it on the screen")
                 }
                 val connection = usb.openDevice(driver.device) ?: throw IOException("USB adapter cannot be opened")
+                // Never taken by force from another app (the TPMS receiver of LibreHU Launcher…).
+                if (!PortBroker.claimUsbInterfaces(driver.device, connection)) {
+                    connection.close()
+                    throw IOException("USB adapter ${driver.device.productName ?: deviceName} used by another app (TPMS of the launcher?)")
+                }
                 val port = driver.ports.first()
                 try {
                     port.open(connection)

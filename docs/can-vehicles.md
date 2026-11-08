@@ -337,6 +337,18 @@ L'export écrit le moteur minimum calculé d'après ce que le profil utilise (`C
 | 2.4.0 | plusieurs sources de touches, molettes | v167 |
 | 2.5.0 | champ `engine`, sources combinées (boîtier + OBD) | v169 |
 
+**Sources combinées, sans se disputer un port (service v189)** : le boîtier CAN (par le MCU, un adaptateur USB-série,
+Bluetooth ou un port série) et l'adaptateur OBD-II (USB ou Bluetooth) marchent **ensemble**, chacun sur son port.
+`car/PortBroker` : **un seul propriétaire par port** (adaptateur USB, adresse Bluetooth, port série) dans le service ; le
+boîtier ne prend jamais l'adaptateur de l'OBD ni l'inverse (message clair si on choisit le même), le choix automatique de
+l'OBD laisse de côté l'adaptateur du boîtier, et **un adaptateur USB tenu par une autre appli (le TPMS du launcher) n'est
+jamais pris de force** : les interfaces sont d'abord demandées sans forcer (le boîtier les prenait de force jusqu'à la
+v188, le même bug que l'OBD et le TPMS le 02/11). Valeurs combinées publiées pour les autres applis :
+`org.librehu.action.CAR_DATA` (au plus une fois par seconde, permission `VEHICLE`) : `role:<rôle>` (nombre),
+`text:<rôle>` (valeur affichée), `src:<rôle>` (`canbox`, `obd`), `sources`. LibreHU Launcher en tire la vitesse
+« Voiture (CAN / OBD) ». Carte « Sources des données voiture » (onglets CAN et OBD) : valeurs données par chaque source,
+ports tenus.
+
 **Boîtier CAN et sonde OBD en même temps (service v169)** : `CarData` (cœur) et `CarDataHub` (service) réunissent les
 valeurs par rôle de toutes les sources : le boîtier CAN (profil choisi) et l'adaptateur OBD-II ELM327 (USB ou Bluetooth,
 onglet OBD). Pour un rôle donné par les deux, **le boîtier passe en premier** ; l'adaptateur complète ce que le boîtier

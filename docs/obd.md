@@ -187,6 +187,11 @@ Maintenant (`obd/ObdLinks.kt`, `UsbObdLink.open`) :
 - en choix automatique de l'adaptateur, celui qui ne répond pas `ELM…` à `ATZ` (récepteur TPMS, GPS…) est mis de côté
   jusqu'à son débranchement et l'adaptateur suivant est essayé ; quand tous sont de côté, ils sont réessayés chacun
   leur tour.
+- **depuis la v189, avec le boîtier CAN aussi** (`car/PortBroker.kt`) : un seul propriétaire par port dans le service.
+  L'adaptateur (USB ou Bluetooth) que tient le boîtier CAN n'est jamais essayé par l'OBD, même en choix automatique, et
+  l'inverse ; choisir le même pour les deux donne un message clair au lieu d'une dispute. La liaison USB du boîtier
+  réclame elle aussi les interfaces sans force (elle les prenait de force jusqu'à la v188). Carte « Sources des données
+  voiture » : qui tient quel port, combien de valeurs chaque source donne.
 
 Le launcher fait de même de son côté (TPMS : plus d'activation automatique, réclamation sans force, adaptateur
 abandonné s'il n'envoie aucune trame TPMS).
