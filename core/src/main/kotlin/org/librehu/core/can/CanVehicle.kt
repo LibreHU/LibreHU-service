@@ -249,7 +249,10 @@ data class CanVehicle(
     /** The box type named by [box] (checked when the profile is read), or the framing of this profile. */
     val family: CanBoxFamily get() = framingFamily ?: CanBoxFamilies.byId(box) ?: CanBoxFamilies.HIWORLD
 
-    private val framingFamily: CanBoxFamily? by lazy { framing?.family(box, boxType?.name) }
+    private val framingFamily: CanBoxFamily? by lazy {
+        // The framing of its box type (a profile extending the generic one): that type's name.
+        framing?.family(box, boxType?.name ?: CanBoxFamilies.byId(box)?.name?.takeIf { CanBoxFamilies.framing(box) == framing })
+    }
 
     /**
      * The steering wheel keys of this profile: its [wheelKeys], else Hiworld LNP002's when the profile names a
@@ -485,7 +488,8 @@ object CanVehicles {
         val parent = root.str("extends") ?: return root
         if (depth >= 8) throw CanVehicleException("extends: more than 8 levels (a loop?)")
         val text = resolve(parent) ?: throw CanVehicleException("extends: unknown profile \"$parent\"")
-        val base = resolveExtends(parseObject(text), resolve, depth + 1)
+        // A box type's generic profile as parent: its framing and link, not its being a box type.
+        val base = JsonObject(resolveExtends(parseObject(text), resolve, depth + 1) - "box_type")
         return JsonObject(merge(base, root) - "extends")
     }
 

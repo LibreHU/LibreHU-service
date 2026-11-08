@@ -115,8 +115,12 @@ class CanExprTest {
         }
     }
 
+    /** A profile extending a published one (in a pack, here the test copy) or a box type's generic profile. */
     @Test
     fun extendsABuiltInProfile() {
+        val generic = CanVehicles.fromJson("""{"format":"librehu-can-vehicle","version":2,"id":"my-box-car","extends":"raise-generic","name":"Mine","messages":{}}""")
+        assertEquals(CanBoxFamilies.RAISE, generic.family)
+        assertEquals(CanVehicles.genericFor("raise").link, generic.link)
         val child =
             CanVehicles.fromJson(
                 """{"format":"librehu-can-vehicle","version":2,"id":"my-golf","extends":"vw-mqb-raise","name":"My Golf",
@@ -125,7 +129,7 @@ class CanExprTest {
                      "0x29":{"signals":{"steering":{"factor":-0.03}}},
                      "0x50":{"name":"Driving data","mux":0,"cases":{"0x10":{"signals":{"range":{"start_byte":2,"size":2,"endian":"little","role":"fuel.range"}}}}}},
                    "examples":[{"cmd":"0x50","data":"10 00 2C 01","expect":{"fuel.range":300}}]}""",
-            )
+            ) { id -> TestProfiles.text(id) ?: CanVehicles.builtInText(id) }
         val base = TestProfiles.VW_MQB_RAISE
         assertEquals("my-golf", child.id)
         assertEquals("My Golf", child.name)
