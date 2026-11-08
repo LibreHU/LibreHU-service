@@ -91,3 +91,7 @@ de trois sources, recoupées octet par octet :
 Laissés de côté exprès : les réglages que la MCU garde (type de voiture, protocole CAN, caméras, ampli… : une mauvaise
 valeur peut couper le lien avec la voiture), le mode mise à jour de la MCU et l'extinction (`69 10 01`) ; un profil
 importé peut les ajouter. Pas de puce audio ni de GPIO pilotés : la MCU KSW s'en charge.
+
+**Le port est aussi celui du service de KSW** (`com.wits.pms`, appli système) : comme ivi-services sur Jancar,
+un seul des deux doit lire la MCU (deux lecteurs sur un même port série se partagent les octets au hasard et
+cassent les trames des deux). Rien n'est encore essayé sur un autoradio KSW.
