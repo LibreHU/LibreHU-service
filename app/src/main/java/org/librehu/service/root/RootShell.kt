@@ -30,6 +30,12 @@ object RootShell {
      * True when `su` grants root. Magisk / SuperSU show their prompt the first time; KernelSU and KernelSU Next only
      * give `su` to the apps allowed in their manager (Superuser tab), so a refusal is checked again later.
      */
+    /**
+     * [s] as one shell word in single quotes: a component name of an inner class (`…/.Outer$Receiver`), a path with
+     * spaces or quotes stays as it is (the shell would expand `$Receiver` to nothing).
+     */
+    fun quote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
+
     fun isAvailable(): Boolean {
         available?.let { if (it || System.currentTimeMillis() - checkedAt < RETRY_MS) return it }
         return recheck()

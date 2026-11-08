@@ -122,7 +122,7 @@ object AtcTools {
             true
         } catch (e: Exception) {
             Log.w(TAG, "open $c: ${e.message}")
-            RootShell.isAvailable() && RootShell.run("am start -n ${c.flattenToShortString()}") != null
+            RootShell.isAvailable() && RootShell.run("am start -n ${RootShell.quote(c.flattenToShortString())}") != null
         }
 
     /** Lines `key=value` of [AtcHelper]; null without root. [bits32]: in the 32-bit app_process (32-bit-only libraries). */

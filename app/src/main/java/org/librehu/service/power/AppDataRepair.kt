@@ -114,7 +114,7 @@ object AppDataRepair {
             }.getOrDefault(emptyList())
         for (r in receivers) {
             val c = ComponentName(r.activityInfo.packageName, r.activityInfo.name).flattenToShortString()
-            RootShell.run("am broadcast -a android.intent.action.BOOT_COMPLETED -n $c")
+            RootShell.run("am broadcast -a android.intent.action.BOOT_COMPLETED -n ${RootShell.quote(c)}")
         }
     }
 

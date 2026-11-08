@@ -59,6 +59,6 @@ object BootApps {
         enabled: Boolean,
     ): Boolean {
         val verb = if (enabled) "enable" else "disable"
-        return app.receivers.all { RootShell.run("pm $verb ${it.flattenToShortString()}") != null }
+        return app.receivers.all { RootShell.run("pm $verb ${RootShell.quote(it.flattenToShortString())}") != null }
     }
 }

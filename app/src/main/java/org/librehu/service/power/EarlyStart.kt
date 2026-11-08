@@ -89,7 +89,7 @@ object EarlyStart {
                 for (r in receivers) {
                     val c = ComponentName(r.activityInfo.packageName, r.activityInfo.name)
                     if (context.packageManager.getComponentEnabledSetting(c) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED) continue
-                    RootShell.run("am broadcast -a android.intent.action.BOOT_COMPLETED -n ${c.flattenToShortString()}")
+                    RootShell.run("am broadcast -a android.intent.action.BOOT_COMPLETED -n ${RootShell.quote(c.flattenToShortString())}")
                     Log.i(TAG, "started early: ${c.flattenToShortString()}")
                 }
             }
