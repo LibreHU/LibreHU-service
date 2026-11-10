@@ -261,6 +261,13 @@ class FdParser(
  * silence (switched off, reset) gets them again from the start. Without them a Hiworld box waits: it sends its
  * messages one a second in a loop and never a steering wheel key (CAN logs of 02/11 and 04/11/2026).
  * Pure logic: [send] gets the bytes and what they are, [tick] is called regularly with the time (ms, monotonic).
+ *
+ * Thread-safe, and [send], [onAcked] and [state] are never called with the link's lock held (open calls): whatever
+ * locks the caller holds, they cannot meet this one in the other order. Until 10/11/2026 [send] ran under it, and the
+ * service froze for good while driving: the head unit's thread, holding the CAN monitor's lock, waited in [onFrame]
+ * for the link, while the box's thread, holding the link in [tick], waited for the monitor to note what it sent.
+ * A message decided in [tick] is due again only at its next time, even when [send] throws (a port that fails is
+ * opened again, which starts the link again).
  */
 class CanBoxLink(
     private val family: CanBoxFamily,
@@ -271,6 +278,8 @@ class CanBoxLink(
     /** What the head unit knows (clock…), for the messages built from it ([CanSend.template]). */
     private val state: CanState = CanState.NONE,
 ) {
+    /** Guards the schedule below; held for no call out of this class. */
+    private val lock = Any()
     private val due = LongArray(link.send.size) { -1 }
 
     /** Data last sent by each message built from the state (`on: change`). */
@@ -279,59 +288,72 @@ class CanBoxLink(
     private var lastFrameAt = Long.MIN_VALUE
 
     /** Starts the schedule of the profile's messages. */
-    @Synchronized
-    fun start(now: Long) {
+    fun start(now: Long) = synchronized(lock) { schedule(now) }
+
+    private fun schedule(now: Long) {
         for (i in due.indices) due[i] = now + link.send[i].firstMs
         lastBuilt.fill(null)
     }
 
-    @Synchronized
     fun onFrame(
         f: CanboxFrame,
         now: Long,
     ) {
-        if (lastFrameAt != Long.MIN_VALUE && now - lastFrameAt > SILENCE_MS) start(now)
-        lastFrameAt = now
+        synchronized(lock) {
+            if (lastFrameAt != Long.MIN_VALUE && now - lastFrameAt > SILENCE_MS) schedule(now)
+            lastFrameAt = now
+        }
         if (!f.checksumOk) return
         if ((f.cmd == 0xFF || f.cmd == 0xFE) && f.data.isNotEmpty()) onAcked(f.data[0].toInt() and 0xFF)
         if (link.ack) family.ack(f)?.let { send(it, "ack") }
     }
 
-    @Synchronized
     fun tick(now: Long) {
-        for ((i, s) in link.send.withIndex()) {
-            if (s.template != null) {
-                tickBuilt(i, s, now)
-                continue
+        // The state read before the lock, the messages sent after it, in the profile's order.
+        val built = Array(link.send.size) { link.send[it].template?.build(state) }
+        val out = ArrayList<Int>(0)
+        synchronized(lock) {
+            for ((i, s) in link.send.withIndex()) {
+                if (s.template != null) {
+                    if (dueBuilt(i, s, built[i], now)) out += i
+                    continue
+                }
+                // No data: set by the car to choose (the box gets no car type until then).
+                if (s.data.isEmpty() || due[i] < 0 || now < due[i]) continue
+                out += i
+                due[i] = if (s.everyMs > 0) now + s.everyMs else -1
             }
-            // No data: set by the car to choose (the box gets no car type until then).
-            if (s.data.isEmpty() || due[i] < 0 || now < due[i]) continue
-            send(family.encode(s.cmd, ByteArray(s.data.size) { s.data[it].toByte() }), s.name)
-            due[i] = if (s.everyMs > 0) now + s.everyMs else -1
+        }
+        for (i in out) {
+            val s = link.send[i]
+            send(family.encode(s.cmd, built[i] ?: ByteArray(s.data.size) { s.data[it].toByte() }), s.name)
         }
     }
 
-    /** A message built from the state: at its time, and for `on: change` as soon as its data changes (not faster than [MIN_CHANGE_MS]). */
-    private fun tickBuilt(
+    /**
+     * A message built from the state: at its time, and for `on: change` as soon as its data changes (not faster than
+     * [MIN_CHANGE_MS]). True when it goes now (noted as sent). Under the lock.
+     */
+    private fun dueBuilt(
         i: Int,
         s: CanSend,
+        data: ByteArray?,
         now: Long,
-    ) {
+    ): Boolean {
         val started = due[i] >= 0 || lastBuilt[i] != null
-        if (!started || (lastBuilt[i] == null && now < due[i])) return
-        val data = s.template!!.build(state) ?: return
+        if (!started || (lastBuilt[i] == null && now < due[i])) return false
+        if (data == null) return false
         val hex = data.joinToString("") { "%02X".format(it) }
         val timeDue = due[i] in 0..now
         val changed = s.on == "change" && lastBuilt[i] != null && hex != lastBuilt[i] && now - lastAt[i] >= MIN_CHANGE_MS
-        if (!timeDue && !changed) return
-        send(family.encode(s.cmd, data), s.name)
+        if (!timeDue && !changed) return false
         lastBuilt[i] = hex
         lastAt[i] = now
         due[i] = if (s.everyMs > 0) now + s.everyMs else -1
+        return true
     }
 
     /** Sends the command [name] of the profile with [value]; false when unknown or its data cannot be built. */
-    @Synchronized
     fun command(
         name: String,
         value: Double? = null,

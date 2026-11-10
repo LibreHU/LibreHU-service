@@ -389,10 +389,16 @@ class LibreHuService : Service() {
             .also { it.sender = if (jancar) headUnit::sendToMcu else null }
             .also { it.onHeadlights(DisplayController.get(this).headlights.value) }
         ServiceState.dsp = dsp
+        // The head unit's thread or the MCU threads stuck: the service ends and Android starts it again.
+        org.librehu.service.power.LinkWatchdog
+            .arm(this, exec, t)
         setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
     }
 
     private fun stopHardware() {
+        // First: the threads that end now are not stuck.
+        org.librehu.service.power.LinkWatchdog
+            .disarm()
         if (CanBoxPorts.viaMcu) CanBoxTalk.stop()
         org.librehu.service.car.FrontLed
             .get(this)
@@ -468,7 +474,8 @@ class LibreHuService : Service() {
             override fun onKey(key: McuEvent.Key) = each { it.onKey(key.channel, key.values, key.released, key.learning) }
 
             override fun onCanData(bytes: ByteArray) {
-                if (CanBoxPorts.viaMcu) CanMonitor.feed(bytes)
+                // An error of the box link or of the wheel keys (logged by CanMonitor) does not keep the bytes from the apps.
+                if (CanBoxPorts.viaMcu) runCatching { CanMonitor.feed(bytes) }
                 each { it.onCanData(bytes) }
             }
 

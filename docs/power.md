@@ -170,6 +170,59 @@ du contrôle des verrous, donc après la reprise, qu'elle ne voyait plus : pas d
 impulsion ; et le contrôle des verrous se taisait quand il n'en trouvait aucun (grep sans résultat = échec). La
 surveillance démarre maintenant à l'entrée en veille.
 
+### Service figé : watchdog du lien MCU (10/11, `power/LinkWatchdog.kt`)
+
+**Le blocage (signalé le 10/11/2026 sur la v183 `f689ba9` ; présent de la v151 à la v196)** : en roulant, le service se fige sans erreur ni
+plantage : plus de volume, plus de mode sombre selon les feux (ILL), plus de touches de façade ni du volant, plus rien
+de ce qui passe par le service ; « Forcer l'arrêt » puis le rouvrir répare. Le processus vit toujours (même pid,
+écran et OBD actifs) ; la MCU envoie encore ses trames sur `ttyS1`, le service ne répond plus (`tx+0`). Cause, dans
+le code du boîtier CAN : **deux fils qui s'attendent pour toujours** (interblocage).
+
+- fil `headunit` (celui de la MCU : volume, feux, touches, données CAN) : `CanMonitor.feed` tient le verrou du
+  moniteur CAN, appelle l'écouteur des messages, qui appelle `CanBoxLink.onFrame`, qui attend le verrou du lien ;
+- fil `can-box` (messages du profil, toutes les 250 ms) : `CanBoxLink.tick` tient le verrou du lien, envoie un message
+  (le type de voiture…), et `CanMonitor.recordSent`, qui le note pour l'export, attend le verrou du moniteur.
+
+Il faut qu'un message du boîtier arrive pendant le bref instant où le lien envoie le sien : rare à chaque envoi, mais
+avec un boîtier qui parle sans cesse et des envois toutes les quelques secondes, cela finit par arriver en roulant. Un fil
+bloqué sur un verrou Java ne s'interrompt pas : seul l'arrêt du processus en sort. Même cycle, plus rare, entre
+`CanBoxTalk.rebuild` (changement de profil, vitesse du boîtier) et le moniteur. Introduit en v151 (`ecaa0b2` : ce que
+l'autoradio envoie au boîtier noté pour l'export, sous le verrou du moniteur, depuis le fil du lien).
+
+**Correctif à la source (v197)** : plus aucun appel vers l'extérieur sous un verrou (« appels ouverts », la règle
+[LCK07-J du CERT](https://wiki.sei.cmu.edu/confluence/spaces/java/pages/88487703/LCK07-J.+Avoid+deadlock+by+requesting+and+releasing+locks+in+the+same+order) :
+deux verrous pris dans deux ordres différents = interblocage possible). `CanBoxLink` décide sous son verrou, envoie et
+signale les accusés après ; `CanMonitor` décode sous le sien et passe les messages à l'écouteur après, ce qu'il a
+envoyé au boîtier a son propre verrou ; `CanBoxTalk` envoie la vitesse du boîtier hors du sien, et ne reconstruit le
+lien qu'une fois quand le fil du boîtier et celui de la MCU voient le même changement de profil. Sur un port autre
+que la MCU (USB, Bluetooth, série), les écritures passent une à une. Test qui reproduit le blocage
+(`core/.../can/CanBoxLinkThreadsTest.kt`) : avec l'ancien code, « deadlock: box thread BLOCKED, head unit thread
+BLOCKED » ; avec le nouveau, il passe. Aussi : une tâche périodique du fil `headunit` (lecture des GPIO : marche
+arrière, clignotants ; heure vers la MCU ; battement KSW) qui lève une erreur continue (l'exécuteur Java
+l'arrêtait pour toujours, sans un mot, à la première erreur :
+[`scheduleWithFixedDelay`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ScheduledExecutorService.html#scheduleWithFixedDelay(java.lang.Runnable,long,long,java.util.concurrent.TimeUnit)),
+« Subsequent executions are suppressed ») ; de même pour le fil `can-box`.
+
+**Watchdog (v197), pour toute autre cause** : comme le watchdog d'Android pour `system_server`
+([`Watchdog.java`](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/pie-release/services/core/java/com/android/server/Watchdog.java) :
+60 s, `uptimeMillis`, piles des fils puis `Process.killProcess`, rien si un débogueur est branché).
+
+| Surveillé | Battement | Bloqué |
+|---|---|---|
+| fil `headunit` | une tâche de sa propre file toutes les 5 s (une tâche coincée la retient) | muet plus de 60 s |
+| fils `mcu-rx` / `mcu-tx` | chaque tour de leur boucle (lecture ou attente de 200 ms au plus, essais d'ACK compris) | muet plus de 60 s, ou fil terminé (port fermé, erreur d'E/S) alors que le lien tourne |
+
+Temps éveillé (`CLOCK_MONOTONIC`, comme `SystemClock.uptimeMillis`) : une veille, SoC suspendu, ne compte pas.
+Contrôle toutes les 5 s. Au blocage : piles de **tous** les fils dans logcat (étiquette `LibreHU-Watchdog`, 30 appels
+par fil), celles des fils surveillés (`headunit`, `mcu-rx`, `mcu-tx`, `can-box`, `can-port`, `main`) et des fils
+bloqués (`BLOCKED`) dans le **journal de veille** (Système → Veille → Journal de veille, exportable), puis le processus s'arrête
+et Android relance le service (`START_STICKY`, « Scheduling restart of crashed service », puis la garde root en 3 s) ;
+au démarrage suivant, « Watchdog: service back N s after its restart » dans le journal. Au plus **3 relances en
+10 min** dans un même démarrage du SoC (fichier de préférences `watchdog`, avec le `boot_id` du noyau) : au-delà, le
+blocage est seulement écrit (« not again: force stop the service and send this journal »), pour ne pas relancer en
+boucle un service qui se bloque de lui-même. Coût d'une relance : quelques secondes sans service, et le son coupé un
+instant quand la puce audio est réinitialisée (comme à chaque démarrage du service) ; les réglages sont gardés.
+
 ### Ce que fait la MCU après la coupure du contact (firmware `JCST_AC8257_8T7` 2024.08.09, désassemblé le 29/10)
 
 Machine d'alimentation (tâche 100 ms, structure `0x200002B4` ; voir aussi `MCU-tools-app/docs/mcu_firmware.md`) :

@@ -19,10 +19,17 @@ import java.util.concurrent.TimeUnit
  * acknowledgements of the box's messages, car type), sent in MCU frames `10`, which the MCU copies as they are to the
  * box's serial link. As the box's own app does; without it a Hiworld box waits and sends no steering wheel key.
  * Never while ivi-services runs (it talks to the box itself, and the service does not hold the MCU then).
+ *
+ * [lock] guards the start, the stop and the link's replacement, and nothing that leaves this object runs under it:
+ * the box's speed and the link's messages go out after it (see [CanBoxLink], [CanMonitor]: until 10/11/2026 they went
+ * out under it, and a thread holding the CAN monitor could wait for it for good).
  */
 object CanBoxTalk {
     private const val TAG = "LibreHU-CAN"
     private const val TICK_MS = 250L
+
+    /** Start, stop, link replacement; held for no call out of this object. */
+    private val lock = Any()
 
     /** What the link did, for the CAN tab. */
     data class Status(
@@ -90,38 +97,42 @@ object CanBoxTalk {
      * The way to the box is up: [send] writes the bytes to the box; through the Jancar MCU, [mcuFrame] sends an MCU
      * frame (the box's speed is MCU `0F 00`); through another port ([CanBoxPorts]), [baud] sets its speed instead.
      */
-    @Synchronized
     fun start(
         mcuFrame: (org.librehu.core.mcu.McuFrame) -> Unit,
         send: (ByteArray) -> Unit,
         baud: ((Int) -> Unit)? = null,
     ) {
-        sender = send
-        mcu = mcuFrame
-        portBaud = baud
-        rebuild()
-        if (timer == null) {
-            timer =
-                Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "can-box").apply { isDaemon = true } }.also {
-                    it.scheduleWithFixedDelay({ tick() }, TICK_MS, TICK_MS, TimeUnit.MILLISECONDS)
+        val speed =
+            synchronized(lock) {
+                sender = send
+                mcu = mcuFrame
+                portBaud = baud
+                if (timer == null) {
+                    timer =
+                        Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "can-box").apply { isDaemon = true } }.also {
+                            it.scheduleWithFixedDelay({ tick() }, TICK_MS, TICK_MS, TimeUnit.MILLISECONDS)
+                        }
                 }
+                rebuildLocked()
+            }
+        speed?.let(::sendSpeed)
+    }
+
+    fun stop() {
+        synchronized(lock) {
+            sender = null
+            baudAgain = null
+            link = null
+            linkFor = null
+            timer?.shutdownNow()
+            timer = null
+            _status.value = Status()
         }
     }
 
-    @Synchronized
-    fun stop() {
-        sender = null
-        baudAgain = null
-        link = null
-        linkFor = null
-        timer?.shutdownNow()
-        timer = null
-        _status.value = Status()
-    }
-
-    /** Every message of the box (MCU thread). */
+    /** Every message of the box (the head unit's thread for the MCU, the port's otherwise), no lock held. */
     fun onFrame(f: CanboxFrame) {
-        if (changed(CanMonitor.vehicle)) rebuild()
+        rebuildIfChanged()
         val now = SystemClock.elapsedRealtime()
         asked?.let { (cmd, at) ->
             if (f.cmd == cmd && now - at <= ANSWER_MS) {
@@ -134,8 +145,9 @@ object CanBoxTalk {
     }
 
     private fun tick() {
+        // Whatever goes wrong, the next tick comes: a periodic task that throws is never run again.
         try {
-            if (changed(CanMonitor.vehicle)) rebuild()
+            rebuildIfChanged()
             val now = SystemClock.elapsedRealtime()
             baudAgain?.let { (at, i) ->
                 if (now >= at) {
@@ -144,8 +156,8 @@ object CanBoxTalk {
                 }
             }
             link?.tick(now)
-        } catch (e: Exception) {
-            Log.w(TAG, "box link: ${e.message}")
+        } catch (e: Throwable) {
+            Log.w(TAG, "box link: $e")
         }
     }
 
@@ -161,16 +173,29 @@ object CanBoxTalk {
         return false
     }
 
-    /** A new link for the profile selected now (or none: off, MCU not held). */
-    @Synchronized
+    /** A new link for the profile selected now (or none: off, MCU not held), the box's speed sent after the lock. */
     private fun rebuild() {
+        synchronized(lock) { rebuildLocked() }?.let(::sendSpeed)
+    }
+
+    /** [rebuild] when the profile changed, once: the box's thread and the head unit's may see the change together. */
+    private fun rebuildIfChanged() {
+        if (!changed(CanMonitor.vehicle)) return
+        synchronized(lock) { if (changed(CanMonitor.vehicle)) rebuildLocked() else null }?.let(::sendSpeed)
+    }
+
+    /** The box's speed of the profile ([rebuildLocked]), as its app sets it at each start: index in the MCU's list. */
+    private fun sendSpeed(i: Int) = sendBaud(i, "${org.librehu.core.mcu.JacDebug.CAN_BAUDS[i]} bit/s")
+
+    /** Under [lock]: the new link; returns the box's speed to send once the lock is released (index), or null. */
+    private fun rebuildLocked(): Int? {
         val v = CanMonitor.vehicle
         linkFor = v
         val out = sender
         if (out == null || !_enabled.value) {
             link = null
             _status.value = Status()
-            return
+            return null
         }
         val l = v.link
         Log.i(
@@ -179,14 +204,13 @@ object CanBoxTalk {
                 l.send.joinToString("") { ", ${it.name} 0x%02X every ${it.everyMs} ms".format(it.cmd) },
         )
         // The box's speed, as its app sets it at each start (CanBusService.sendBaudRateData): MCU 0F 00 <index>.
-        v.baud?.let { b ->
-            val i = org.librehu.core.mcu.JacDebug.CAN_BAUDS
-                .indexOf(b)
-            if (i >= 0) {
-                sendBaud(i, "$b bit/s")
-                baudAgain = SystemClock.elapsedRealtime() + BAUD_AGAIN_MS to i
-            }
-        }
+        val speed =
+            v.baud
+                ?.let { b ->
+                    org.librehu.core.mcu.JacDebug.CAN_BAUDS
+                        .indexOf(b)
+                }?.takeIf { it >= 0 }
+        baudAgain = speed?.let { SystemClock.elapsedRealtime() + BAUD_AGAIN_MS to it }
         _status.value = Status(running = true)
         link =
             CanBoxLink(
@@ -199,6 +223,7 @@ object CanBoxTalk {
                 },
                 state = HeadUnitState,
             ).also { it.start(SystemClock.elapsedRealtime()) }
+        return speed
     }
 
     /** Sends the profile's command [name] (a car setting, the climate…) with [value]; false when not possible now. */

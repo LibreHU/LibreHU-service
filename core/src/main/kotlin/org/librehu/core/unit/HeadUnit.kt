@@ -184,11 +184,34 @@ class HeadUnit(
             log("MCU protocol: ${protocol.name}; BD37534 init: ${ok ?: "absent"}")
             applyAudio()
         }
-        executor.scheduleWithFixedDelay(::pollGpio, 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
-        executor.scheduleWithFixedDelay(::syncClockToMcu, 60, 60, TimeUnit.SECONDS)
+        executor.scheduleWithFixedDelay(guarded("GPIO poll", ::pollGpio), 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
+        executor.scheduleWithFixedDelay(guarded("clock to the MCU", ::syncClockToMcu), 60, 60, TimeUnit.SECONDS)
         // The heartbeat some MCUs want from the head unit (KSW: without it the MCU takes the SoC for dead).
         val beat = protocol.beatMs
-        if (beat > 0 && protocol.beat() != null) executor.scheduleWithFixedDelay({ sendIf(protocol.beat()) }, beat, beat, TimeUnit.MILLISECONDS)
+        if (beat > 0 && protocol.beat() != null) {
+            executor.scheduleWithFixedDelay(guarded("MCU heartbeat") { sendIf(protocol.beat()) }, beat, beat, TimeUnit.MILLISECONDS)
+        }
+    }
+
+    /**
+     * A periodic task that outlives its errors: the executor stops a periodic task for good, without a word, the first
+     * time it throws (ScheduledExecutorService.scheduleWithFixedDelay), and the reverse gear, the turn signals or the
+     * clock would no longer be read. Here the error is logged (not again while it is the same) and the task goes on.
+     */
+    private fun guarded(
+        what: String,
+        task: () -> Unit,
+    ): Runnable {
+        var last: String? = null
+        return Runnable {
+            try {
+                task()
+            } catch (e: Exception) {
+                val m = "$what: $e"
+                if (m != last) log(m)
+                last = m
+            }
+        }
     }
 
     /**

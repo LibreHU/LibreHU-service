@@ -1,6 +1,7 @@
 package org.librehu.service.can
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,9 +35,24 @@ data class CanLine(
 /**
  * CAN box traffic relayed by the MCU (frames `10`): raw chunks rebuilt into Hiworld messages ([HiworldParser]),
  * per command (last value, count, changed bytes) and in order (last [MAX_LINES]). Fed by the service.
+ *
+ * Locks: [lock] guards the parser, the history and the decoded values, and nothing is called out while it is held;
+ * [frameListener] runs after it ([feed]), and what was sent to the box has its own ([recordSent]). Until 10/11/2026 the
+ * listener ran under the monitor's lock, the box link ([CanBoxTalk]) noted its messages under it from its own thread,
+ * and both threads could wait for each other for good: the service froze while driving (volume, keys, headlights).
  */
 object CanMonitor {
+    private const val TAG = "LibreHU-CAN"
     private const val MAX_LINES = 400
+
+    /** Parser, [history], decoded values; held for no call out of this object. */
+    private val lock = Any()
+
+    /** Hands the messages to [frameListener] one at a time and in order; taken by [feed] only, with no other lock held. */
+    private val dispatch = Any()
+
+    /** Messages of the [feed] under way, for [frameListener] once [lock] is released. */
+    private val parsed = ArrayList<CanboxFrame>()
 
     private val _byCmd = MutableStateFlow<Map<Int, CanEntry>>(emptyMap())
     val byCmd: StateFlow<Map<Int, CanEntry>> = _byCmd.asStateFlow()
@@ -52,15 +68,20 @@ object CanMonitor {
     @Volatile
     var paused = false
 
-    /** Car profile decoding the messages (set by [CanVehicleStore]); a change clears the decoded values. */
     @Volatile
-    var vehicle: CanVehicle = CanVehicles.GENERIC_HIWORLD
+    private var current: CanVehicle = CanVehicles.GENERIC_HIWORLD
+
+    /** Car profile decoding the messages (set by [CanVehicleStore]); a change clears the decoded values. */
+    var vehicle: CanVehicle
+        get() = current
         set(value) {
-            // Another box family frames its messages its own way.
-            if (value.family != field.family) synchronized(this) { parser = value.family.parser(::onFrame) }
-            field = value
-            _values.value = emptyMap()
-            _roles.value = emptyMap()
+            synchronized(lock) {
+                // Another box family frames its messages its own way.
+                if (value.family != current.family) parser = value.family.parser(::onFrame)
+                current = value
+                _values.value = emptyMap()
+                _roles.value = emptyMap()
+            }
         }
 
     private val _values = MutableStateFlow<Map<String, CanValue>>(emptyMap())
@@ -76,9 +97,13 @@ object CanMonitor {
      */
     val roles: StateFlow<Map<String, CanValue>> = _roles.asStateFlow()
 
-    private var parser: CanBoxParser = vehicle.family.parser(::onFrame)
+    private var parser: CanBoxParser = current.family.parser(::onFrame)
 
-    /** Every message, before the viewer (steering wheel keys, see CanWheelKeys); called on the MCU thread. */
+    /**
+     * Every message once decoded (the box link, then the steering wheel keys, see CanWheelKeys), one at a time and in
+     * order, on the thread that feeds them (the head unit's for the MCU, the port's otherwise), with no lock of this
+     * object held.
+     */
     @Volatile
     var frameListener: ((CanboxFrame) -> Unit)? = null
 
@@ -94,31 +119,63 @@ object CanMonitor {
 
     private val sent = ArrayDeque<SentLine>()
 
-    /** A message sent to the box ([CanBoxTalk]): in the export, between the box's messages, marked →. */
-    @Synchronized
+    /** Lock of [sent] alone: nothing else is done while it is held. */
+    private val sentLock = Any()
+
+    /** A message sent to the box ([CanBoxTalk], any thread): in the export, between the box's messages, marked →. */
     fun recordSent(
         hex: String,
         what: String,
     ) {
-        sent.addLast(SentLine(System.currentTimeMillis(), hex, what))
-        while (sent.size > 20_000) sent.removeFirst()
+        val line = SentLine(System.currentTimeMillis(), hex, what)
+        synchronized(sentLock) {
+            sent.addLast(line)
+            while (sent.size > 20_000) sent.removeFirst()
+        }
     }
 
-    @Synchronized
+    /** Listener errors logged (the first ones only: one per message otherwise). */
+    private var listenerErrors = 0
+
+    /**
+     * Bytes from the box: parsed and decoded under [lock], then each message handed to [frameListener] after it. An
+     * error of the listener does not stop the other messages; the first one is thrown at the end (a port that fails
+     * to answer the box is opened again by its loop, see CanBoxPorts).
+     */
     fun feed(bytes: ByteArray) {
-        _rawBytes.value += bytes.size
-        parser.feed(bytes)
+        synchronized(dispatch) {
+            val frames =
+                synchronized(lock) {
+                    _rawBytes.value += bytes.size
+                    parser.feed(bytes)
+                    if (parsed.isEmpty()) return
+                    parsed.toList().also { parsed.clear() }
+                }
+            val l = frameListener ?: return
+            var error: Exception? = null
+            for (f in frames) {
+                try {
+                    l(f)
+                } catch (e: Exception) {
+                    if (listenerErrors++ < 20) Log.w(TAG, "message 0x%02X: %s".format(f.cmd, e))
+                    if (error == null) error = e
+                }
+            }
+            error?.let { throw it }
+        }
     }
 
     val skipped: Long get() = parser.skipped
 
+    /** A message rebuilt by the parser, under [lock]. */
     private fun onFrame(f: CanboxFrame) {
         val now = System.currentTimeMillis()
         val line = CanLine(now, f)
         history.addLast(line)
         while (history.size > 20_000) history.removeFirst()
-        frameListener?.invoke(f)
-        val decoded = vehicle.decode(f) { r -> _roles.value[r]?.number ?: _roles.value[r]?.flag?.let { if (it) 1.0 else 0.0 } }
+        parsed += f
+        val car = current
+        val decoded = car.decode(f) { r -> _roles.value[r]?.number ?: _roles.value[r]?.flag?.let { if (it) 1.0 else 0.0 } }
         // Roles first: a feature collecting [values] reads [roles] of the same message.
         val byRole = decoded.filter { it.role != null }
         if (byRole.isNotEmpty()) _roles.value = _roles.value + byRole.associateBy { it.role!! }
@@ -132,30 +189,33 @@ object CanMonitor {
                 (0 until maxOf(old.data.size, f.data.size)).filter { i -> old.data.getOrNull(i) != f.data.getOrNull(i) }.toSet()
             }
         _byCmd.value = _byCmd.value +
-            (f.cmd to CanEntry(f.cmd, f.data, f.checksumOk, (old?.count ?: 0) + 1, now, changed, vehicle.describe(f)))
+            (f.cmd to CanEntry(f.cmd, f.data, f.checksumOk, (old?.count ?: 0) + 1, now, changed, car.describe(f)))
         _lines.value = (listOf(line) + _lines.value).take(MAX_LINES)
     }
 
-    @Synchronized
     fun clear() {
-        _byCmd.value = emptyMap()
-        _lines.value = emptyList()
-        _values.value = emptyMap()
-        _roles.value = emptyMap()
-        history.clear()
-        sent.clear()
+        synchronized(lock) {
+            _byCmd.value = emptyMap()
+            _lines.value = emptyList()
+            _values.value = emptyMap()
+            _roles.value = emptyMap()
+            history.clear()
+        }
+        synchronized(sentLock) { sent.clear() }
     }
 
     /** Writes every message received since the start to a text file; returns it. */
-    @Synchronized
     fun export(context: Context): File? {
         val dir = context.getExternalFilesDir(null) ?: return null
+        // Copied under the locks, written without them: the box's messages go on meanwhile.
+        val (messages, rawBytes, car) = synchronized(lock) { Triple(history.toList(), _rawBytes.value, current) }
+        val out = synchronized(sentLock) { sent.toList() }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
         val file = File(dir, "can-$stamp.txt")
         file.bufferedWriter().use { w ->
-            w.write("# LibreHU CAN box log (Hiworld framing), $stamp, ${_rawBytes.value} bytes, $skipped skipped\n")
-            w.write("# Car profile: ${vehicle.name} (${vehicle.id})\n")
+            w.write("# LibreHU CAN box log (Hiworld framing), $stamp, $rawBytes bytes, $skipped skipped\n")
+            w.write("# Car profile: ${car.name} (${car.id})\n")
             val talk = CanBoxTalk.status.value
             w.write(
                 "# Dialogue with the box: " +
@@ -166,14 +226,13 @@ object CanMonitor {
                     (if (talk.requests > 0) ", requests answered by the box: ${talk.answers} of ${talk.requests}" else "") + "\n",
             )
             w.write("# Lines with → : sent by the head unit to the box\n")
-            val out = sent.toList()
             var i = 0
-            for (l in history) {
+            for (l in messages) {
                 while (i < out.size && out[i].at <= l.at) writeSent(w, time, out[i++])
                 w.write(time.format(Date(l.at)))
                 w.write("  ")
                 w.write(l.frame.toString())
-                vehicle.describe(l.frame)?.let { w.write("  # $it") }
+                car.describe(l.frame)?.let { w.write("  # $it") }
                 w.write("\n")
             }
             while (i < out.size) writeSent(w, time, out[i++])

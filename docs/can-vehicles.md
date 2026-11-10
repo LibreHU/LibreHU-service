@@ -468,6 +468,12 @@ Hiworld accuse le type de voiture par `FF: 24` ; s'il n'apparaît jamais, les en
 vitesse du boîtier est envoyée au départ du dialogue puis 5 s plus tard (l'appli d'origine rouvre le port 5 à 10 s
 après sa connexion).
 
+**Fils et verrous (v197)** : les accusés partent du fil qui reçoit les messages du boîtier (`headunit` par la MCU,
+`can-port` sur un autre port), les messages du profil du fil `can-box`, les commandes des écrans. `CanBoxLink` et
+`CanMonitor` n'appellent plus rien sous leur verrou : de v151 à v196, un message du boîtier reçu pendant un envoi
+du lien pouvait bloquer les deux fils pour toujours (service figé en roulant, voir
+[power.md](power.md#service-fig%C3%A9--watchdog-du-lien-mcu-1011-powerlinkwatchdogkt)).
+
 **TWRP** (recovery LibreHU, dépôt `android_device_alps_ac8257_demo`, `tools/touchfix`) fait de même pour lire les
 touches du volant hors d'Android, sans réglage à lui : le service écrit **`/sdcard/TWRP/ujc201_can.conf`** d'après le
 profil choisi, à chaque changement (`core/.../can/TwrpCanConf.kt`, en root si la permission de stockage manque ; carte

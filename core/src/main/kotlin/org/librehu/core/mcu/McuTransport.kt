@@ -51,8 +51,28 @@ class McuTransport(
 
     @Volatile
     private var running = false
+
+    @Volatile
     private var reader: Thread? = null
+
+    @Volatile
     private var writer: Thread? = null
+
+    /**
+     * [System.nanoTime] of the last turn of the reader's loop and of the writer's: each turn waits 200 ms at most, the
+     * writer's 200 ms plus the ACK tries ([ackTimeoutMs] × [maxTries]). An old one: that thread is stuck in a call
+     * (the service's watchdog reads them).
+     */
+    @Volatile
+    var readerBeat = 0L
+        private set
+
+    @Volatile
+    var writerBeat = 0L
+        private set
+
+    /** Started, not closed, and both threads still running (false once one has ended: port closed, I/O error). */
+    val alive: Boolean get() = running && reader?.isAlive == true && writer?.isAlive == true
 
     private val parser =
         protocol.newParser { frame ->
@@ -73,6 +93,8 @@ class McuTransport(
     fun start() {
         if (running) return
         running = true
+        readerBeat = System.nanoTime()
+        writerBeat = readerBeat
         reader = Thread(::readLoop, "mcu-rx").apply { isDaemon = true }.also { it.start() }
         writer = Thread(::writeLoop, "mcu-tx").apply { isDaemon = true }.also { it.start() }
     }
@@ -85,6 +107,7 @@ class McuTransport(
         val buf = ByteArray(512)
         var lastByte = System.nanoTime()
         while (running) {
+            readerBeat = System.nanoTime()
             try {
                 val n = channel.read(buf, 200)
                 if (n < 0) break
@@ -105,6 +128,7 @@ class McuTransport(
 
     private fun writeLoop() {
         while (running) {
+            writerBeat = System.nanoTime()
             val frame =
                 try {
                     queue.poll(200, TimeUnit.MILLISECONDS) ?: continue
@@ -121,6 +145,7 @@ class McuTransport(
                 }
                 var ok = false
                 for (attempt in 1..maxTries) {
+                    writerBeat = System.nanoTime()
                     synchronized(ackLock) {
                         waitingAckFor = frame.cmd
                         acked = false

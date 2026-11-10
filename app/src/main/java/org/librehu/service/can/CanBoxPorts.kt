@@ -128,7 +128,14 @@ object CanBoxPorts {
                 port = p
                 _status.value = Status(open = p.description)
                 Log.i(TAG, "CAN box on ${p.description}")
-                CanBoxTalk.start({ /* no MCU on this way */ }, { bytes -> p.write(bytes) }, baud = { b -> p.setBaud(b) })
+                // One write at a time on the port: the acknowledgements come from this thread, the profile's
+                // messages from the box link's, the commands from the screens (CanBoxLink calls out of its lock).
+                val writing = Any()
+                CanBoxTalk.start(
+                    { /* no MCU on this way */ },
+                    { bytes -> synchronized(writing) { p.write(bytes) } },
+                    baud = { b -> synchronized(writing) { p.setBaud(b) } },
+                )
                 while (!Thread.currentThread().isInterrupted) {
                     val n = p.read(buf)
                     if (n < 0) throw IOException("closed")
