@@ -1438,4 +1438,10 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="car_sources_port">%1$s: %2$s</string>
     <string name="car_sources_owner_obd">OBD-II adapter</string>
     <string name="car_sources_owner_box">CAN box</string>
+    <!-- Watchdog (power/LinkWatchdog) -->
+    <string name="watchdog_channel">Service watchdog</string>
+    <string name="watchdog_restarted_title">LibreHU service restarted</string>
+    <string name="watchdog_restarted_text">At %1$s the service was stuck (%2$s): it restarted by itself. What each thread was doing is in the standby journal; LibreHU Helper\'s report takes it.</string>
+    <string name="watchdog_stuck_title">LibreHU service stuck</string>
+    <string name="watchdog_stuck_text">At %1$s the service was stuck again (%2$s) after %3$d restarts within %4$d min: it is not restarted again. Tap, then Force stop and open it again; send LibreHU Helper\'s report.</string>
 </resources>

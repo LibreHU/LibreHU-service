@@ -106,6 +106,12 @@ class Standby private constructor(
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             runCatching { journal.add("CRASH in thread ${t.name}: ${e.stackTraceToString().lines().take(CRASH_LINES).joinToString("\n    ")}") }
+            // On the storage before Android ends the process (the journal and the service log write on threads of their own).
+            runCatching {
+                journal.flush(2_000)
+                org.librehu.service.diag.ServiceLog
+                    .flush(1_000)
+            }
             previous?.uncaughtException(t, e)
         }
         val bootAt = System.currentTimeMillis() - SystemClock.elapsedRealtime()
@@ -242,8 +248,11 @@ class Standby private constructor(
             if (s.mode == StandbyMode.SLEEP) {
                 note(if (QuickBootGuard.start(app)) "QuickBoot guard on (${since()})" else "QuickBoot guard FAILED (no root): no PC_READY after the wake up")
             }
+            // The SoC may suspend as soon as the screen is off: what is written so far goes to the storage first.
+            journal.flush()
             screen(false)
             note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
+            journal.flush()
             if (s.mode == StandbyMode.SLEEP) {
                 Thread.sleep(WAKELOCK_CHECK_MS)
                 stopWakelockHolders()
@@ -275,6 +284,7 @@ class Standby private constructor(
                 runCatching { ProcessBuilder("sync").start().waitFor() }
                 prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).commit()
                 note("Shutdown")
+                journal.flush()
                 // init's power off (sync, remount read-only): quicker than the framework's, which QuickBoot may also take over.
                 RootShell.run("reboot -p || svc power shutdown", timeoutS = 30)
             }, "standby-shutdown").start()

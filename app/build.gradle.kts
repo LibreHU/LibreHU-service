@@ -33,8 +33,10 @@ android {
         versionName = (git("describe", "--tags", "--always", "--dirty", "--exclude", "latest-*", "--exclude", "build-*") ?: "dev") + "-" + branchName()
 
         ndk {
-            // The AC8257 is arm64; ivi-services ships arm64-v8a only too.
+            // The AC8257 is arm64; ivi-services ships arm64-v8a only too. `-PextraAbi=x86_64`: also for an emulator
+            // (.github/workflows/diagnostics-test.yml).
             abiFilters += "arm64-v8a"
+            providers.gradleProperty("extraAbi").orNull?.let { abiFilters += it }
         }
     }
 

@@ -9,16 +9,21 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Standby journal: every step of a standby and of the wake up, written to a file and forced to the storage at each
- * line (`fsync`), so that what happened before the MCU cut the SoC is still there at the next start. Each line has the
+ * Standby journal: every step of a standby and of the wake up, written to a file and forced to the storage (`fsync`)
+ * as it comes, so that what happened before the MCU cut the SoC is still there at the next start. Each line has the
  * wall clock, the uptime (stops while the SoC is suspended) and the time since boot (does not).
  *
  * Root snapshots add what the kernel and Android say: wakelocks that keep the SoC awake, suspend / resume lines of
  * `dmesg`, and after a cold boot the end of the previous kernel log (pstore), the boot reason.
  *
- * In the device protected storage (readable before the first unlock), two files of [MAX_BYTES] at most.
+ * In the device protected storage (readable before the first unlock), two files of [MAX_BYTES] at most. Written by a
+ * thread of the journal, in order, each batch forced to the storage: the caller never waits for it (the head unit's
+ * thread writes here at each ignition change, and an fsync can take seconds while the storage is busy, with the MCU
+ * waiting for its PC_READY); [flush] waits for it where the process or the SoC may end next.
  */
 class StandbyJournal private constructor(
     context: Context,
@@ -28,22 +33,69 @@ class StandbyJournal private constructor(
     private val old = File(dir, "standby.1.log")
     private val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ROOT)
 
-    @Synchronized
+    /** Lines for the writer, in order (put never waits). */
+    private val pending = LinkedBlockingQueue<String>()
+    private val added = AtomicLong()
+    private val written = AtomicLong()
+
+    /** The two files: the writer, [read], [clear]. */
+    private val files = Any()
+
+    init {
+        Thread(::write, "standby-journal").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    /** A line, with the wall clock, the uptime and the time since boot of now (any thread, never waits). */
     fun add(line: String) {
         ServiceState.addLog(line)
         val up = SystemClock.uptimeMillis() / 1000
         val el = SystemClock.elapsedRealtime() / 1000
-        val text = "${time.format(Date())}  up=${up}s boot=${el}s  $line\n"
-        try {
-            if (file.length() > MAX_BYTES) {
-                old.delete()
-                file.renameTo(old)
+        val text = synchronized(time) { "${time.format(Date())}  up=${up}s boot=${el}s  $line\n" }
+        pending.put(text)
+        added.incrementAndGet()
+    }
+
+    /** Waits, [timeoutMs] at most, until the lines added so far are on the storage. */
+    fun flush(timeoutMs: Long = 2_000) {
+        val target = added.get()
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        while (written.get() < target && SystemClock.uptimeMillis() < deadline) {
+            try {
+                Thread.sleep(5)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return
             }
-            FileOutputStream(file, true).use { out ->
-                out.write(text.toByteArray())
-                out.fd.sync()
+        }
+    }
+
+    private fun write() {
+        val batch = ArrayList<String>()
+        while (true) {
+            try {
+                batch += pending.take()
+                pending.drainTo(batch)
+                synchronized(files) {
+                    if (file.length() > MAX_BYTES) {
+                        old.delete()
+                        file.renameTo(old)
+                    }
+                    FileOutputStream(file, true).use { out ->
+                        for (t in batch) out.write(t.toByteArray())
+                        out.fd.sync()
+                    }
+                }
+            } catch (_: InterruptedException) {
+                return
+            } catch (_: Exception) {
+                // Storage full or gone: this batch is lost, the next one is tried again.
+            } finally {
+                written.addAndGet(batch.size.toLong())
+                batch.clear()
             }
-        } catch (_: Exception) {
         }
     }
 
@@ -63,16 +115,20 @@ class StandbyJournal private constructor(
     }
 
     /** The whole journal, oldest first. */
-    @Synchronized
-    fun read(): String = (if (old.exists()) old.readText() else "") + (if (file.exists()) file.readText() else "")
+    fun read(): String {
+        flush(1_000)
+        return synchronized(files) { (if (old.exists()) old.readText() else "") + (if (file.exists()) file.readText() else "") }
+    }
 
     /** The last [n] lines, newest last (for the screen). */
     fun tail(n: Int): List<String> = read().lines().filter { it.isNotBlank() && !it.startsWith("    ") }.takeLast(n)
 
-    @Synchronized
     fun clear() {
-        old.delete()
-        file.delete()
+        flush(1_000)
+        synchronized(files) {
+            old.delete()
+            file.delete()
+        }
     }
 
     /**

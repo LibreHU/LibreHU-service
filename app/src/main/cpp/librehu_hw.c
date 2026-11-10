@@ -46,7 +46,9 @@ JNIEXPORT jint JNICALL JNI_FN(serialOpen)(JNIEnv *env, jclass clazz, jstring jpa
     speed_t speed = baud_constant(baud);
     if (speed == 0) return -EINVAL;
     const char *path = (*env)->GetStringUTFChars(env, jpath, NULL);
-    int fd = open(path, O_RDWR | O_NOCTTY | O_CLOEXEC);
+    /* O_NONBLOCK: open() of a serial port without CLOCAL (left cleared by another program) would wait for the
+     * carrier, forever on a UART without one; blocking again once CLOCAL is set (reads wait in poll(), VMIN = 0). */
+    int fd = open(path, O_RDWR | O_NOCTTY | O_CLOEXEC | O_NONBLOCK);
     (*env)->ReleaseStringUTFChars(env, jpath, path);
     if (fd < 0) return -errno;
     struct termios tio;
@@ -68,6 +70,8 @@ JNIEXPORT jint JNICALL JNI_FN(serialOpen)(JNIEnv *env, jclass clazz, jstring jpa
         return -err;
     }
     tcflush(fd, TCIOFLUSH);
+    int flags = fcntl(fd, F_GETFL);
+    if (flags >= 0) fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
     return fd;
 }
 
@@ -111,7 +115,18 @@ JNIEXPORT jint JNICALL JNI_FN(write)(JNIEnv *env, jclass clazz, jint fd, jbyteAr
 JNIEXPORT void JNICALL JNI_FN(close)(JNIEnv *env, jclass clazz, jint fd) {
     (void) env;
     (void) clazz;
-    if (fd >= 0) close(fd);
+    if (fd < 0) return;
+    if (isatty(fd)) {
+        /* The last close of a tty waits until its output is sent (closing_wait, 30 s by default), on a UART that
+         * cannot send for that long: 100 ms at most for the last frames, then what is left is dropped. */
+        for (int i = 0; i < 20; i++) {
+            int pending = 0;
+            if (ioctl(fd, TIOCOUTQ, &pending) != 0 || pending <= 0) break;
+            usleep(5000);
+        }
+        tcflush(fd, TCIOFLUSH);
+    }
+    close(fd);
 }
 
 static int gpio_fd = -1;

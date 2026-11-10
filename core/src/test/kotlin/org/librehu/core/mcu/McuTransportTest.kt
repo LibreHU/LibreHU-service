@@ -151,4 +151,42 @@ class McuTransportTest {
         assertEquals("port gone", errors.single().message)
         t.close()
     }
+
+    @Test
+    fun thePortIsClosedOnlyOnceItsThreadsHaveEnded() {
+        val readingWhenClosed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val reading = java.util.concurrent.atomic.AtomicBoolean(false)
+        val ch =
+            object : SerialChannel {
+                override fun read(
+                    buffer: ByteArray,
+                    timeoutMs: Int,
+                ): Int {
+                    reading.set(true)
+                    try {
+                        Thread.sleep(150)
+                    } finally {
+                        reading.set(false)
+                    }
+                    return 0
+                }
+
+                override fun write(bytes: ByteArray) {}
+
+                override fun close() {
+                    if (reading.get()) readingWhenClosed.set(true)
+                }
+            }
+        val t =
+            McuTransport(
+                ch,
+                object : McuTransport.Listener {
+                    override fun onFrame(frame: McuFrame) {}
+                },
+            )
+        t.start()
+        Thread.sleep(400)
+        t.close()
+        assertFalse("closed while its reader was in a read", readingWhenClosed.get())
+    }
 }

@@ -1438,4 +1438,10 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="car_sources_port">%1$s : %2$s</string>
     <string name="car_sources_owner_obd">adaptateur OBD-II</string>
     <string name="car_sources_owner_box">boîtier CAN</string>
+    <!-- Watchdog (power/LinkWatchdog) -->
+    <string name="watchdog_channel">Surveillance du service</string>
+    <string name="watchdog_restarted_title">LibreHU service relancé</string>
+    <string name="watchdog_restarted_text">À %1$s, le service était bloqué (%2$s) : il s\'est relancé tout seul. Ce que faisait chaque fil est dans le journal de veille ; le rapport de LibreHU Helper le prend.</string>
+    <string name="watchdog_stuck_title">LibreHU service bloqué</string>
+    <string name="watchdog_stuck_text">À %1$s, le service était de nouveau bloqué (%2$s) après %3$d relances en %4$d min : il n\'est plus relancé. Toucher, puis Forcer l\'arrêt et le rouvrir ; envoyer le rapport de LibreHU Helper.</string>
 </resources>

@@ -59,7 +59,6 @@ import org.librehu.service.touch.TouchPanel
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 
 /**
@@ -104,6 +103,10 @@ class LibreHuService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // The service's log in a file as well (diag/ServiceLog), from its first line: read by LibreHU Helper.
+        org.librehu.service.diag.ServiceLog
+            .init(this)
+        log("Service start: pid ${android.os.Process.myPid()}, version ${versionName()}")
         startForegroundCompat()
         // MCU link first: the MCU cuts the SoC when PC_READY comes late (10 s after a warm start). The rest
         // (Bluetooth, OBD, touch keys, root calls) starts after it.
@@ -332,7 +335,8 @@ class LibreHuService : Service() {
             } else {
                 null
             }
-        val exec = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "headunit") }
+        // One thread, as before; an error of one of its tasks (an MCU frame, a setting) is logged instead of lost.
+        val exec = org.librehu.core.unit.LoggedExecutor("headunit") { m -> log("Head unit thread: $m") }
         val headUnit =
             HeadUnit(
                 SocGpio,
@@ -426,26 +430,34 @@ class LibreHuService : Service() {
 
     private val unitListener =
         object : HeadUnit.Listener {
+            // Each consumer in its own step: one that throws is logged and the others still get the news (an error in
+            // the middle used to skip the rest without a word: the reverse camera, the apps, the broadcast).
             override fun onStateChanged(state: VehicleState) {
-                ServiceState.setVehicle(state)
-                org.librehu.service.power.Standby
-                    .get(this@LibreHuService)
-                    .apply {
-                        if (state.mcuOnline) onAccWire(state.acc)
-                        onAcc(state.powered)
-                    }
-                display.onHeadlights(state.headlight)
-                org.librehu.service.overlay.StatusOsd
-                    .get(this@LibreHuService)
-                    .onState(state)
-                main.post {
-                    org.librehu.service.car.ReverseCamera
+                step("state") { ServiceState.setVehicle(state) }
+                step("standby") {
+                    org.librehu.service.power.Standby
                         .get(this@LibreHuService)
-                        .onReverse(state.reverse)
+                        .apply {
+                            if (state.mcuOnline) onAccWire(state.acc)
+                            onAcc(state.powered)
+                        }
+                }
+                step("headlights") { display.onHeadlights(state.headlight) }
+                step("status panel") {
+                    org.librehu.service.overlay.StatusOsd
+                        .get(this@LibreHuService)
+                        .onState(state)
+                }
+                main.post {
+                    step("reverse camera") {
+                        org.librehu.service.car.ReverseCamera
+                            .get(this@LibreHuService)
+                            .onReverse(state.reverse)
+                    }
                 }
                 val flags = LibreHu.flagsOf(state)
-                broadcastState(state, flags)
-                each { it.onVehicleFlags(flags) }
+                step("state broadcast") { broadcastState(state, flags) }
+                step("apps") { each { it.onVehicleFlags(flags) } }
             }
 
             override fun onSettingsChanged(settings: HeadUnitSettings) {
@@ -455,35 +467,39 @@ class LibreHuService : Service() {
                 if (old != null &&
                     old != shownVolume
                 ) {
-                    LevelOverlay.volume(this@LibreHuService).show(settings.volume, Bd37534.MAX_VOLUME, settings.muted)
+                    step("volume panel") { LevelOverlay.volume(this@LibreHuService).show(settings.volume, Bd37534.MAX_VOLUME, settings.muted) }
                 }
-                each { it.onAudioChanged() }
+                step("apps") { each { it.onAudioChanged() } }
             }
 
             override fun onMcuFrame(
                 frame: McuFrame,
                 fromMcu: Boolean,
             ) {
-                val ack = fromMcu && jancar && frame.cmd == JacFrame.CMD_ACK
-                if (!(ack && ServiceState.hideAcks)) ServiceState.addTraffic((if (fromMcu) "> " else "< ") + describe(frame, fromMcu))
-                val p = protocol
-                ServiceState.updateMcu { if (fromMcu && p != null) it.onReceived(frame, p.decode(frame), jancar) else it.onSent() }
-                each { it.onMcuFrame(frame.cmd, frame.data, fromMcu) }
+                step("MCU traffic") {
+                    val ack = fromMcu && jancar && frame.cmd == JacFrame.CMD_ACK
+                    if (!(ack && ServiceState.hideAcks)) ServiceState.addTraffic((if (fromMcu) "> " else "< ") + describe(frame, fromMcu))
+                    val p = protocol
+                    ServiceState.updateMcu { if (fromMcu && p != null) it.onReceived(frame, p.decode(frame), jancar) else it.onSent() }
+                }
+                step("apps") { each { it.onMcuFrame(frame.cmd, frame.data, fromMcu) } }
             }
 
-            override fun onKey(key: McuEvent.Key) = each { it.onKey(key.channel, key.values, key.released, key.learning) }
+            override fun onKey(key: McuEvent.Key) = step("apps") { each { it.onKey(key.channel, key.values, key.released, key.learning) } }
 
             override fun onCanData(bytes: ByteArray) {
                 // An error of the box link or of the wheel keys (logged by CanMonitor) does not keep the bytes from the apps.
                 if (CanBoxPorts.viaMcu) runCatching { CanMonitor.feed(bytes) }
-                each { it.onCanData(bytes) }
+                step("apps") { each { it.onCanData(bytes) } }
             }
 
             override fun onHandshake(watchdogDisarmed: Boolean) {
                 log(if (watchdogDisarmed) "MCU handshake, watchdog disarmed" else "MCU handshake")
-                org.librehu.service.car.FrontLed
-                    .get(this@LibreHuService)
-                    .apply()
+                step("front LEDs") {
+                    org.librehu.service.car.FrontLed
+                        .get(this@LibreHuService)
+                        .apply()
+                }
                 if (startToastShown || !ServiceConfig.watchdog(this@LibreHuService).toast) return
                 startToastShown = true
                 main.post {
@@ -846,6 +862,29 @@ class LibreHuService : Service() {
         Log.i(TAG, message)
         ServiceState.addLog(message)
     }
+
+    /** Errors of the consumers of the head unit's news, by step: the first ones of each are logged. */
+    private val stepErrors = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /** One consumer of the head unit's news ([unitListener]): its error is logged, the next consumers still run. */
+    private inline fun step(
+        what: String,
+        block: () -> Unit,
+    ) {
+        try {
+            block()
+        } catch (e: Exception) {
+            val n = stepErrors.merge(what, 1) { a, b -> a + b } ?: 1
+            if (n <= 3 || n % 100 == 0) log("Error in $what (${n}x): $e at ${e.stackTrace.take(2).joinToString(" < ")}")
+        }
+    }
+
+    private fun versionName(): String =
+        try {
+            packageManager.getPackageInfo(packageName, 0).let { "${it.versionName} (${it.longVersionCode})" }
+        } catch (_: Exception) {
+            "?"
+        }
 
     companion object {
         /**

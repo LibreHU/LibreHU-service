@@ -70,6 +70,16 @@ object CanBoxTalk {
 
     private var timer: ScheduledExecutorService? = null
 
+    /** The box's thread runs ([timer]), for the watchdog. */
+    @Volatile
+    var ticking = false
+        private set
+
+    /** System.nanoTime() of the last tick: the box's thread stuck for the watchdog (power/LinkWatchdog). */
+    @Volatile
+    var tickBeat = 0L
+        private set
+
     /** The box speed again, a few seconds after the start (the box's own app opens its port again, 5 to 10 s later). */
     @Volatile
     private var baudAgain: Pair<Long, Int>? = null
@@ -108,10 +118,12 @@ object CanBoxTalk {
                 mcu = mcuFrame
                 portBaud = baud
                 if (timer == null) {
+                    tickBeat = System.nanoTime()
                     timer =
                         Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "can-box").apply { isDaemon = true } }.also {
                             it.scheduleWithFixedDelay({ tick() }, TICK_MS, TICK_MS, TimeUnit.MILLISECONDS)
                         }
+                    ticking = true
                 }
                 rebuildLocked()
             }
@@ -124,6 +136,7 @@ object CanBoxTalk {
             baudAgain = null
             link = null
             linkFor = null
+            ticking = false
             timer?.shutdownNow()
             timer = null
             _status.value = Status()
@@ -145,6 +158,7 @@ object CanBoxTalk {
     }
 
     private fun tick() {
+        tickBeat = System.nanoTime()
         // Whatever goes wrong, the next tick comes: a periodic task that throws is never run again.
         try {
             rebuildIfChanged()

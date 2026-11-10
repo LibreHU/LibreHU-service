@@ -211,6 +211,8 @@ l'arrêtait pour toujours, sans un mot, à la première erreur :
 |---|---|---|
 | fil `headunit` | une tâche de sa propre file toutes les 5 s (une tâche coincée la retient) | muet plus de 60 s |
 | fils `mcu-rx` / `mcu-tx` | chaque tour de leur boucle (lecture ou attente de 200 ms au plus, essais d'ACK compris) | muet plus de 60 s, ou fil terminé (port fermé, erreur d'E/S) alors que le lien tourne |
+| fil `main` (v198) | une tâche postée à chaque contrôle (écrans, panneaux par-dessus les applis, appuis longs du volant, caméra de recul) | muet plus de 60 s |
+| fil `can-box` (v198), quand il tourne | chaque tick (250 ms) : sans lui, un boîtier Hiworld n'a plus le type de voiture et n'envoie plus de touches | muet plus de 60 s |
 
 Temps éveillé (`CLOCK_MONOTONIC`, comme `SystemClock.uptimeMillis`) : une veille, SoC suspendu, ne compte pas.
 Contrôle toutes les 5 s. Au blocage : piles de **tous** les fils dans logcat (étiquette `LibreHU-Watchdog`, 30 appels
@@ -222,6 +224,12 @@ au démarrage suivant, « Watchdog: service back N s after its restart » dans l
 blocage est seulement écrit (« not again: force stop the service and send this journal »), pour ne pas relancer en
 boucle un service qui se bloque de lui-même. Coût d'une relance : quelques secondes sans service, et le son coupé un
 instant quand la puce audio est réinitialisée (comme à chaque démarrage du service) ; les réglages sont gardés.
+
+**Depuis v198** : une notification dit chaque relance (« LibreHU service relancé », heure et cause) et, quand les 3
+relances n'ont pas suffi, « LibreHU service bloqué » (la toucher ouvre la fiche de l'appli : Forcer l'arrêt). Le
+journal de veille et le journal du service sont écrits sur le stockage avant la fin du processus. Le reste de l'audit
+des blocages (erreurs perdues des tâches, journal écrit sur le fil MCU, port série), le journal du service et la
+lecture de tout cela par LibreHU Helper ou adb : [diagnostics.md](diagnostics.md).
 
 ### Ce que fait la MCU après la coupure du contact (firmware `JCST_AC8257_8T7` 2024.08.09, désassemblé le 29/10)
 

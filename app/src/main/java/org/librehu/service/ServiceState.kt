@@ -3,6 +3,7 @@ package org.librehu.service
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import org.librehu.core.mcu.McuDebugState
 import org.librehu.core.mcu.McuFrame
 import org.librehu.core.unit.VehicleState
@@ -69,14 +70,30 @@ object ServiceState {
         _vehicle.value = v
     }
 
+    /** The last [DIAG_LINES] MCU frames, for LibreHU Helper's report (DiagnosticsProvider), oldest first. */
+    private val trafficRing = ArrayDeque<String>()
+
     fun addTraffic(line: String) {
+        val l = stamp(line)
+        synchronized(trafficRing) {
+            trafficRing.addLast(l)
+            if (trafficRing.size > DIAG_LINES) trafficRing.removeFirst()
+        }
         if (trafficPaused) return
-        _traffic.value = (listOf(stamp(line)) + _traffic.value).take(MAX_LINES)
+        // update: several threads add lines (MCU reader, head unit's thread, CAN box link): none is lost.
+        _traffic.update { (listOf(l) + it).take(MAX_LINES) }
     }
 
+    /** A line of the service's log: on its screens, and in its file (diag/ServiceLog, read by LibreHU Helper). */
     fun addLog(line: String) {
-        _log.value = (listOf(stamp(line)) + _log.value).take(MAX_LINES)
+        org.librehu.service.diag.ServiceLog
+            .add(line)
+        val l = stamp(line)
+        _log.update { (listOf(l) + it).take(MAX_LINES) }
     }
+
+    /** The last MCU frames (received `>`, sent `<`), oldest first, paused or not. */
+    fun recentTraffic(): List<String> = synchronized(trafficRing) { trafficRing.toList() }
 
     fun clearTraffic() {
         _traffic.value = emptyList()
@@ -103,4 +120,5 @@ object ServiceState {
     private fun stamp(line: String) = synchronized(time) { time.format(Date()) } + "  " + line
 
     private const val MAX_LINES = 300
+    private const val DIAG_LINES = 2_000
 }

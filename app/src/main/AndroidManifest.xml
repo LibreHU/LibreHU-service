@@ -276,6 +276,14 @@
             android:exported="true"
             android:permission="org.librehu.permission.BRIDGE" />
 
+        <!-- Diagnostics for LibreHU Helper's report and adb (diag/DiagnosticsProvider): read only, callers as for the
+             API (LibreHU apps, system, shell, apps the user allowed). -->
+        <provider
+            android:name=".diag.DiagnosticsProvider"
+            android:authorities="org.librehu.service.diagnostics"
+            android:directBootAware="true"
+            android:exported="true" />
+
         <!-- Live rear camera stream drawn into LibreHU Launcher's own view (apps with the LibreHU key only). -->
         <provider
             android:name=".car.VehicleProvider"

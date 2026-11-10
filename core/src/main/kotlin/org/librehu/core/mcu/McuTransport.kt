@@ -177,11 +177,14 @@ class McuTransport(
         running = false
         synchronized(ackLock) { ackLock.notifyAll() }
         writer?.interrupt()
+        // The threads first (a read or a poll of the queue waits 200 ms at most), then the port: a port closed under a
+        // thread still reading or writing could be another file by then (a closed descriptor's number goes to the next
+        // file opened), and the MCU's bytes would go to it.
+        reader?.join(1000)
+        writer?.join(1000)
         try {
             channel.close()
         } catch (_: IOException) {
         }
-        reader?.join(1000)
-        writer?.join(1000)
     }
 }

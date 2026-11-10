@@ -45,6 +45,9 @@ object CanMonitor {
     private const val TAG = "LibreHU-CAN"
     private const val MAX_LINES = 400
 
+    /** An export waits this long at most for [lock]. */
+    private const val LOCK_WAIT_MS = 3_000L
+
     /** Parser, [history], decoded values; held for no call out of this object. */
     private val lock = Any()
 
@@ -207,37 +210,69 @@ object CanMonitor {
     /** Writes every message received since the start to a text file; returns it. */
     fun export(context: Context): File? {
         val dir = context.getExternalFilesDir(null) ?: return null
-        // Copied under the locks, written without them: the box's messages go on meanwhile.
-        val (messages, rawBytes, car) = synchronized(lock) { Triple(history.toList(), _rawBytes.value, current) }
-        val out = synchronized(sentLock) { sent.toList() }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
         val file = File(dir, "can-$stamp.txt")
-        file.bufferedWriter().use { w ->
-            w.write("# LibreHU CAN box log (Hiworld framing), $stamp, $rawBytes bytes, $skipped skipped\n")
-            w.write("# Car profile: ${car.name} (${car.id})\n")
-            val talk = CanBoxTalk.status.value
-            w.write(
-                "# Dialogue with the box: " +
-                    (if (!talk.running) "not running" else "${talk.acks} acknowledgements sent") +
-                    talk.sent.entries.joinToString("") { (k, v) -> ", $k ${v.first} at ${time.format(Date(v.second))}" } +
-                    ", acknowledged by the box: " +
-                    (if (talk.acked.isEmpty()) "nothing" else talk.acked.joinToString(" ") { "0x%02X".format(it) }) +
-                    (if (talk.requests > 0) ", requests answered by the box: ${talk.answers} of ${talk.requests}" else "") + "\n",
-            )
-            w.write("# Lines with → : sent by the head unit to the box\n")
-            var i = 0
-            for (l in messages) {
-                while (i < out.size && out[i].at <= l.at) writeSent(w, time, out[i++])
-                w.write(time.format(Date(l.at)))
-                w.write("  ")
-                w.write(l.frame.toString())
-                car.describe(l.frame)?.let { w.write("  # $it") }
-                w.write("\n")
-            }
-            while (i < out.size) writeSent(w, time, out[i++])
-        }
+        file.bufferedWriter().use { writeExport(it, stamp) }
         return file
+    }
+
+    /** The messages, the bytes received and the profile, copied under [lock]: [LOCK_WAIT_MS] at most, else null. */
+    private fun snapshot(): Triple<List<CanLine>, Long, CanVehicle>? {
+        val copy =
+            java.util.concurrent.FutureTask<Triple<List<CanLine>, Long, CanVehicle>> {
+                synchronized(lock) { Triple(history.toList(), _rawBytes.value, current) }
+            }
+        Thread(copy, "can-export").apply {
+            isDaemon = true
+            start()
+        }
+        return try {
+            copy.get(LOCK_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * The export's text: a header (profile, dialogue with the box), then every message since the start with, between
+     * them, what the head unit sent (→). Copied under the locks, written without them: the box's messages go on
+     * meanwhile. A thread holding the monitor's lock for more than [LOCK_WAIT_MS] is written instead of waited for
+     * (LibreHU Helper's report, diag/DiagnosticsProvider).
+     */
+    fun writeExport(
+        w: java.io.Writer,
+        stamp: String = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()),
+    ) {
+        val snap = snapshot()
+        if (snap == null) {
+            w.write("# LibreHU CAN box log, $stamp: the monitor's lock held by another thread for more than ${LOCK_WAIT_MS / 1000} s (stuck: see the threads)\n")
+            return
+        }
+        val (messages, rawBytes, car) = snap
+        val out = synchronized(sentLock) { sent.toList() }
+        val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+        w.write("# LibreHU CAN box log (Hiworld framing), $stamp, $rawBytes bytes, $skipped skipped\n")
+        w.write("# Car profile: ${car.name} (${car.id})\n")
+        val talk = CanBoxTalk.status.value
+        w.write(
+            "# Dialogue with the box: " +
+                (if (!talk.running) "not running" else "${talk.acks} acknowledgements sent") +
+                talk.sent.entries.joinToString("") { (k, v) -> ", $k ${v.first} at ${time.format(Date(v.second))}" } +
+                ", acknowledged by the box: " +
+                (if (talk.acked.isEmpty()) "nothing" else talk.acked.joinToString(" ") { "0x%02X".format(it) }) +
+                (if (talk.requests > 0) ", requests answered by the box: ${talk.answers} of ${talk.requests}" else "") + "\n",
+        )
+        w.write("# Lines with → : sent by the head unit to the box\n")
+        var i = 0
+        for (l in messages) {
+            while (i < out.size && out[i].at <= l.at) writeSent(w, time, out[i++])
+            w.write(time.format(Date(l.at)))
+            w.write("  ")
+            w.write(l.frame.toString())
+            car.describe(l.frame)?.let { w.write("  # $it") }
+            w.write("\n")
+        }
+        while (i < out.size) writeSent(w, time, out[i++])
     }
 
     private fun writeSent(

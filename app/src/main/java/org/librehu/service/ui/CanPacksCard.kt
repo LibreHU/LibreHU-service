@@ -97,7 +97,8 @@ internal fun CanPacksCard() {
                     }
                     if (have != null) {
                         Pill(stringResource(R.string.can_packs_remove), enabled = running == null, icon = Icons.Default.Delete) {
-                            store.removePack(p.id)
+                            // The packs read again (hundreds of profiles): off the main thread.
+                            scope.launch(Dispatchers.IO) { store.removePack(p.id) }
                             result = null
                         }
                     }

@@ -57,8 +57,17 @@ class CarPackReceiver : BroadcastReceiver() {
                 }, "car-pack-install").start()
             }
             ACTION_REMOVE -> {
-                intent.getStringExtra(EXTRA_ID)?.let { store.removePack(it) }
-                setResult(Activity.RESULT_OK, null, null)
+                // The packs read again (hundreds of profiles): off the main thread, as an install.
+                val id = intent.getStringExtra(EXTRA_ID) ?: return
+                val pending = goAsync()
+                Thread({
+                    try {
+                        store.removePack(id)
+                        pending.setResult(Activity.RESULT_OK, null, null)
+                    } finally {
+                        pending.finish()
+                    }
+                }, "car-pack-remove").start()
             }
         }
     }
