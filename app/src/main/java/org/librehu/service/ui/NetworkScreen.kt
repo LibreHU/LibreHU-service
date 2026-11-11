@@ -1,7 +1,9 @@
 package org.librehu.service.ui
 
 import android.content.Intent
+import android.net.VpnService
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
 import org.librehu.service.net.UsbNet
+import org.librehu.service.net.cable.CableInternet
 
 /** Wired networks over USB: adapters and phones plugged in, their driver, the interfaces, the zip's modules. */
 @Composable
@@ -56,6 +59,33 @@ fun NetworkScreen() {
             }
             if (!s.root) Hint(stringResource(R.string.net_no_root))
             Hint(stringResource(R.string.net_status_hint))
+        }
+
+        // The phone's Internet over the cable while it runs wired Android Auto (adb, net/cable/CableInternet).
+        val cable by CableInternet.status.collectAsState()
+        Card(stringResource(R.string.cable_title)) {
+            var on by remember { mutableStateOf(CableInternet.enabled(context)) }
+            SwitchRow(stringResource(R.string.cable_switch), on, stringResource(R.string.cable_switch_hint)) {
+                // Android's VPN consent (asked once; with root the service gives it itself).
+                if (it) VpnService.prepare(context)?.let { consent -> runCatching { context.startActivity(consent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+                on = it
+                CableInternet.setEnabled(context, it)
+            }
+            if (on) {
+                val (text, ok) =
+                    when (cable.phase) {
+                        CableInternet.Phase.OFF, CableInternet.Phase.NO_PHONE -> stringResource(R.string.cable_no_phone) to null
+                        CableInternet.Phase.NO_DEBUGGING -> stringResource(R.string.cable_no_debugging) to false
+                        CableInternet.Phase.PERMISSION, CableInternet.Phase.CONNECTING -> stringResource(R.string.cable_connecting, cable.device) to null
+                        CableInternet.Phase.AUTHORIZE -> stringResource(R.string.cable_authorize, cable.device) to null
+                        CableInternet.Phase.RELAY -> stringResource(R.string.cable_relay, cable.device) to null
+                        CableInternet.Phase.CONNECTED ->
+                            stringResource(R.string.cable_connected, cable.detail.ifEmpty { cable.device }, bytes(cable.received), bytes(cable.sent)) to true
+                        CableInternet.Phase.ERROR -> stringResource(R.string.cable_error, cable.detail) to false
+                    }
+                StatusLine(text, ok)
+            }
+            Hint(stringResource(R.string.cable_hint))
         }
 
         Card(stringResource(R.string.net_devices)) {
@@ -172,3 +202,6 @@ fun NetworkScreen() {
         }
     }
 }
+
+/** A byte count for people: kB below a megabyte, MB with one decimal above. */
+private fun bytes(n: Long): String = if (n < 1_000_000) "${n / 1000} kB" else "%.1f MB".format(n / 1_000_000.0)

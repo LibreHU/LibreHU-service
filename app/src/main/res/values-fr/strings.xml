@@ -971,6 +971,17 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="net_interfaces_hint">Android prend les interfaces qui correspondent à son filtre (ici : %1$s). Android 9 seul : eth0, eth1… uniquement. Le partage de connexion USB d\'un téléphone Android s\'appelle usb0 avec le noyau linux-stable 4.9.337 (eth0 avec le noyau stock et le zip usb-net) : le zip usb-tethering fait prendre aussi usb0, usb1…</string>
     <string name="net_iface_ignored">%1$s ignorée par Android (filtre %2$s) : pas d\'internet par elle</string>
     <string name="net_iface_ignored_hint">LibreHU Apps → Zips → Réglages → Réseau → « Partage de connexion USB d\'un téléphone Android », flashé avec TWRP (dm-verity désactivé sur /vendor), puis redémarrer.</string>
+    <string name="cable_title">Internet du téléphone par le câble (Android Auto filaire)</string>
+    <string name="cable_switch">Prendre l\'internet du téléphone par le débogage USB</string>
+    <string name="cable_switch_hint">Avec Android Auto filaire : l\'USB du téléphone reste en Android Auto, internet passe par adb sur le même câble.</string>
+    <string name="cable_no_phone">Aucun téléphone branché avec le débogage USB.</string>
+    <string name="cable_no_debugging">Téléphone en Android Auto sans débogage USB : l\'activer (téléphone : Options pour les développeurs → Débogage USB).</string>
+    <string name="cable_connecting">%1$s : connexion…</string>
+    <string name="cable_authorize">%1$s : autoriser le débogage USB sur le téléphone (cocher « Toujours autoriser sur cet ordinateur »).</string>
+    <string name="cable_relay">%1$s : démarrage du relais sur le téléphone…</string>
+    <string name="cable_connected">Internet de %1$s : %2$s reçus, %3$s envoyés</string>
+    <string name="cable_error">Arrêté : %1$s (nouvel essai dans quelques secondes)</string>
+    <string name="cable_hint">Sur le téléphone : Options pour les développeurs → Débogage USB, puis autoriser cet autoradio une fois. L\'autoradio a alors un accès adb au téléphone (ce que le débogage USB donne à un ordinateur) : seulement avec son propre téléphone. LibreHU copie son relais sur le téléphone (/data/local/tmp/librehu-relay.apk) et ouvre un VPN sur l\'autoradio (IPv4).</string>
     <string name="net_modules">Pilotes du zip usb-net</string>
     <string name="net_modules_absent">Non installés</string>
     <string name="net_modules_install">LibreHU Apps → Zips → Noyau → « Ethernet USB et partage de connexion USB », flashé avec TWRP (dm-verity désactivé sur /vendor).</string>

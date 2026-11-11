@@ -15,3 +15,12 @@
 -keep class org.librehu.service.screen.ScreenHelper {
     public static void main(java.lang.String[]);
 }
+
+# Run through app_process by name: the USB grant as root on the head unit, the relay as the shell user on the phone
+# (the Internet over the cable, net/cable/CableInternet).
+-keep class org.librehu.service.net.cable.UsbGrant {
+    public static void main(java.lang.String[]);
+}
+-keep class org.librehu.core.relay.PhoneRelay {
+    public static void main(java.lang.String[]);
+}

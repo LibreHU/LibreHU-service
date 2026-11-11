@@ -1,0 +1,68 @@
+name: Internet over the cable test (Android 14 phone)
+
+# The phone's Internet over the USB cable (net/cable/CableInternet) end to end, the phone being an Android 14 emulator:
+# the adb host of core (org.librehu.core.adb) against the emulator's real adbd, LibreHU-service's release APK (R8, as
+# published) pushed and its relay started with app_process as the shell user, DNS (UDP) and HTTP (TCP) through it
+# (tools/phone_internet_test.sh, PhoneProbe.kt). The USB part and the head unit's VPN need the real unit.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - core/src/main/kotlin/org/librehu/core/adb/**
+      - core/src/main/kotlin/org/librehu/core/relay/**
+      - core/src/main/java/com/genymobile/**
+      - core/src/test/kotlin/org/librehu/core/adb/PhoneProbe.kt
+      - app/proguard-rules.pro
+      - tools/phone_internet_test.sh
+      - .github/workflows/phone-internet-test.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+
+      - name: Release APK (R8, the repository's key)
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: The probe's adb key
+        run: |
+          mkdir -p probe
+          "$ANDROID_HOME/platform-tools/adb" keygen probe/adbkey
+          ls -l probe
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: On an Android 14 phone
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash tools/phone_internet_test.sh app/build/outputs/apk/release/app-release.apk probe/adbkey out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phone-internet-test
+          path: out

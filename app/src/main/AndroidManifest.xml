@@ -292,6 +292,17 @@
             android:readPermission="org.librehu.permission.VEHICLE"
             android:writePermission="org.librehu.permission.VEHICLE" />
 
+        <!-- The phone's Internet over the USB cable with wired Android Auto (net/cable/CableInternet): the VPN whose
+             packets go to the phone's relay through adb. -->
+        <service
+            android:name=".net.cable.CableVpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".car.RearPreviewService"
             android:exported="true">

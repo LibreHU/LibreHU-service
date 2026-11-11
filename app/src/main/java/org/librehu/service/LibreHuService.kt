@@ -154,6 +154,8 @@ class LibreHuService : Service() {
         org.librehu.service.car.EngineSound.get(this).start()
         // Phone app (LibreHU bridge): Wi-Fi / Bluetooth server, paired phones only.
         org.librehu.service.bridge.BridgeServer.get(this).start()
+        // The phone's Internet over the USB cable with wired Android Auto, through USB debugging (off by default).
+        org.librehu.service.net.cable.CableInternet.start(this)
         // Native (AOT) compilation of the LibreHU apps: Android 9 leaves them interpreted on a head unit.
         org.librehu.service.perf.AppCompiler.get(this).start()
         CanVehicleStore.get(this) // applies the selected car profile to the CAN decoding
@@ -284,6 +286,7 @@ class LibreHuService : Service() {
         runCatching { unregisterReceiver(wakeReceiver) }
         runCatching { unregisterReceiver(usbReceiver) }
         runCatching { contentResolver.unregisterContentObserver(brightnessObserver) }
+        org.librehu.service.net.cable.CableInternet.stop()
         stopHardware()
         bluetoothModule.stop()
         display.stop()

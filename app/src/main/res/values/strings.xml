@@ -971,6 +971,17 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="net_interfaces_hint">Android takes the interfaces matching its filter (now: %1$s). Android 9 alone: eth0, eth1… only. An Android phone\'s USB tethering is named usb0 with the linux-stable 4.9.337 kernel (eth0 with the stock kernel and the usb-net zip): the usb-tethering zip makes Android take usb0, usb1… too.</string>
     <string name="net_iface_ignored">%1$s ignored by Android (filter %2$s): no Internet through it</string>
     <string name="net_iface_ignored_hint">LibreHU Apps → Zips → Settings → Network → \"Partage de connexion USB d\'un téléphone Android\", flashed with TWRP (dm-verity off on /vendor), then restart.</string>
+    <string name="cable_title">Phone Internet over the cable (wired Android Auto)</string>
+    <string name="cable_switch">Use the phone\'s Internet through USB debugging</string>
+    <string name="cable_switch_hint">With wired Android Auto: the phone\'s USB stays in Android Auto, the Internet goes through adb on the same cable.</string>
+    <string name="cable_no_phone">No phone with USB debugging plugged in.</string>
+    <string name="cable_no_debugging">Android Auto phone without USB debugging: turn it on (phone: Developer options → USB debugging).</string>
+    <string name="cable_connecting">%1$s: connecting…</string>
+    <string name="cable_authorize">%1$s: allow USB debugging on the phone (tick \"Always allow from this computer\").</string>
+    <string name="cable_relay">%1$s: starting the relay on the phone…</string>
+    <string name="cable_connected">Internet of %1$s: %2$s received, %3$s sent</string>
+    <string name="cable_error">Stopped: %1$s (new try in a few seconds)</string>
+    <string name="cable_hint">On the phone: Developer options → USB debugging, then allow this head unit once. The head unit then has adb access to the phone (what USB debugging gives a computer): only with your own phone. LibreHU copies its relay to the phone (/data/local/tmp/librehu-relay.apk) and opens a VPN on the head unit (IPv4).</string>
     <string name="net_modules">Drivers of the usb-net zip</string>
     <string name="net_modules_absent">Not installed</string>
     <string name="net_modules_install">LibreHU Apps → Zips → Kernel → \"Ethernet USB et partage de connexion USB\", flashed with TWRP (dm-verity off on /vendor).</string>

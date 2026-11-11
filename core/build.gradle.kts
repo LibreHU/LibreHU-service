@@ -31,3 +31,10 @@ tasks.register<Jar>("carToolJar") {
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/versions/*/module-info.class")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// The Internet over the cable end to end against a real adbd (CI: phone-internet-test.yml): PhoneProbe.kt of the tests.
+tasks.register<JavaExec>("phoneProbe") {
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("org.librehu.core.adb.PhoneProbeKt")
+    args = (project.findProperty("probeArgs") as String? ?: "").split(" ").filter { it.isNotEmpty() }
+}
