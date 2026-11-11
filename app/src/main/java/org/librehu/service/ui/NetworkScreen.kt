@@ -25,6 +25,13 @@ fun NetworkScreen() {
     var state by remember { mutableStateOf<UsbNet.State?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
+    val openOta = {
+        context.packageManager.getLaunchIntentForPackage("org.librehu.ota")?.let {
+            context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        Unit
+    }
+
     suspend fun refresh() {
         state = withContext(Dispatchers.IO) { UsbNet.scan(context) }
     }
@@ -111,8 +118,14 @@ fun NetworkScreen() {
                         i.ipv4.joinToString(", ").takeIf { it.isNotEmpty() },
                     ).joinToString(" · ")
                 ListRow("${i.name} · ${i.state}", details)
+                // Android 9 takes eth* only: an Android phone's tethering named usb0 needs the zip usb-tethering.
+                if (s.takenByAndroid(i.name) == false) {
+                    StatusLine(stringResource(R.string.net_iface_ignored, i.name, s.ifaceFilter.orEmpty()), false)
+                    Hint(stringResource(R.string.net_iface_ignored_hint))
+                    Actions { Pill(stringResource(R.string.net_open_ota)) { openOta() } }
+                }
             }
-            Hint(stringResource(R.string.net_interfaces_hint))
+            Hint(stringResource(R.string.net_interfaces_hint, s.ifaceFilter ?: "?"))
         }
 
         Card(stringResource(R.string.net_modules)) {
@@ -120,11 +133,7 @@ fun NetworkScreen() {
                 StatusLine(stringResource(R.string.net_modules_absent), false)
                 Hint(stringResource(R.string.net_modules_install))
                 Actions {
-                    Pill(stringResource(R.string.net_open_ota)) {
-                        context.packageManager.getLaunchIntentForPackage("org.librehu.ota")?.let {
-                            context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        }
-                    }
+                    Pill(stringResource(R.string.net_open_ota)) { openOta() }
                 }
             } else {
                 StatusLine(

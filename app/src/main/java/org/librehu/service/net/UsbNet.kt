@@ -1,6 +1,7 @@
 package org.librehu.service.net
 
 import android.content.Context
+import android.content.res.Resources
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
@@ -15,7 +16,9 @@ import org.librehu.service.root.RootShell
  * loaded by `/vendor/etc/init/init.librehu_usbnet.rc` once Android has started. That script keeps a crash guard:
  * `persist.vendor.librehu.usbnet.off` = 1 after a restart during the loading (or when switched off here), and
  * `vendor.librehu.usbnet.arm` = 1 loads them now. Android's EthernetService (started because of the USB host feature)
- * takes the `eth*` interfaces with DHCP.
+ * takes the interfaces matching its filter with DHCP ([ethernetFilter]): `eth*` on Android 9. The zip's rndis_host names
+ * the Android tethering interface eth too; the linux-stable 4.9.337 kernel's built-in one names it usb0, taken only with
+ * the zip usb-tethering (filter "(eth|usb)\d+").
  */
 object UsbNet {
     private const val TAG = "LibreHU-UsbNet"
@@ -92,7 +95,12 @@ object UsbNet {
         /** Android has an Ethernet network, and it reaches the Internet. */
         val ethernetUp: Boolean = false,
         val ethernetValidated: Boolean = false,
+        /** Android's filter of wired interfaces ([ethernetFilter]), null when unreadable. */
+        val ifaceFilter: String? = null,
     ) {
+        /** Whether Android takes this interface (its name matches [ifaceFilter], as EthernetTracker checks); null: unknown. */
+        fun takenByAndroid(name: String): Boolean? = ifaceFilter?.let { f -> runCatching { Regex(f).matches(name) }.getOrNull() }
+
         /** Devices of a network kind (or with a network driver). */
         val netDevices: List<UsbDevice> get() = devices.filter { it.kind != Kind.OTHER || it.netDriver != null }
     }
@@ -181,8 +189,22 @@ object UsbNet {
             off = off,
             ethernetUp = up,
             ethernetValidated = validated,
+            ifaceFilter = ethernetFilter(),
         )
     }
+
+    /**
+     * Android's filter of wired interfaces, overlays included (config_ethernet_iface_regex, read by EthernetTracker once,
+     * when Android starts): "eth\d" on Android 9, so an Android phone's USB tethering named usb0 by the kernel
+     * (linux-stable 4.9.337: rndis_host and cdc_ncm built in) is ignored; "(eth|usb)\d+" with the zip usb-tethering of
+     * LibreHU-flashablesZips or on LineageOS LibreHU.
+     */
+    fun ethernetFilter(): String? =
+        runCatching {
+            val res = Resources.getSystem()
+            val id = res.getIdentifier("config_ethernet_iface_regex", "string", "android")
+            if (id != 0) res.getString(id) else null
+        }.getOrNull()
 
     /** Android's own view: an Ethernet network, validated (it reaches the Internet). */
     private fun ethernet(context: Context): Pair<Boolean, Boolean> =
