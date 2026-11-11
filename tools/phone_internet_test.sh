@@ -4,9 +4,9 @@
 # the probe talks to the emulator's adbd itself (port 5555), then core/src/test/.../PhoneProbe.kt: adb connection,
 # LibreHU-service's release APK pushed, its relay started with app_process, DNS and HTTP through the relay.
 #     tools/phone_internet_test.sh <release apk> <adbkey (PEM)> <out dir>
-APK=$1
-KEY=$2
-OUT=$3
+APK=$(realpath "$1")
+KEY=$(realpath "$2")
+OUT=$(realpath -m "$3")
 mkdir -p "$OUT"
 adb wait-for-device
 adb root
