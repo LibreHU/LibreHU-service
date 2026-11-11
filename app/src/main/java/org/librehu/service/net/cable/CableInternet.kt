@@ -20,6 +20,7 @@ import org.librehu.core.adb.AdbServices
 import org.librehu.core.adb.AdbStream
 import org.librehu.core.relay.PhoneRelay
 import org.librehu.service.LibreHuService
+import org.librehu.service.ServiceState
 import org.librehu.service.root.RootShell
 import java.io.DataInputStream
 import java.io.File
@@ -151,7 +152,9 @@ object CableInternet {
         if (session != null) return
         val usb = app.getSystemService(UsbManager::class.java) ?: return
         val devices = usb.deviceList.values
-        val phone = devices.firstOrNull { adbInterface(it) != null && isAccessory(it) } ?: devices.firstOrNull { adbInterface(it) != null }
+        // Only a phone already in Android Auto (accessory): before, Open Headunit is switching it, and a phone without
+        // Android Auto can use the plain USB tethering (zip usb-tethering).
+        val phone = devices.firstOrNull { adbInterface(it) != null && isAccessory(it) }
         if (phone == null) {
             set(Status(if (devices.any { isAccessory(it) }) Phase.NO_DEBUGGING else Phase.NO_PHONE))
             return
@@ -162,7 +165,7 @@ object CableInternet {
             try {
                 s.run()
             } catch (e: Exception) {
-                Log.w(TAG, "session: $e")
+                log("session: $e")
                 if (!s.ended) set(Status(Phase.ERROR, e.message ?: e.javaClass.simpleName, s.label))
             } finally {
                 s.end(null)
@@ -175,7 +178,15 @@ object CableInternet {
     }
 
     private fun set(s: Status) {
-        if (_status.value != s) _status.value = s
+        if (_status.value == s) return
+        // Phase changes in the service's log too (kept in its file, LibreHU Helper's report); not the traffic counts.
+        if (_status.value.phase != s.phase || _status.value.detail != s.detail) log("${s.phase} ${s.device} ${s.detail}".trim())
+        _status.value = s
+    }
+
+    private fun log(message: String) {
+        Log.i(TAG, message)
+        ServiceState.addLog("Cable Internet: $message")
     }
 
     /** Bytes through the tunnel (CableVpnService). */
@@ -267,8 +278,10 @@ object CableInternet {
             val local = sha256(apk)
             val remote = AdbServices.run(c, "sha256sum $REMOTE_APK 2>/dev/null")?.substringBefore(' ')?.trim()
             if (remote != local) {
-                Log.i(TAG, "relay: copying ${apk.length()} bytes to the phone")
-                FileInputStream(apk).use { AdbServices.push(c, it, REMOTE_APK) }
+                log("relay: copying ${apk.length()} bytes to the phone")
+                // Next to it first: a relay still running from the old file is not cut under its feet.
+                FileInputStream(apk).use { AdbServices.push(c, it, "$REMOTE_APK.new") }
+                AdbServices.run(c, "mv -f $REMOTE_APK.new $REMOTE_APK")
             }
             val r =
                 c.open("exec:CLASSPATH=$REMOTE_APK exec app_process / ${PhoneRelay::class.java.name} 2>$REMOTE_LOG")
@@ -340,7 +353,7 @@ object CableInternet {
                 if (ended) return
                 ended = true
             }
-            if (why != null) Log.i(TAG, "end: $why")
+            if (why != null) log("end: $why")
             CableVpnService.stop(app)
             tunnel = null
             runCatching { relay?.close() }
