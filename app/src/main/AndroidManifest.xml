@@ -165,6 +165,174 @@
             </intent-filter>
         </activity>
 
+        <!-- LibreHU's entries in Android's Settings (systemsettings/SystemSettings): Settings shows those of system apps
+             only (LineageOS ROM), in the page named by com.android.settings.category. Each opens its page of the
+             service (org.librehu.service.TAB). No label or icon of their own: the task keeps the app's in recents.
+             Live summaries from SummaryProvider (summary_uri: content://<authority>/<method>), fixed on the home
+             page (Android 9 reads live ones there for its own entries only). -->
+        <activity-alias
+            android:name=".systemsettings.HomeEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.homepage" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_home" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/sys_settings_home_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <!-- Colour of the round background Settings draws behind the icon on its home page. -->
+            <meta-data
+                android:name="com.android.settings.bg.hint"
+                android:resource="@color/sys_settings_icon_background" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="HOME" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".systemsettings.DisplayEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.display" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_display" />
+            <meta-data
+                android:name="com.android.settings.summary_uri"
+                android:value="content://org.librehu.service.systemsettings/display" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="DISPLAY" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".systemsettings.SoundEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.sound" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_sound" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/sys_settings_sound_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="AUDIO" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".systemsettings.BluetoothEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.connect" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_bluetooth" />
+            <meta-data
+                android:name="com.android.settings.summary_uri"
+                android:value="content://org.librehu.service.systemsettings/bluetooth" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="BLUETOOTH" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".systemsettings.AndroidAutoEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.connect" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_android_auto" />
+            <meta-data
+                android:name="com.android.settings.summary_uri"
+                android:value="content://org.librehu.service.systemsettings/android_auto" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="ANDROID_AUTO" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".systemsettings.SystemEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.system" />
+            <meta-data
+                android:name="com.android.settings.title"
+                android:resource="@string/sys_settings_system" />
+            <meta-data
+                android:name="com.android.settings.summary_uri"
+                android:value="content://org.librehu.service.systemsettings/system" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_launcher_mono" />
+            <meta-data
+                android:name="com.android.settings.icon_tintable"
+                android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="SYSTEM" />
+        </activity-alias>
+
         <!-- Safe shutdown message (power/SafeShutdownActivity). -->
         <activity
             android:name=".power.SafeShutdownActivity"
@@ -282,6 +450,13 @@
             android:name=".diag.DiagnosticsProvider"
             android:authorities="org.librehu.service.diagnostics"
             android:directBootAware="true"
+            android:exported="true" />
+
+        <!-- Live summaries of LibreHU's entries in Android's Settings (systemsettings/SummaryProvider): call() only,
+             answered to Settings (system uid), root and the app; Android checks no permission for call(). -->
+        <provider
+            android:name=".systemsettings.SummaryProvider"
+            android:authorities="org.librehu.service.systemsettings"
             android:exported="true" />
 
         <!-- Live rear camera stream drawn into LibreHU Launcher's own view (apps with the LibreHU key only). -->

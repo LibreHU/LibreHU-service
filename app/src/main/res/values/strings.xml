@@ -1457,4 +1457,22 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="watchdog_restarted_text">At %1$s the service was stuck (%2$s): it restarted by itself. What each thread was doing is in the standby journal; LibreHU Helper\'s report takes it.</string>
     <string name="watchdog_stuck_title">LibreHU service stuck</string>
     <string name="watchdog_stuck_text">At %1$s the service was stuck again (%2$s) after %3$d restarts within %4$d min: it is not restarted again. Tap, then Force stop and open it again; send LibreHU Helper\'s report.</string>
+
+    <!-- LibreHU's entries in Android's Settings (LineageOS ROM: system app), systemsettings/SystemSettings -->
+    <string name="sys_settings_home">LibreHU</string>
+    <string name="sys_settings_home_summary">Vehicle, audio, display, Bluetooth</string>
+    <string name="sys_settings_display">Screen and lights</string>
+    <string name="sys_settings_display_dim_dark">Brightness and dark mode follow the headlights</string>
+    <string name="sys_settings_display_dim">Brightness follows the headlights</string>
+    <string name="sys_settings_display_dark">Dark mode follows the headlights</string>
+    <string name="sys_settings_display_other">Brightness, dark mode, touch screen</string>
+    <string name="sys_settings_sound">Head unit audio</string>
+    <string name="sys_settings_sound_summary">Tone, balance, outputs, source</string>
+    <string name="sys_settings_bluetooth">Car Bluetooth</string>
+    <string name="sys_settings_bluetooth_connected">%1$s connected</string>
+    <string name="sys_settings_bluetooth_off">Bluetooth off</string>
+    <string name="sys_settings_bluetooth_other">Phone, calls, music</string>
+    <string name="sys_settings_android_auto">Android Auto</string>
+    <string name="sys_settings_system">Head unit</string>
+    <string name="sys_settings_link_stopped">MCU link stopped</string>
 </resources>

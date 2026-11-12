@@ -217,7 +217,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openTab(intent: Intent?) {
-        val name = intent?.getStringExtra(EXTRA_TAB) ?: return
+        // The extra of LibreHU's apps, or the page of the entry of Android's Settings the activity was opened from.
+        val name =
+            intent?.getStringExtra(EXTRA_TAB)
+                ?: org.librehu.service.systemsettings.SystemSettings
+                    .tabOf(this, intent?.component)
+                ?: return
         Tab.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { tab.value = it }
     }
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Round background of LibreHU's entry on the home page of Android's Settings: the blue of the app icon. -->
+    <color name="sys_settings_icon_background">#FF1565C0</color>
+</resources>
