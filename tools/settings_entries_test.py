@@ -6,7 +6,9 @@ shows the entries of system apps only), then each entry is looked for in its pag
 (answer) and as the shell (null). Last, the same in French. Screenshots and UI dumps in the output folder; exit 1 on a
 failure.
 
-    python3 tools/settings_entries_test.py <debug APK or its folder> out
+    python3 tools/settings_entries_test.py <debug APK or its folder> out [ViPER4Android LibreHU APK]
+
+With the ViPER4Android LibreHU APK, it goes to /system/app as well and its entry of the Sound page is checked too.
 """
 import glob
 import os
@@ -18,6 +20,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 APK_IN, OUT = sys.argv[1:3]
+VIPER_APK = sys.argv[3] if len(sys.argv) > 3 else None
+VIPER = "com.llsl.viper4android"
 PKG = "org.librehu.service"
 SYSTEM_DIR = "/system/app/LibreHUService"
 URI = "content://org.librehu.service.systemsettings/"
@@ -29,7 +33,7 @@ ABI = "x86_64"
 EN = {
     "home": ("-a android.settings.SETTINGS", "LibreHU", ["Vehicle, audio, display, Bluetooth"], "Head unit link"),
     "display": ("-a android.settings.DISPLAY_SETTINGS", "Screen and lights", ["Dark mode follows the headlights"], "Android dark mode"),
-    "sound": ("-a android.settings.SOUND_SETTINGS", "Head unit audio", ["Tone, balance, outputs, source"], "Tone"),
+    "sound": ("-a android.settings.SOUND_SETTINGS", "Head unit audio", ["Tone, balance, outputs, source"], "Audio processor"),
     "bluetooth": (
         "-n com.android.settings/.Settings\\$ConnectedDeviceDashboardActivity",
         "Car Bluetooth",
@@ -138,7 +142,7 @@ def find_entry(name, title, summaries):
             if got:
                 return nodes, got
             continue
-        advanced = find(nodes, "Advanced") or find(nodes, "Paramètres avancés") or find(nodes, "Avancé")
+        advanced = find(nodes, "Advanced") or find(nodes, "Options avancées")
         if advanced:
             sh(f"input tap {advanced[0]} {advanced[1]}")
         else:
@@ -146,8 +150,37 @@ def find_entry(name, title, summaries):
     return nodes, None
 
 
+# Entries of Connected devices: that page of Settings crashes on a device without Bluetooth (Android 9's own bug,
+# LocalBluetoothManager null in BluetoothDeviceUpdater), as on the emulator; the head unit has Bluetooth.
+CONNECTED = {"bluetooth": "BluetoothEntry", "android_auto": "AndroidAutoEntry"}
+
+
+def run_without_page(name, spec):
+    """Entry of a page that cannot be shown here: its summary from the provider and the page it opens."""
+    _, title, summaries, page_text = spec
+    results.append(f"--  {name}: page of Settings skipped (no Bluetooth on this device: it crashes there)")
+    print(results[-1], flush=True)
+    got = sh(f"content call --uri {URI}{name} --method {name}")
+    check(any(s in got for s in summaries), f"{name}: summary from the provider: {got.strip()}")
+    sh(f"am start -W -n {PKG}/.systemsettings.{CONNECTED[name]}")
+    page = []
+    for attempt in range(6):
+        time.sleep(2)
+        page = dump(f"{name}-opened-{attempt}")
+        if find(page, page_text):
+            break
+    now = resumed()
+    check(PKG in now, f"{name}: LibreHU opened ({now.splitlines()[0] if now else '?'})")
+    check(find(page, page_text) is not None, f"{name}: page of the service with « {page_text} »")
+    sh("input keyevent KEYCODE_BACK")
+    time.sleep(2)
+
+
 def run_page(name, spec, open_entry):
     intent, title, summaries, page_text = spec
+    if name in CONNECTED and "feature:android.hardware.bluetooth" not in sh("pm list features"):
+        run_without_page(name, spec)
+        return
     sh(f"am start -W {intent}")
     nodes, got = find_entry(name, title, summaries)
     if not check(find(nodes, title) is not None, f"{name}: entry « {title} » in Settings"):
@@ -172,6 +205,24 @@ def run_page(name, spec, open_entry):
     check(SETTINGS in now, f"{name}: back to Settings ({now.splitlines()[0] if now else '?'})")
 
 
+def run_viper_open():
+    """ViPER4Android's entry opens its main screen, back returns to Settings."""
+    sh("am start -W -a android.settings.SOUND_SETTINGS")
+    nodes, _ = find_entry("viper-tap", "ViPER4Android", ["Android audio effects: equalizer, bass, surround"])
+    pos = find(nodes, "ViPER4Android")
+    if not check(pos is not None, "viper: entry found to open"):
+        return
+    sh(f"input tap {pos[0]} {pos[1]}")
+    time.sleep(5)
+    dump("viper-opened")
+    now = resumed()
+    check(VIPER in now, f"viper: ViPER4Android opened ({now.splitlines()[0] if now else '?'})")
+    sh("input keyevent KEYCODE_BACK")
+    time.sleep(2)
+    now = resumed()
+    check(SETTINGS in now, f"viper: back to Settings ({now.splitlines()[0] if now else '?'})")
+
+
 def install_system(apk):
     print(adb("root"), flush=True)
     time.sleep(5)
@@ -180,6 +231,11 @@ def install_system(apk):
     print(out, flush=True)
     if "succeeded" not in out:
         print(sh("mount -o rw,remount /system; mount -o rw,remount /"), flush=True)
+    if VIPER_APK:
+        # No native library in ViPER4Android's APK (its driver is a separate audio effect library).
+        sh("rm -rf /system/app/ViPER4Android; mkdir -p /system/app/ViPER4Android")
+        print(adb("push", VIPER_APK, "/system/app/ViPER4Android/ViPER4Android.apk"), flush=True)
+        sh("chmod 755 /system/app/ViPER4Android; chmod 644 /system/app/ViPER4Android/ViPER4Android.apk")
     libs = f"{SYSTEM_DIR}/lib/{ABI}"
     sh(f"rm -rf {SYSTEM_DIR}; mkdir -p {libs}")
     print(adb("push", apk, f"{SYSTEM_DIR}/LibreHUService.apk"), flush=True)
@@ -226,6 +282,14 @@ def main():
     check("Result: null" in shell, f"provider as the shell: {shell.strip()}")
     for name, spec in EN.items():
         run_page(name, spec, open_entry=True)
+    if VIPER_APK:
+        check(f"{VIPER}/.librehu.SoundSettingsEntry" in found, "ViPER4Android answers EXTRA_SETTINGS")
+        run_page(
+            "viper",
+            ("-a android.settings.SOUND_SETTINGS", "ViPER4Android", ["Android audio effects: equalizer, bass, surround"], None),
+            open_entry=False,
+        )
+        run_viper_open()
     # French: the same entries, translated (Settings reads the resources in the system's language).
     sh("setprop persist.sys.locale fr-FR")
     restart()

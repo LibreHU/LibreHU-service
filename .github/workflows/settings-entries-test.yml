@@ -2,8 +2,9 @@ name: Settings entries test (Android 9)
 
 # LibreHU's entries in Android's Settings (systemsettings/SystemSettings) on an Android 9 emulator: the service put in
 # /system/app as in the LineageOS ROM, each entry looked for in its page of Settings with its summary, opened, then the
-# same in French (tools/settings_entries_test.py). A debug build with the emulator's ABI as well (-PextraAbi=x86_64:
-# the released APK is arm64 only). Screenshots, UI dumps and logcat in the "settings-entries-test" artifact.
+# same in French, and the entry of ViPER4Android LibreHU in Sound (tools/settings_entries_test.py). A debug build with
+# the emulator's ABI as well (-PextraAbi=x86_64: the released APK is arm64 only). Screenshots, UI dumps and logcat in
+# the "settings-entries-test" artifact.
 on:
   workflow_dispatch:
   push:
@@ -37,6 +38,11 @@ jobs:
       - name: Build (debug, arm64 and x86_64)
         run: ./gradlew --no-daemon :app:assembleDebug -PextraAbi=x86_64
 
+      - name: ViPER4Android LibreHU (its entry of the Sound page)
+        run: |
+          curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o viper.apk \
+            "https://github.com/LibreHU/LibreHU-ViPER4Android-app/releases/download/latest-librehu-service/ViPER4Android-LibreHU-librehu-service.apk"
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -51,7 +57,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -writable-system -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -skin 1280x720
-          script: python3 tools/settings_entries_test.py app/build/outputs/apk/debug out
+          script: python3 tools/settings_entries_test.py app/build/outputs/apk/debug out viper.apk
 
       - uses: actions/upload-artifact@v4
         if: always()

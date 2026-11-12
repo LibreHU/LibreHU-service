@@ -39,8 +39,8 @@ page du service correspondante, avec son interface habituelle ; le bouton retour
   résumé fixe.
 - **Position.** Sur l'accueil, les Paramètres donnent la priorité 0 aux entrées des autres applis et trient par
   priorité décroissante : « LibreHU » tombe juste au-dessus de « Système ». Dans les rubriques, l'entrée va en bas de la
-  page. Affichage, Son et Système replient leurs dernières lignes sous « Paramètres avancés » (4, 9 et 4 lignes
-  visibles) : l'entrée y est, après dépliage.
+  page. Affichage, Son et Système replient leurs dernières lignes sous « Options avancées » (« Advanced » en anglais ;
+  4, 9 et 4 lignes visibles) : l'entrée y est, après dépliage, et son titre figure dans le résumé du bouton.
 - **Confidentialité.** Le résumé Bluetooth contient le nom du téléphone. Le fournisseur ne répond qu'à l'uid système
   (les Paramètres tournent en `android.uid.system`), à root et au service lui-même. Les autres reçoivent `null`, jamais
   d'exception : les Paramètres lisent les résumés sur un fil à eux sans attraper d'exception.
@@ -51,7 +51,10 @@ page du service correspondante, avec son interface habituelle ; le bouton retour
 Le service y est installé dans `/system/app`, comme dans la ROM. Le test cherche chaque entrée dans sa page des
 Paramètres, avec son résumé. Il l'ouvre, vérifie la page du service affichée, puis le retour aux Paramètres. Il appelle
 aussi le fournisseur en root (réponse) et en shell (`null`), puis refait l'accueil et Affichage en français. Captures
-d'écran et vidages d'interface sont dans l'artefact `settings-entries-test`.
+d'écran et vidages d'interface sont dans l'artefact `settings-entries-test`. L'émulateur n'a pas de Bluetooth : sa
+page « Appareils connectés » plante (bug d'Android 9 lui-même, `LocalBluetoothManager` nul dans
+`BluetoothDeviceUpdater`). Pour Bluetooth voiture et Android Auto, le test vérifie donc le résumé auprès du fournisseur
+et la page ouverte par l'entrée, sans passer par cette page. L'autoradio a le Bluetooth.
 
 ## Sources (code d'Android 9 / LineageOS 16.0)
 
