@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
@@ -35,6 +36,7 @@ class TouchKeys private constructor(
     private val panel = TouchPanel.get(app)
     private val main = Handler(Looper.getMainLooper())
     private val audio = app.getSystemService(AudioManager::class.java)
+    private val power = app.getSystemService(PowerManager::class.java)
 
     /** First start: the factory buttons of the unit (touch_key.xml), so that the front panel works out of the box. */
     private val _zones =
@@ -162,6 +164,15 @@ class TouchKeys private constructor(
         zone: TouchZone?,
         action: ZoneAction,
     ) {
+        // Screen off (Android not interactive; the LibreHU kernel keeps the touch panel awake then): only a power key
+        // wakes the unit, the other zones do nothing (no volume or source change in the dark).
+        if (zone != null && power?.isInteractive == false) {
+            if (zone.isPowerKey) {
+                _lastAction.value = zone.name + " → WAKE"
+                inject(KeyEvent.KEYCODE_WAKEUP)
+            }
+            return
+        }
         _lastAction.value = (zone?.name ?: "") + " → " + action.action.name
         if (action.action in SWITCHER_ACTIONS && toSwitcher(action.action)) return
         // Advanced sound menu showing: the wheel chooses the volume, ▶‖ closes it
@@ -246,6 +257,16 @@ class TouchKeys private constructor(
                 launcher(ACTION_POWER_MENU)
             }
 
+            TouchAction.POWER_KEY -> {
+                inject(KeyEvent.KEYCODE_POWER)
+            }
+
+            // Android 9 opens its power menu on a power key down flagged FLAG_LONG_PRESS (PhoneWindowManager
+            // interceptPowerKeyDown -> powerLongPress), which `input keyevent --longpress` sends.
+            TouchAction.POWER_KEY_LONG -> {
+                inject(KeyEvent.KEYCODE_POWER, longPress = true)
+            }
+
             TouchAction.ALL_APPS -> {
                 launcher(ACTION_ALL_APPS)
             }
@@ -322,8 +343,11 @@ class TouchKeys private constructor(
     }
 
     /** Other keys need injection: `input keyevent` as root (INJECT_EVENTS is a platform signature permission). */
-    private fun inject(code: Int) {
-        Thread { RootShell.run("input keyevent $code") }.start()
+    private fun inject(
+        code: Int,
+        longPress: Boolean = false,
+    ) {
+        Thread { RootShell.run("input keyevent " + (if (longPress) "--longpress " else "") + code) }.start()
     }
 
     companion object {

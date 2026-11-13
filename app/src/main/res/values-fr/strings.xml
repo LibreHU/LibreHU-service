@@ -998,6 +998,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="net_iphone_auto">Passer l\'iPhone en partage USB au branchement</string>
     <string name="net_iphone_auto_hint">Désactivé par défaut : CarPlay filaire utilise une autre configuration USB de l\'iPhone. Jamais fait quand une appli tient l\'iPhone.</string>
     <string name="ta_voice_assistant">Assistant vocal</string>
+    <string name="ta_power_key">Bouton power (éteindre / allumer l\'écran)</string>
+    <string name="ta_power_key_long">Bouton power maintenu (menu power d\'Android)</string>
+    <string name="touch_keys_screen_off_hint">Écran éteint : seule une touche avec une action power (bouton power, menu power, éteindre l\'écran) rallume l\'unité, les autres ne font rien. Demande le noyau LibreHU du 13/11/2026 ou plus récent (dalle tactile gardée active).</string>
     <string name="aa_export_log">Exporter le journal</string>
     <string name="aa_export_log_done">Journal en cours d\'écriture par Android Auto : %1$s (son autorisation de stockage est nécessaire)</string>
     <string name="aa_export_log_failed">Android Auto a refusé l\'export</string>

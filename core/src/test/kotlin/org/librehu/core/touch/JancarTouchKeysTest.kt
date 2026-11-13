@@ -21,6 +21,17 @@ class JancarTouchKeysTest {
     }
 
     @Test
+    fun onlyThePowerKeyWakesTheUnit() {
+        // Screen off: TouchKeys acts only on a zone holding a power action; the factory "mute / power" key does
+        // (its long press is the power menu), the volume, home, back and brightness keys do not.
+        val zones = JancarTouchKeys.parse(JancarTouchKeys.UJC201)
+        assertEquals(listOf(true, false, false, false, false, false, false), zones.map { it.isPowerKey })
+        val held = zones[1].copy(longPress = ZoneAction(TouchAction.POWER_KEY_LONG))
+        assertEquals(true, held.isPowerKey)
+        assertEquals(listOf(held), TouchZoneEngine.fromJson(TouchZoneEngine.toJson(listOf(held))))
+    }
+
+    @Test
     fun overlappingZonesGoToTheNearest() {
         // bl_del (55,-35) and bl_add (132,-52) overlap with radius 40: a touch near bl_add must not fire bl_del.
         val zones = JancarTouchKeys.parse(JancarTouchKeys.UJC201)

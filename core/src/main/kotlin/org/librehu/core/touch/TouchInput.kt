@@ -181,7 +181,16 @@ enum class TouchAction {
 
     /** Voice assistant: the phone's during an Android Auto session, else Android's (ACTION_VOICE_COMMAND). */
     VOICE_ASSISTANT,
+
+    /** Android's power button, short press (KEYCODE_POWER): screen off, or on. */
+    POWER_KEY,
+
+    /** Android's power button held (KEYCODE_POWER with FLAG_LONG_PRESS): Android's power menu. */
+    POWER_KEY_LONG,
 }
+
+/** Actions of a power key: while the screen is off, only a zone holding one of them wakes the unit. */
+val POWER_ACTIONS = setOf(TouchAction.POWER_KEY, TouchAction.POWER_KEY_LONG, TouchAction.POWER_MENU, TouchAction.SCREEN_OFF)
 
 data class ZoneAction(
     val action: TouchAction = TouchAction.NONE,
@@ -213,6 +222,9 @@ data class TouchZone(
         val dy = (py - y).toLong()
         return dx * dx + dy * dy <= radius.toLong() * radius
     }
+
+    /** A power key (the factory "mute / power" one included: its long press is the power menu): wakes the unit. */
+    val isPowerKey: Boolean get() = click.action in POWER_ACTIONS || longPress.action in POWER_ACTIONS
 }
 
 /** Press detection on the zones: click on release, long press or repeat while held. Feed samples and ticks. */

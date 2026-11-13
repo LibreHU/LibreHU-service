@@ -95,6 +95,7 @@ fun TouchScreen(actions: AppActions) {
 
         Card(stringResource(R.string.touch_keys)) {
             Hint(stringResource(R.string.touch_keys_hint))
+            Hint(stringResource(R.string.touch_keys_screen_off_hint))
             SwitchRow(stringResource(R.string.touch_keys_enable), enabled, stringResource(R.string.touch_keys_ivi)) { keys.setEnabled(it) }
             BodyText(
                 if (readerError.isNotEmpty()) {
@@ -348,5 +349,7 @@ fun actionName(a: TouchAction): String =
             TouchAction.LOCK -> R.string.ta_lock
             TouchAction.STANDBY_CLOCK -> R.string.ta_standby
             TouchAction.VOICE_ASSISTANT -> R.string.ta_voice_assistant
+            TouchAction.POWER_KEY -> R.string.ta_power_key
+            TouchAction.POWER_KEY_LONG -> R.string.ta_power_key_long
         },
     )

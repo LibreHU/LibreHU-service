@@ -44,6 +44,18 @@ Actions de LibreHU Launcher (par intent, le launcher les déclare) : menu power 
 tiroir d'applis (`ALL_APPS`), écran de verrouillage (`LOCK`), horloge de veille (`STANDBY_CLOCK`). Luminosité ± :
 réglage Android par pas de 1/10 (luminosité auto coupée), via WRITE_SETTINGS ou root.
 
+**Bouton power d'Android** (13/11/2026) : « Bouton power » (appui court de `KEYCODE_POWER` : éteint l'écran, ou le
+rallume) et « Bouton power maintenu » : `input keyevent --longpress KEYCODE_POWER`, que l'`PhoneWindowManager`
+d'Android 9 traite comme un appui long (drapeau `FLAG_LONG_PRESS` -> `powerLongPress()`) : **menu power d'Android**
+(au lieu de celui de LibreHU Launcher). A choisir pour l'appui long de la touche power de façade.
+
+**Écran éteint** : seule une zone portant une action power (bouton power, bouton power maintenu, menu power, éteindre
+l'écran) rallume l'unité (`KEYCODE_WAKEUP`), d'un appui court ou long ; les autres zones ne font rien tant qu'Android
+dort (pas de volume ni de source changés dans le noir). Avec le mapping d'usine, c'est la touche « muet / power »
+(586, -46) : son appui long est le menu power. Demande le noyau LibreHU du 13/11/2026 ou plus récent : avant, le
+noyau endormait la dalle tactile à l'extinction de l'écran (`mtk_tpd.c`) et aucun appui n'arrivait au service. Les
+touches du volant (CAN) ne sont pas filtrées.
+
 **Mapping d'usine** (activé par défaut au premier démarrage, et bouton « Mapping d'usine ») : les boutons de
 `/jancar/config/touch_key.xml` (sinon celui de l'UJC201), avec leur rayon et leur durée d'appui long (`ActiveTime`) :
 

@@ -998,6 +998,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="net_iphone_auto">Switch an iPhone to USB tethering when plugged in</string>
     <string name="net_iphone_auto_hint">Off by default: wired CarPlay uses another USB configuration of the iPhone. Never done while an app holds the iPhone.</string>
     <string name="ta_voice_assistant">Voice assistant</string>
+    <string name="ta_power_key">Power button (screen off / on)</string>
+    <string name="ta_power_key_long">Power button held (Android power menu)</string>
+    <string name="touch_keys_screen_off_hint">Screen off: only a key with a power action (power button, power menu, screen off) wakes the unit, the others do nothing. Needs the LibreHU kernel of 13/11/2026 or later (touch panel kept awake).</string>
     <string name="aa_export_log">Export the log</string>
     <string name="aa_export_log_done">Log being written by Android Auto: %1$s (its storage permission is needed)</string>
     <string name="aa_export_log_failed">Android Auto refused the export</string>
