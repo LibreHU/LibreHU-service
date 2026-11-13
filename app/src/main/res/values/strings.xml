@@ -1000,7 +1000,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="ta_voice_assistant">Voice assistant</string>
     <string name="ta_power_key">Power button (screen off / on)</string>
     <string name="ta_power_key_long">Power button held (Android power menu)</string>
-    <string name="touch_keys_screen_off_hint">Screen off: only a key with a power action (power button, power menu, screen off) wakes the unit, the others do nothing. Only when the kernel keeps the touch panel awake while the screen is off (mtk_tpd.sleep_on_blank=0, being tested): by default the panel sleeps with the screen.</string>
+    <string name="touch_keys_screen_off_hint">Screen off: only a key with a power action (power button, power menu, screen off) wakes the unit, the others do nothing. The LibreHU kernel keeps the touch panel awake while the screen is off (since 13/11/2026; mtk_tpd.sleep_on_blank=1 makes it sleep like the stock).</string>
     <string name="aa_export_log">Export the log</string>
     <string name="aa_export_log_done">Log being written by Android Auto: %1$s (its storage permission is needed)</string>
     <string name="aa_export_log_failed">Android Auto refused the export</string>

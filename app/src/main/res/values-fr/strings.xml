@@ -1000,7 +1000,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="ta_voice_assistant">Assistant vocal</string>
     <string name="ta_power_key">Bouton power (éteindre / allumer l\'écran)</string>
     <string name="ta_power_key_long">Bouton power maintenu (menu power d\'Android)</string>
-    <string name="touch_keys_screen_off_hint">Écran éteint : seule une touche avec une action power (bouton power, menu power, éteindre l\'écran) rallume l\'unité, les autres ne font rien. Seulement si le noyau garde la dalle active écran éteint (mtk_tpd.sleep_on_blank=0, en essai) : par défaut elle s\'endort avec l\'écran.</string>
+    <string name="touch_keys_screen_off_hint">Écran éteint : seule une touche avec une action power (bouton power, menu power, éteindre l\'écran) rallume l\'unité, les autres ne font rien. Le noyau LibreHU garde la dalle active écran éteint (depuis le 13/11/2026 ; mtk_tpd.sleep_on_blank=1 l\'endort comme le stock).</string>
     <string name="aa_export_log">Exporter le journal</string>
     <string name="aa_export_log_done">Journal en cours d\'écriture par Android Auto : %1$s (son autorisation de stockage est nécessaire)</string>
     <string name="aa_export_log_failed">Android Auto a refusé l\'export</string>
