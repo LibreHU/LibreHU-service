@@ -52,9 +52,10 @@ d'Android 9 traite comme un appui long (drapeau `FLAG_LONG_PRESS` -> `powerLongP
 **Écran éteint** : seule une zone portant une action power (bouton power, bouton power maintenu, menu power, éteindre
 l'écran) rallume l'unité (`KEYCODE_WAKEUP`), d'un appui court ou long ; les autres zones ne font rien tant qu'Android
 dort (pas de volume ni de source changés dans le noir). Avec le mapping d'usine, c'est la touche « muet / power »
-(586, -46) : son appui long est le menu power. Demande le noyau LibreHU du 13/11/2026 ou plus récent : avant, le
-noyau endormait la dalle tactile à l'extinction de l'écran (`mtk_tpd.c`) et aucun appui n'arrivait au service. Les
-touches du volant (CAN) ne sont pas filtrées.
+(586, -46) : son appui long est le menu power. Seulement si le noyau garde la dalle active écran éteint
+(`mtk_tpd.sleep_on_blank=0`, en essai) : par défaut il l'endort à l'extinction de l'écran (`mtk_tpd.c`) et la
+réveille avec un reset au rallumage, comme le stock ; gardée active par défaut dans le noyau r151, la dalle était
+morte au rallumage. Les touches du volant (CAN) ne sont pas filtrées.
 
 **Mapping d'usine** (activé par défaut au premier démarrage, et bouton « Mapping d'usine ») : les boutons de
 `/jancar/config/touch_key.xml` (sinon celui de l'UJC201), avec leur rayon et leur durée d'appui long (`ActiveTime`) :
