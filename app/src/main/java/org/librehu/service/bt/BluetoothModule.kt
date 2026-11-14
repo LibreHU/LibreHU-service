@@ -325,13 +325,17 @@ class BluetoothModule(
             }
 
             BluetoothProfile.STATE_DISCONNECTED -> {
-                Log.i(TAG, "Hands-free disconnected: ${device.address}")
+                // CONNECTING -> DISCONNECTED: an attempt that failed (phone out of reach: page timeout). It keeps the
+                // attempt count, so the plan spaces the next ones out and gives up after its last one. Resetting it
+                // here paged the phone every ~40 s for ever (log of 14/11/2026: "attempt 1" 41 times in a row).
+                val failed = intent.getIntExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, -1) == BluetoothProfile.STATE_CONNECTING
+                Log.i(TAG, "Hands-free ${if (failed) "connection failed" else "disconnected"}: ${device.address}")
                 battery = -1
                 signal = -1
                 operator = ""
                 voiceAssistant = false
                 refreshCalls()
-                restartAutoConnect()
+                if (failed) scheduleAutoConnect() else restartAutoConnect()
             }
         }
         each { it.onDevicesChanged() }

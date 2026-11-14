@@ -115,6 +115,13 @@ téléphone connecté en musique seule comme connecté, et ne déconnecte les au
 (« Connecter »). Si `com.jancar.btservice` est encore activé, il gère lui aussi le Bluetooth : le désactiver avec
 ivi-services (`adb shell pm disable-user --user 0 com.jancar.btservice`), sinon le module reste passif.
 
+Téléphone hors de portée (journal du 14/11/2026, LineageOS) : chaque essai raté (mains libres « connexion en cours »
+puis « déconnecté », erreur `0x4` de la pile = délai de recherche du téléphone dépassé) remettait le compteur
+d'essais à zéro. Résultat : « Auto-connect attempt 1 » toutes les 40 s environ, sans fin, la radio Bluetooth occupée
+à chercher le téléphone. Depuis : un essai raté garde le compteur (journal `Hands-free connection failed`), les essais
+s'espacent comme prévu et s'arrêtent après le vingtième ; une vraie déconnexion d'un téléphone connecté relance la
+série.
+
 ## Appels sans son ni micro : ce que journalise le service
 
 Le son d'un appel ne passe pas par le service : quand le téléphone ouvre la liaison audio (SCO), le client mains libres
