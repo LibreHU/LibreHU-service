@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -35,6 +34,7 @@ import android.widget.RemoteViews
 import org.librehu.service.R
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.librehu.service.ui.idsWhenUnlocked
 
 /**
  * Live picture of the rear camera in the home screen widget, two ways:
@@ -180,7 +180,7 @@ class ReverseWidgetLive private constructor(
     }
 
     private fun widgetIds(): IntArray =
-        AppWidgetManager.getInstance(app)?.getAppWidgetIds(ComponentName(app, ReverseWidget::class.java)) ?: IntArray(0)
+        AppWidgetManager.getInstance(app)?.idsWhenUnlocked(app, ReverseWidget::class.java) ?: IntArray(0)
 
     private fun start(
         s: ReverseViewSettings,

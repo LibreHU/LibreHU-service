@@ -3,7 +3,6 @@ package org.librehu.service.phone
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.view.View
@@ -15,6 +14,7 @@ import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
 import org.librehu.service.ui.WidgetColors
+import org.librehu.service.ui.idsWhenUnlocked
 
 /**
  * Phone widget: the connected iPhone (LibreHU CarPlay app: battery, charge, temperature, cycles) or else the
@@ -33,7 +33,7 @@ class PhoneWidget : AppWidgetProvider() {
     companion object {
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            val ids = manager.getAppWidgetIds(ComponentName(context, PhoneWidget::class.java))
+            val ids = manager.idsWhenUnlocked(context, PhoneWidget::class.java)
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views(context))
         }
 

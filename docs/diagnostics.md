@@ -27,6 +27,16 @@ Vérifié sans problème : appels root (tous hors des fils critiques, avec déla
 rappels aux applis (`oneway` : jamais d'attente), lecture du port (délai de 200 ms, `EINTR` traité), verrous restants
 (aucun appel sortant, ou appels bornés hors des fils critiques).
 
+## Échecs silencieux trouvés sous LineageOS (14/11/2026)
+
+Rapport de Reo Au In (13/11), confirmé sur l'unité : aucun son alors qu'Android jouait et que le service affichait la
+sourdine coupée.
+
+| Cas | Avant | Maintenant |
+|---|---|---|
+| Écriture d'une GPIO refusée (`/dev/gpios_ioctl` créé en 0600 root par la ROM : corrigé dans l'arbre LineageOS, règle ueventd) | ignorée : sourdine de l'ampli (GPIO 166) restée active, rien dans le journal | une ligne par broche dans le journal du service, `GPIO 166: write failed, /dev/gpios_ioctl not accessible? (amplifier mute: left as it was)`, puis `GPIO 166: written again` quand l'écriture repasse (`HeadUnit.setGpio`, test `failedGpioWriteIsLoggedOnceThenRecovery`) |
+| Widgets mis à jour avant le premier déverrouillage (service lancé en démarrage direct) | `IllegalStateException: User 0 must be unlocked for widgets to be available` : service planté une fois à chaque démarrage, relancé aussitôt | rien avant le déverrouillage (`ui/WidgetIds.kt`) ; au déverrouillage, Android envoie une mise à jour à chaque fournisseur de widgets (`AppWidgetServiceImpl.onUserUnlocked`) |
+
 ## Le watchdog
 
 Fils surveillés et seuil : voir [power.md](power.md#service-fig%C3%A9--watchdog-du-lien-mcu-1011-powerlinkwatchdogkt).

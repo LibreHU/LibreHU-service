@@ -3,7 +3,6 @@ package org.librehu.service.car
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -12,6 +11,7 @@ import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
 import org.librehu.service.ui.WidgetColors
+import org.librehu.service.ui.idsWhenUnlocked
 
 /**
  * Home screen widget: live picture of the rear camera ([ReverseWidgetLive]) or a camera button; a touch opens
@@ -59,7 +59,7 @@ class ReverseWidget : AppWidgetProvider() {
         /** Called when the view opens or closes. */
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            val ids = manager.getAppWidgetIds(ComponentName(context, ReverseWidget::class.java))
+            val ids = manager.idsWhenUnlocked(context, ReverseWidget::class.java)
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views(context))
         }
 

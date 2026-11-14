@@ -3,7 +3,6 @@ package org.librehu.service.obd
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -14,6 +13,7 @@ import org.librehu.service.MainActivity
 import org.librehu.service.R
 import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.ThemeFollower
+import org.librehu.service.ui.idsWhenUnlocked
 
 /**
  * OBD dashboard widgets: speed and revs as a car cluster, plus the other values chosen for the widget in the OBD tab.
@@ -48,7 +48,7 @@ abstract class ObdDashWidget(
         fun refreshAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
             for ((cls, style) in PROVIDERS) {
-                for (id in manager.getAppWidgetIds(ComponentName(context, cls))) update(context, manager, id, style)
+                for (id in manager.idsWhenUnlocked(context, cls)) update(context, manager, id, style)
             }
         }
 

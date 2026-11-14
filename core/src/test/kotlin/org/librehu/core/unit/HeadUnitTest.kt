@@ -216,4 +216,51 @@ class HeadUnitTest {
         assertTrue(McuFrame.of(0x64, 26, 11, 8, 13, 45, 30, 0) in out)
         ex.shutdownNow()
     }
+
+    @Test
+    fun failedGpioWriteIsLoggedOnceThenRecovery() {
+        val logs = CopyOnWriteArrayList<String>()
+        var writable = false
+        val reachable =
+            object : Gpio {
+                override fun set(
+                    gpio: Int,
+                    high: Boolean,
+                ): Boolean = writable
+
+                override fun read(gpio: Int): Int = 1
+            }
+        val ex = Executors.newSingleThreadScheduledExecutor()
+        val u =
+            HeadUnit(
+                reachable,
+                chip,
+                store,
+                ex,
+                object : HeadUnit.Listener {
+                    override fun onLog(message: String) {
+                        logs += message
+                    }
+                },
+            )
+        val settleU = { ms: Long ->
+            Thread.sleep(ms)
+            ex.submit {}.get(1, TimeUnit.SECONDS)
+        }
+        u.start { }
+        settleU(50)
+        u.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
+        settleU(HeadUnit.BACKLIGHT_DELAY_MS + 200)
+        u.onFrame(McuFrame.of(Mcu.CMD_ACC, 0))
+        settleU(50)
+        val amp = "GPIO ${BoardGpio.AMP_MUTE}:"
+        assertEquals(1, logs.count { it.startsWith("$amp write failed") })
+        assertTrue(logs.first { it.startsWith("$amp write failed") }.contains("amplifier mute"))
+
+        writable = true
+        u.onFrame(McuFrame.of(Mcu.CMD_ACC, 1))
+        settleU(HeadUnit.BACKLIGHT_DELAY_MS + 200)
+        assertEquals(1, logs.count { it == "$amp written again" })
+        ex.shutdownNow()
+    }
 }

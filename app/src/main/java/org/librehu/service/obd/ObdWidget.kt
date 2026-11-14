@@ -3,7 +3,6 @@ package org.librehu.service.obd
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -13,6 +12,7 @@ import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
 import org.librehu.service.ui.WidgetColors
+import org.librehu.service.ui.idsWhenUnlocked
 
 /** Four OBD-II values chosen in the OBD tab, for LibreHU Launcher's widget slots or any home screen. */
 class ObdWidget : AppWidgetProvider() {
@@ -31,7 +31,7 @@ class ObdWidget : AppWidgetProvider() {
 
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            val ids = manager.getAppWidgetIds(ComponentName(context, ObdWidget::class.java))
+            val ids = manager.idsWhenUnlocked(context, ObdWidget::class.java)
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views(context))
             ObdDashWidget.refreshAll(context)
         }

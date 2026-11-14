@@ -3,7 +3,6 @@ package org.librehu.service.projection
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.view.View
@@ -14,6 +13,7 @@ import org.librehu.service.ui.RetroLook
 import org.librehu.service.ui.SegmentViews
 import org.librehu.service.ui.ThemeFollower
 import org.librehu.service.ui.WidgetColors
+import org.librehu.service.ui.idsWhenUnlocked
 
 /** Android Auto widget: Open Headunit's session (from its SESSION_STATE reports), open / back to it, disconnect. */
 class AndroidAutoWidget : AppWidgetProvider() {
@@ -70,10 +70,10 @@ object ProjectionWidgets {
 
     fun refresh(context: Context) {
         val manager = AppWidgetManager.getInstance(context) ?: return
-        manager.getAppWidgetIds(ComponentName(context, AndroidAutoWidget::class.java)).takeIf { it.isNotEmpty() }?.let {
+        manager.idsWhenUnlocked(context, AndroidAutoWidget::class.java).takeIf { it.isNotEmpty() }?.let {
             manager.updateAppWidget(it, androidAuto(context))
         }
-        manager.getAppWidgetIds(ComponentName(context, CarPlayWidget::class.java)).takeIf { it.isNotEmpty() }?.let {
+        manager.idsWhenUnlocked(context, CarPlayWidget::class.java).takeIf { it.isNotEmpty() }?.let {
             manager.updateAppWidget(it, carPlay(context))
         }
     }

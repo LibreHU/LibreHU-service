@@ -9,6 +9,7 @@ import org.librehu.core.mcu.McuProfiles
 import org.librehu.core.mcu.McuProtocol
 import org.librehu.core.mcu.McuTransport
 import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -289,11 +290,24 @@ class HeadUnit(
         if (frame != null) sendToMcu(frame)
     }
 
+    /**
+     * Pins whose last write failed, logged once until a write works again. Without this, a pin out of reach
+     * (`/dev/gpios_ioctl` 0600 root under LineageOS before the ueventd rule) failed in silence: amplifier still muted,
+     * no sound, while the screens showed mute off.
+     */
+    private val failedGpios: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
     private fun setGpio(
         n: Int?,
         high: Boolean,
     ) {
-        if (n != null) gpio.set(n, high)
+        if (n == null) return
+        if (gpio.set(n, high)) {
+            if (failedGpios.remove(n)) log("GPIO $n: written again")
+        } else if (failedGpios.add(n)) {
+            val what = if (n == board.ampMuteGpio) " (amplifier mute: left as it was)" else ""
+            log("GPIO $n: write failed, /dev/gpios_ioctl not accessible?$what")
+        }
     }
 
     // --- MCU ---------------------------------------------------------------------------------------------------
