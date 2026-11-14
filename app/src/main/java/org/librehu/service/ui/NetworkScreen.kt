@@ -2,6 +2,12 @@ package org.librehu.service.ui
 
 import android.content.Intent
 import android.net.VpnService
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -12,11 +18,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.librehu.core.net.IpSettings
 import org.librehu.service.R
+import org.librehu.service.net.EthernetIp
 import org.librehu.service.net.UsbNet
 import org.librehu.service.net.cable.CableInternet
 
@@ -27,6 +37,10 @@ fun NetworkScreen() {
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<UsbNet.State?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    // Address, gateway and DNS that Android uses on each wired interface now; the interface whose IP settings are edited.
+    var live by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var editing by remember { mutableStateOf<UsbNet.NetInterface?>(null) }
+    var ipMessage by remember { mutableStateOf<String?>(null) }
 
     val openOta = {
         context.packageManager.getLaunchIntentForPackage("org.librehu.ota")?.let {
@@ -36,7 +50,12 @@ fun NetworkScreen() {
     }
 
     suspend fun refresh() {
-        state = withContext(Dispatchers.IO) { UsbNet.scan(context) }
+        val scanned = withContext(Dispatchers.IO) { UsbNet.scan(context) }
+        live =
+            withContext(Dispatchers.IO) {
+                scanned.interfaces.associate { i -> i.name to (EthernetIp.live(context, i.name)?.let(EthernetIp::describe) ?: "") }
+            }
+        state = scanned
     }
     LaunchedEffect(Unit) {
         while (true) {
@@ -153,8 +172,13 @@ fun NetworkScreen() {
                     StatusLine(stringResource(R.string.net_iface_ignored, i.name, s.ifaceFilter.orEmpty()), false)
                     Hint(stringResource(R.string.net_iface_ignored_hint))
                     Actions { Pill(stringResource(R.string.net_open_ota)) { openOta() } }
+                } else {
+                    live[i.name]?.takeIf { it.isNotEmpty() }?.let { Hint(stringResource(R.string.net_ip_current, it)) }
+                    Actions { Pill(stringResource(R.string.net_ip_settings), enabled = s.root) { editing = i } }
                 }
             }
+            if (s.interfaces.isNotEmpty()) Hint(stringResource(R.string.net_ip_hint))
+            ipMessage?.let { Hint(it) }
             Hint(stringResource(R.string.net_interfaces_hint, s.ifaceFilter ?: "?"))
         }
 
@@ -201,6 +225,133 @@ fun NetworkScreen() {
             message?.let { Hint(it) }
         }
     }
+    editing?.let { iface ->
+        IpSettingsDialog(iface, onDismiss = { editing = null }) { done ->
+            editing = null
+            ipMessage = done
+            scope.launch {
+                delay(1500)
+                refresh()
+            }
+        }
+    }
+}
+
+/**
+ * DHCP or static IPv4 settings of [iface], saved as its kind's profile ([EthernetIp.key]) and applied at once.
+ * Opens on the saved profile, else on DHCP with the fields filled from what Android uses now ([liveText] is only shown).
+ */
+@Composable
+private fun IpSettingsDialog(
+    iface: UsbNet.NetInterface,
+    onDismiss: () -> Unit,
+    onDone: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val key = EthernetIp.key(iface)
+    val start = remember(key) { EthernetIp.profile(context, key) ?: fromLive(context, iface.name) }
+    var static by remember { mutableStateOf(start.static) }
+    var address by remember { mutableStateOf(start.address) }
+    var prefix by remember { mutableStateOf(start.prefix.toString()) }
+    var gateway by remember { mutableStateOf(start.gateway) }
+    var dns by remember { mutableStateOf(start.dns.joinToString(", ")) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+
+    val labelAddress = stringResource(R.string.net_ip_address)
+    val labelPrefix = stringResource(R.string.net_ip_prefix)
+    val labelGateway = stringResource(R.string.net_ip_gateway)
+    val labelDns = stringResource(R.string.net_ip_dns)
+    val outside = stringResource(R.string.net_ip_gateway_outside)
+
+    CarAlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.net_ip_title, iface.name)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Choices(
+                    listOf(false to stringResource(R.string.net_ip_dhcp), true to stringResource(R.string.net_ip_static)),
+                    static,
+                ) { static = it }
+                if (static) {
+                    val ipKeys = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    OutlinedTextField(address, { address = it.trim() }, label = { Text(labelAddress) }, singleLine = true, keyboardOptions = ipKeys)
+                    OutlinedTextField(
+                        prefix,
+                        { prefix = it.filter(Char::isDigit).take(2) },
+                        label = { Text(labelPrefix) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    OutlinedTextField(gateway, { gateway = it.trim() }, label = { Text(labelGateway) }, singleLine = true, keyboardOptions = ipKeys)
+                    OutlinedTextField(dns, { dns = it }, label = { Text(labelDns) }, singleLine = true, keyboardOptions = ipKeys)
+                }
+                error?.let { Hint(it) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                val settings =
+                    if (!static) {
+                        IpSettings()
+                    } else {
+                        IpSettings(
+                            static = true,
+                            address = address,
+                            prefix = prefix.toIntOrNull() ?: -1,
+                            gateway = gateway,
+                            dns = dns.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() },
+                        )
+                    }
+                val problems = settings.problems()
+                if (problems.isNotEmpty()) {
+                    error =
+                        context.getString(
+                            R.string.net_ip_invalid,
+                            problems.distinct().joinToString(", ") {
+                                when (it) {
+                                    IpSettings.Problem.ADDRESS -> labelAddress
+                                    IpSettings.Problem.PREFIX -> labelPrefix
+                                    IpSettings.Problem.GATEWAY -> labelGateway
+                                    IpSettings.Problem.GATEWAY_OUTSIDE -> outside
+                                    IpSettings.Problem.DNS -> labelDns
+                                }
+                            },
+                        )
+                    return@TextButton
+                }
+                busy = true
+                scope.launch {
+                    val failure = withContext(Dispatchers.IO) { EthernetIp.save(context, key, iface.name, settings) }
+                    busy = false
+                    if (failure == null) {
+                        onDone(context.getString(R.string.net_ip_saved, iface.name))
+                    } else {
+                        error = context.getString(R.string.net_ip_failed, iface.name, failure)
+                    }
+                }
+            }) { Text(stringResource(R.string.net_ip_save)) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+    )
+}
+
+/** DHCP, with the address, prefix, gateway and DNS that Android uses on [iface] now (to start a static setting from). */
+private fun fromLive(
+    context: android.content.Context,
+    iface: String,
+): IpSettings {
+    val lp = EthernetIp.live(context, iface) ?: return IpSettings()
+    val link = lp.linkAddresses.firstOrNull { it.address is java.net.Inet4Address }
+    val gateway = lp.routes.firstOrNull { it.isDefaultRoute && it.gateway is java.net.Inet4Address }?.gateway
+    return IpSettings(
+        static = false,
+        address = link?.address?.hostAddress.orEmpty(),
+        prefix = link?.prefixLength ?: 24,
+        gateway = gateway?.hostAddress.orEmpty(),
+        dns = lp.dnsServers.filterIsInstance<java.net.Inet4Address>().mapNotNull { it.hostAddress }.take(IpSettings.MAX_DNS),
+    )
 }
 
 /** A byte count for people: kB below a megabyte, MB with one decimal above. */

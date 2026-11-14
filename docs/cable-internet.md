@@ -83,3 +83,21 @@ téléphone et il faut déverrouiller le bootloader.
 (adbd refuse les connexions TCP vers l'extérieur : d'où le relais),
 [gnirehtet](https://github.com/Genymobile/gnirehtet),
 [UsbGadget.cpp des Pixel (gs101)](https://android.googlesource.com/device/google/gs101/+/refs/heads/main/usb/gadget/UsbGadget.cpp).
+
+## Réglages IP des interfaces filaires (14/11/2026)
+
+Onglet Système → Réseau, bouton « Réglages IP » sous chaque interface `eth*` / `usb*` que le service Ethernet
+d'Android gère : DHCP (par défaut) ou IPv4 statique (adresse, longueur de préfixe, passerelle et DNS facultatifs).
+
+- Appliqué par le service Ethernet d'Android (`IEthernetManager.setConfiguration`, API cachée d'Android 9) depuis un
+  petit programme lancé en root (`net/EthernetHelper.kt`, `app_process`) : l'uid 0 passe la vérification
+  `CONNECTIVITY_INTERNAL` sans restriction d'API cachée. Android garde le réglage (`/data/misc/ethernet/ipconfig.txt`)
+  et relance l'interface avec.
+- Un profil par type d'appareil (`net/EthernetIp.kt`) : `rndis` (tout téléphone Android en partage de connexion USB :
+  l'adresse MAC change à chaque fois), `iphone` (partage de connexion iPhone, ipheth), `mac:<adresse>` (chaque
+  adaptateur). Les noms d'interface ne sont pas stables (un iPhone et un adaptateur se partagent eth0 / eth1 selon
+  l'ordre de branchement) : le profil est réappliqué 6 s après chaque branchement USB et 30 s après le démarrage du
+  service, seulement si le réglage d'Android diffère.
+- Validation (`core/.../net/IpSettings.kt`, tests `IpSettingsTest`) : adresse et passerelle IPv4, préfixe de 1 à 32,
+  passerelle dans le réseau de l'adresse, 2 DNS au plus.
+

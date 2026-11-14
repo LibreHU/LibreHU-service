@@ -969,6 +969,21 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="net_interfaces">Interfaces</string>
     <string name="net_interfaces_none">No eth / usb interface.</string>
     <string name="net_interfaces_hint">Android takes the interfaces matching its filter (now: %1$s). Android 9 alone: eth0, eth1… only. An Android phone\'s USB tethering is named usb0 with the linux-stable 4.9.337 kernel (eth0 with the stock kernel and the usb-net zip): the usb-tethering zip makes Android take usb0, usb1… too.</string>
+    <string name="net_ip_settings">IP settings</string>
+    <string name="net_ip_title">IP settings: %1$s</string>
+    <string name="net_ip_dhcp">Automatic (DHCP)</string>
+    <string name="net_ip_static">Static</string>
+    <string name="net_ip_address">IP address</string>
+    <string name="net_ip_prefix">Prefix length (24 = 255.255.255.0)</string>
+    <string name="net_ip_gateway">Gateway (optional)</string>
+    <string name="net_ip_dns">DNS servers, comma separated (optional)</string>
+    <string name="net_ip_save">Save</string>
+    <string name="net_ip_saved">%1$s: settings applied</string>
+    <string name="net_ip_failed">%1$s: not applied (%2$s)</string>
+    <string name="net_ip_invalid">Check: %1$s</string>
+    <string name="net_ip_gateway_outside">the gateway is outside the address\'s network</string>
+    <string name="net_ip_current">Now: %1$s</string>
+    <string name="net_ip_hint">Kept for this kind of device (every Android phone in USB tethering, every iPhone, or this adapter) and applied again when it is plugged in. DHCP: the address given by the phone or the network.</string>
     <string name="net_iface_ignored">%1$s ignored by Android (filter %2$s): no Internet through it</string>
     <string name="net_iface_ignored_hint">LibreHU Apps → Zips → Settings → Network → \"Partage de connexion USB d\'un téléphone Android\", flashed with TWRP (dm-verity off on /vendor), then restart.</string>
     <string name="cable_title">Phone Internet over the cable (wired Android Auto)</string>

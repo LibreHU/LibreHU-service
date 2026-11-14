@@ -969,6 +969,21 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="net_interfaces">Interfaces</string>
     <string name="net_interfaces_none">Aucune interface eth / usb.</string>
     <string name="net_interfaces_hint">Android prend les interfaces qui correspondent à son filtre (ici : %1$s). Android 9 seul : eth0, eth1… uniquement. Le partage de connexion USB d\'un téléphone Android s\'appelle usb0 avec le noyau linux-stable 4.9.337 (eth0 avec le noyau stock et le zip usb-net) : le zip usb-tethering fait prendre aussi usb0, usb1…</string>
+    <string name="net_ip_settings">Réglages IP</string>
+    <string name="net_ip_title">Réglages IP : %1$s</string>
+    <string name="net_ip_dhcp">Automatique (DHCP)</string>
+    <string name="net_ip_static">Statique</string>
+    <string name="net_ip_address">Adresse IP</string>
+    <string name="net_ip_prefix">Longueur du préfixe (24 = 255.255.255.0)</string>
+    <string name="net_ip_gateway">Passerelle (facultative)</string>
+    <string name="net_ip_dns">Serveurs DNS, séparés par une virgule (facultatif)</string>
+    <string name="net_ip_save">Enregistrer</string>
+    <string name="net_ip_saved">%1$s : réglages appliqués</string>
+    <string name="net_ip_failed">%1$s : non appliqué (%2$s)</string>
+    <string name="net_ip_invalid">À vérifier : %1$s</string>
+    <string name="net_ip_gateway_outside">la passerelle n\'est pas dans le réseau de l\'adresse</string>
+    <string name="net_ip_current">Actuellement : %1$s</string>
+    <string name="net_ip_hint">Gardés pour ce type d\'appareil (tout téléphone Android en partage de connexion USB, tout iPhone, ou cet adaptateur) et réappliqués à chaque branchement. DHCP : l\'adresse donnée par le téléphone ou le réseau.</string>
     <string name="net_iface_ignored">%1$s ignorée par Android (filtre %2$s) : pas d\'internet par elle</string>
     <string name="net_iface_ignored_hint">LibreHU Apps → Zips → Réglages → Réseau → « Partage de connexion USB d\'un téléphone Android », flashé avec TWRP (dm-verity désactivé sur /vendor), puis redémarrer.</string>
     <string name="cable_title">Internet du téléphone par le câble (Android Auto filaire)</string>

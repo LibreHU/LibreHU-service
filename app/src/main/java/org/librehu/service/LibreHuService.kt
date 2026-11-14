@@ -216,6 +216,11 @@ class LibreHuService : Service() {
         }, "car-name").start()
         registerReceiver(wakeReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         registerReceiver(usbReceiver, IntentFilter(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED))
+        // Adapters plugged in for good: their saved IP settings once Android's Ethernet service has taken them.
+        Thread({
+            Thread.sleep(IP_PROFILE_START_DELAY_MS)
+            applyIpProfiles(this)
+        }, "ip-profiles").start()
         // MTP with a computer: off by default (taken out of the USB functions), else its server started at each connection
         org.librehu.service.atc.MtpMode.start(this)
         // The ARM2 fast reverse hands the display over to Android (what hd2cam does): else hardware video is green.
@@ -534,7 +539,10 @@ class LibreHuService : Service() {
 
     /** Back from standby: the MCU waits for PC_READY again and cuts the SoC without it. */
 
-    /** An iPhone plugged in: its USB tethering configuration (ipheth, from the usb-net zip), see [UsbNet]. */
+    /**
+     * A USB device plugged in: an iPhone gets its USB tethering configuration (ipheth), see [UsbNet]; then the saved IP
+     * settings of the wired interfaces go to the new interface (an adapter, a phone's tethering), see [EthernetIp].
+     */
     private val usbReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(
@@ -544,21 +552,26 @@ class LibreHuService : Service() {
                 @Suppress("DEPRECATION")
                 val device =
                     intent.getParcelableExtra<android.hardware.usb.UsbDevice>(android.hardware.usb.UsbManager.EXTRA_DEVICE) ?: return
-                if (device.vendorId != org.librehu.service.net.UsbNet.APPLE_VID ||
-                    !org.librehu.service.net.UsbNet
-                        .iphoneAuto(context)
-                ) {
-                    return
-                }
+                val net = org.librehu.service.net.UsbNet
+                val iphone = device.vendorId == net.APPLE_VID && net.iphoneAuto(context)
                 Thread({
-                    Thread.sleep(1500) // its interfaces and the ipheth binding settle first
-                    val net = org.librehu.service.net.UsbNet
-                    for (d in net.iphonesToSwitch(net.scan(context))) {
-                        net.iphoneTethering(d).onSuccess { log("iPhone ${d.path}: USB tethering configuration $it") }
+                    if (iphone) {
+                        Thread.sleep(1500) // its interfaces and the ipheth binding settle first
+                        for (d in net.iphonesToSwitch(net.scan(context))) {
+                            net.iphoneTethering(d).onSuccess { log("iPhone ${d.path}: USB tethering configuration $it") }
+                        }
                     }
-                }, "iphone-tethering").start()
+                    Thread.sleep(IP_PROFILE_DELAY_MS) // the driver names the interface, Android's Ethernet service takes it
+                    applyIpProfiles(context)
+                }, "usb-plugged").start()
             }
         }
+
+    /** Saved IP settings ([org.librehu.service.net.EthernetIp]) to the wired interfaces present; blocking (root). */
+    private fun applyIpProfiles(context: Context) {
+        val changed = org.librehu.service.net.EthernetIp.applyProfiles(context)
+        if (changed.isNotEmpty()) log("Wired IP settings applied: ${changed.joinToString()}")
+    }
 
     // Time the SoC spent suspended since boot: elapsedRealtime() goes on during a suspend, uptimeMillis() stops.
     private var suspendedSince = android.os.SystemClock.elapsedRealtime() - android.os.SystemClock.uptimeMillis()
@@ -890,6 +903,10 @@ class LibreHuService : Service() {
         }
 
     companion object {
+        /** After a USB plug-in, and at start: delay before applying the saved IP settings of the wired interfaces. */
+        private const val IP_PROFILE_DELAY_MS = 6_000L
+        private const val IP_PROFILE_START_DELAY_MS = 30_000L
+
         /**
          * The API and Bluetooth API of the running service, for this process only (the phone app's bridge reads and
          * changes the same settings as the screens): a direct call does not go through [ServiceAccess].

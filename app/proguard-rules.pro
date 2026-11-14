@@ -15,6 +15,10 @@
 -keep class org.librehu.service.screen.ScreenHelper {
     public static void main(java.lang.String[]);
 }
+# Run as root by EthernetIp through app_process (IP settings of the wired interfaces).
+-keep class org.librehu.service.net.EthernetHelper {
+    public static void main(java.lang.String[]);
+}
 
 # Run through app_process by name: the USB grant as root on the head unit, the relay as the shell user on the phone
 # (the Internet over the cable, net/cable/CableInternet).
