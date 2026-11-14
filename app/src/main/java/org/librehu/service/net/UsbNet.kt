@@ -105,7 +105,11 @@ object UsbNet {
         val netDevices: List<UsbDevice> get() = devices.filter { it.kind != Kind.OTHER || it.netDriver != null }
     }
 
-    private fun UsbInterface.isRndis() = (cls == 0xe0 && subClass == 1 && protocol == 3) || (cls == 2 && subClass == 2 && protocol == 0xff)
+    /** RNDIS of an Android phone's USB tethering: wireless class, CDC vendor variant, or misc class 0xef/4/1 (recent phones). */
+    private fun UsbInterface.isRndis() =
+        (cls == 0xe0 && subClass == 1 && protocol == 3) ||
+            (cls == 2 && subClass == 2 && protocol == 0xff) ||
+            (cls == 0xef && subClass == 4 && protocol == 1)
 
     /** Drivers of USB network interfaces (built in or from the zip). */
     private val NET_DRIVERS =
