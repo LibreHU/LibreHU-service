@@ -91,6 +91,9 @@ class BluetoothModule(
         }
         register()
         profiles = CarProfiles(context, a) { main.post(::onProfilesChanged) }
+        // Phones paired by an earlier version of the service: their access to absent servers crashes Settings.
+        runCatching { a.bondedDevices.orEmpty().forEach { profiles?.clearServerAccess(it) } }
+            .onFailure { Log.w(TAG, "server access: ${it.message}") }
         btMedia.start()
         org.librehu.service.touch.TouchKeys
             .get(context)
@@ -316,7 +319,7 @@ class BluetoothModule(
                 main.removeCallbacks(autoConnect)
                 userDisconnected.remove(device.address)
                 history = Mru.push(history, device.address)
-                profiles?.allowPhonebook(device)
+                profiles?.clearServerAccess(device)
                 readAgEvents(device)
                 if (activeMode()) {
                     // Music and phone book follow the hands-free link (PBAP is refused before HFP on this ROM).
@@ -379,7 +382,7 @@ class BluetoothModule(
         when (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)) {
             BluetoothDevice.BOND_BONDED -> {
                 pendingPairing.remove(device.address)
-                profiles?.allowPhonebook(device)
+                profiles?.clearServerAccess(device)
                 if (activeMode()) connectProfiles(device)
             }
 

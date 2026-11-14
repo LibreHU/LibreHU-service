@@ -90,11 +90,14 @@ object EthernetIp {
         iface: String,
     ): LinkProperties? {
         val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
-        return cm.allNetworks
-            .asSequence()
-            .filter { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true }
-            .mapNotNull { cm.getLinkProperties(it) }
-            .firstOrNull { it.interfaceName == iface }
+        // A refusal of ConnectivityService (SecurityException) must not take the Network page down with the service.
+        return runCatching {
+            cm.allNetworks
+                .asSequence()
+                .filter { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true }
+                .mapNotNull { cm.getLinkProperties(it) }
+                .firstOrNull { it.interfaceName == iface }
+        }.getOrNull()
     }
 
     /** One line for people: `192.168.1.50/24 · gw 192.168.1.1 · DNS 1.1.1.1` of [lp] (IPv4 only). */

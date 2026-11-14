@@ -52,6 +52,8 @@
          app or with `pm grant` (docs/bluetooth.md). -->
     <!-- LibreHU bridge: the phone app connects over Wi-Fi (bridge/BridgeServer, port 47800, encrypted). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Wired networks of the Network page (net/EthernetIp, net/UsbNet): ConnectivityManager.getAllNetworks. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Settings pages of the other LibreHU apps for the phone app (their ".bridge" providers, same signing key). -->
     <permission
         android:name="org.librehu.permission.BRIDGE"
@@ -274,6 +276,23 @@
             <meta-data
                 android:name="com.android.settings.icon_tintable"
                 android:value="true" />
+            <meta-data
+                android:name="org.librehu.service.TAB"
+                android:value="BLUETOOTH" />
+        </activity-alias>
+
+        <!-- Settings > Connected devices > Connection preferences > Received files opens the transfer history of the
+             Bluetooth app (com.android.bluetooth.action.TransferHistory). This ROM's Bluetooth app (car profiles) has
+             no file transfer (OPP), so Settings crashed (ActivityNotFoundException): the service's Bluetooth page
+             answers instead. -->
+        <activity-alias
+            android:name=".systemsettings.TransferHistoryEntry"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="com.android.bluetooth.action.TransferHistory" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="org.librehu.service.TAB"
                 android:value="BLUETOOTH" />

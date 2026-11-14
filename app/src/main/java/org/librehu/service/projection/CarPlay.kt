@@ -107,6 +107,8 @@ object CarPlay {
                     if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
                         org.librehu.service.phone.PhoneInfo
                             .onIphoneUnplugged()
+                        // The next plug-in opens CarPlay again, however soon.
+                        lastAutoOpen = 0L
                         return
                     }
                     org.librehu.service.phone.PhoneInfo
@@ -193,11 +195,13 @@ object CarPlay {
         }
     }
 
-    /** An iPhone was plugged in: CarPlay opened, unless a session is already starting or running. */
+    /**
+     * An iPhone was plugged in: CarPlay brought to the front. The last session state is not looked at: after an
+     * unplug, CarPlay in the background or closed kept "connecting" (it retries on its own), so a second plug-in
+     * opened nothing. Bringing it forward when it already shows changes nothing.
+     */
     private fun onIphone(context: Context) {
         if (!_settings.value.openOnIphone) return
-        val state = _session.value.state
-        if (state == "connecting" || state == "active") return
         val now = SystemClock.elapsedRealtime()
         if (lastAutoOpen != 0L && now - lastAutoOpen < OPEN_DEBOUNCE_MS) return
         lastAutoOpen = now

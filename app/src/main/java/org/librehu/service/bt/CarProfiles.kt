@@ -176,23 +176,34 @@ internal class CarProfiles(
 
     // --- Phone book ----------------------------------------------------------------------------------------------
 
-    /** Allows the phone book and messages without asking on the phone side (`BluetoothDevice.ACCESS_ALLOWED`). */
-    fun allowPhonebook(device: BluetoothDevice) {
+    /**
+     * Clears the phone book and message access of [device] to the head unit (`BluetoothDevice.ACCESS_UNKNOWN`).
+     * These permissions are for the head unit's own PBAP / MAP servers, which this ROM's Bluetooth app (car profiles)
+     * does not have: the phone's contacts come through the PBAP client, which they do not affect. Set to allowed, they
+     * made Settings list those absent servers for the device and crash when it was opened
+     * (BluetoothDetailsProfilesController.refresh: null profile). Earlier versions of the service set them.
+     */
+    fun clearServerAccess(device: BluetoothDevice) {
         val int = arrayOf<Class<*>>(Int::class.javaPrimitiveType!!)
-        HiddenApi.call(device, "setPhonebookAccessPermission", int, ACCESS_ALLOWED)
-        HiddenApi.call(device, "setMessageAccessPermission", int, ACCESS_ALLOWED)
+        if (HiddenApi.call(device, "getPhonebookAccessPermission", NONE) as? Int != ACCESS_UNKNOWN) {
+            HiddenApi.call(device, "setPhonebookAccessPermission", int, ACCESS_UNKNOWN)
+        }
+        if (HiddenApi.call(device, "getMessageAccessPermission", NONE) as? Int != ACCESS_UNKNOWN) {
+            HiddenApi.call(device, "setMessageAccessPermission", int, ACCESS_UNKNOWN)
+        }
     }
 
     companion object {
         private const val TAG = "LibreHU-BT"
         private val DEVICE = arrayOf<Class<*>>(BluetoothDevice::class.java)
+        private val NONE = arrayOf<Class<*>>()
 
         const val A2DP_SINK = 11
         const val HEADSET_CLIENT = 16
         const val PBAP_CLIENT = 17
         const val PRIORITY_OFF = 0
         const val PRIORITY_AUTO_CONNECT = 1000
-        const val ACCESS_ALLOWED = 1
+        const val ACCESS_UNKNOWN = 0
 
         const val CALL_CLASS = "android.bluetooth.BluetoothHeadsetClientCall"
 
