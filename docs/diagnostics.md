@@ -72,7 +72,7 @@ Tests du cœur (`./gradlew -PcoreOnly :core:test`) : l'interblocage du 10/11 rep
 l'ancien code, « deadlock: box thread BLOCKED, head unit thread BLOCKED »), la fermeture du port après ses fils
 (`McuTransportTest` : échoue avec l'ancien ordre), les erreurs des tâches (`LoggedExecutorTest`), le watchdog
 (`WatchdogTest`). Sur émulateur Android 9 : workflow **Diagnostics test (Android 9)** (lancé à la main,
-`tools/diagnostics_test.py`) : build de débogage avec l'ABI de l'émulateur (`-PextraAbi=x86_64`, l'APK publié est arm64
+`tools/diagnostics_test.py`) : build de débogage avec l'ABI de l'émulateur (`-PextraAbi=x86_64`, l'APK publié est arm64 + armeabi-v7a
 seulement), chaque élément lu par adb, puis le rapport de LibreHU Helper (son propre test), qui doit contenir la section
 LibreHU-service.
 
