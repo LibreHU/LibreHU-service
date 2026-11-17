@@ -129,6 +129,7 @@ class LibreHuService : Service() {
         // Never stopped for long: root guard outside this app (force stops, RAM cleaners), boot script (power/Keepalive)
         Thread({
             Thread.sleep(10_000)
+            RootShell.waitAvailable() // first boot of the LibreHU ROM: root only comes at boot completed
             runCatching {
                 org.librehu.service.power.Keepalive
                     .start(this)
@@ -210,8 +211,12 @@ class LibreHuService : Service() {
             CanBoxTalk.onFrame(f)
             wheelKeys.onFrame(f)
         }
-        // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread).
-        Thread({ TouchPanel.get(this).applySaved() }, "touch-calibration").start()
+        // The touch driver forgets its calibration at each boot: put back the one saved here (root, off the main thread;
+        // first boot of the LibreHU ROM: root only comes at boot completed, RootShell.waitAvailable).
+        Thread({
+            RootShell.waitAvailable()
+            TouchPanel.get(this).applySaved()
+        }, "touch-calibration").start()
         // Host name of the car (not kept by Android across reboots), as root.
         Thread({
             org.librehu.service.car.CarName

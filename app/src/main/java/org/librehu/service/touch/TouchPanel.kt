@@ -167,6 +167,9 @@ class TouchPanel private constructor(
                         if (File(path).canRead()) {
                             FileInputStream(path)
                         } else {
+                            // First boot of the LibreHU ROM: root only comes at boot completed (touch buttons dead
+                            // until the next reboot otherwise)
+                            if (!RootShell.waitAvailable()) throw IllegalStateException("root needed to read $path")
                             val s = RootShell.stream(path) ?: throw IllegalStateException("root needed to read $path")
                             process = s.first
                             s.second

@@ -49,6 +49,41 @@ object RootShell {
         return ok
     }
 
+    /** Delay between two `su` checks of [waitAvailable], shared by all the threads waiting. */
+    private const val WAIT_POLL_MS = 10_000L
+
+    /** How long the start-up steps wait for root (first boot: root granted by the ROM at boot completed). */
+    const val START_WAIT_MS = 5 * 60_000L
+
+    /**
+     * True once `su` grants root, checking again every [WAIT_POLL_MS] for at most [timeoutMs]; false at the timeout or
+     * when the thread is interrupted. Blocking: off the main thread. On a first boot of the LibreHU LineageOS ROM
+     * (Format Data, new install) this service starts at LOCKED_BOOT_COMPLETED but the ROM grants its KernelSU root
+     * only at sys.boot_completed (librehu_ksugrant): the steps that need root at start-up (touch buttons, ARM2
+     * handover, touch calibration, root guard) wait for it here instead of giving up until the next reboot. Several
+     * waiting threads share one `su` check per [WAIT_POLL_MS].
+     */
+    fun waitAvailable(timeoutMs: Long = START_WAIT_MS): Boolean {
+        if (isAvailable()) return true
+        val end = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < end) {
+            try {
+                Thread.sleep(WAIT_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+            if (sharedCheck()) return true
+        }
+        return false
+    }
+
+    @Synchronized
+    private fun sharedCheck(): Boolean {
+        available?.let { if (it || System.currentTimeMillis() - checkedAt < WAIT_POLL_MS) return it }
+        return recheck()
+    }
+
     /** Root managers by package name. */
     private val MANAGERS =
         listOf(

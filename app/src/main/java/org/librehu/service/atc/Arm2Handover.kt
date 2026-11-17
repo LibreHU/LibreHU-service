@@ -43,7 +43,8 @@ object Arm2Handover {
         reverse: () -> Boolean,
         log: (String) -> Unit,
     ) {
-        if (!RootShell.isAvailable()) {
+        // First boot of the LibreHU ROM: root only comes at boot completed (RootShell.waitAvailable)
+        if (!RootShell.waitAvailable()) {
             log("ARM2: no root, the handover to Android is left to Jancar's hd2cam")
             return
         }
