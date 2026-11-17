@@ -29,10 +29,12 @@ object QuickBootGuard {
         runCatching { m.writeText(System.currentTimeMillis().toString()) }
         m.setReadable(true, false)
         // The loop sleeps with the SoC; at each turn awake it puts the service back if QuickBoot stopped it.
+        // Checks the service's own pid (Keepalive.aliveTest), not `pidof`, which reads every process of /proc.
+        val alive = Keepalive.aliveTest(Keepalive.servicePidFile(context).absolutePath, quote = '"')
         val loop =
             "echo \$\$ > /acct/cgroup.procs 2>/dev/null; " +
                 "while [ -f ${m.absolutePath} ]; do " +
-                "pidof org.librehu.service >/dev/null || am start-foreground-service -n $SERVICE >/dev/null 2>&1; " +
+                "{ $alive; } || am start-foreground-service -n $SERVICE >/dev/null 2>&1; " +
                 "sleep 2; done"
         return RootShell.run("nohup sh -c '$loop' >/dev/null 2>&1 &", timeoutS = 5) != null
     }

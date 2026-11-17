@@ -107,6 +107,9 @@ class LibreHuService : Service() {
         org.librehu.service.diag.ServiceLog
             .init(this)
         log("Service start: pid ${android.os.Process.myPid()}, version ${versionName()}")
+        // For the root guards (power/Keepalive, QuickBootGuard): they check this pid instead of scanning /proc
+        org.librehu.service.power.Keepalive
+            .recordPid(this)
         startForegroundCompat()
         // MCU link first: the MCU cuts the SoC when PC_READY comes late (10 s after a warm start). The rest
         // (Bluetooth, OBD, touch keys, root calls) starts after it.

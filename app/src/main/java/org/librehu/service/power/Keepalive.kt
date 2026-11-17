@@ -40,6 +40,31 @@ object Keepalive {
 
     private fun guardScript(context: Context) = File(dir(context), "keepalive.sh")
 
+    /** This service's pid, written at its start ([recordPid]): the guards check that process only. */
+    internal fun servicePidFile(context: Context) = File(dir(context), "service.pid")
+
+    /** Called by the service at its start (one small file write). */
+    fun recordPid(context: Context) {
+        val f = servicePidFile(context)
+        runCatching { f.writeText(android.os.Process.myPid().toString()) }
+        f.setReadable(true, false)
+    }
+
+    /**
+     * Shell test, true when the process of the pid file [pidPath] is this service: one read of /proc/<pid>/cmdline.
+     * The guards used `pidof`, which reads /proc/<pid>/stat of every process at each turn: thousands of SELinux
+     * denials a minute on the HALs' processes (logcat of 17/11/2026, "busybox": under KernelSU the boot script and
+     * the guard it starts run in BusyBox's standalone mode, where `pidof` is BusyBox's), whatever the toolbox.
+     * [quote] is the quote the test may use (double quotes inside a single-quoted `sh -c`).
+     */
+    internal fun aliveTest(
+        pidPath: String,
+        quote: Char = '\'',
+    ): String {
+        val q = quote
+        return "p=\$(cat $pidPath 2>/dev/null); [ -n \"\$p\" ] && tr $q\\0$q $q\\n$q 2>/dev/null < /proc/\$p/cmdline | grep -qx $PACKAGE"
+    }
+
     fun enabled(context: Context): Boolean = LibreHuService.prefs(context).getBoolean(PREF, true)
 
     /** The switch of the Power tab; blocking (root): off the main thread. */
@@ -60,6 +85,7 @@ object Keepalive {
         if (!RootShell.isAvailable()) return
         val d = dir(context).absolutePath
         val pid = pidFile(context).absolutePath
+        val sp = servicePidFile(context).absolutePath
         // Out of this app's process group (a force stop kills the group), then: the service back when it is not
         // running, its priority back to the persistent one when Android set it lower.
         val guard =
@@ -70,14 +96,11 @@ object Keepalive {
             |echo ${'$'}${'$'} > $pid
             |echo ${'$'}${'$'} > /acct/cgroup.procs 2>/dev/null
             |while [ -f ${m.absolutePath} ]; do
-            |  p=${'$'}(pidof $PACKAGE)
-            |  if [ -z "${'$'}p" ]; then
-            |    am start-foreground-service -n $SERVICE >/dev/null 2>&1
+            |  if ${aliveTest(sp)}; then
+            |    a=${'$'}(cat /proc/${'$'}p/oom_score_adj 2>/dev/null)
+            |    [ -n "${'$'}a" ] && [ "${'$'}a" -gt -800 ] && echo -800 > /proc/${'$'}p/oom_score_adj
             |  else
-            |    for i in ${'$'}p; do
-            |      a=${'$'}(cat /proc/${'$'}i/oom_score_adj 2>/dev/null)
-            |      [ -n "${'$'}a" ] && [ "${'$'}a" -gt -800 ] && echo -800 > /proc/${'$'}i/oom_score_adj
-            |    done
+            |    am start-foreground-service -n $SERVICE >/dev/null 2>&1
             |  fi
             |  sleep $PERIOD_S
             |done
@@ -106,7 +129,7 @@ object Keepalive {
             |until [ "${'$'}(getprop sys.boot_completed)" = 1 ]; do sleep 2; done
             |pm path $PACKAGE >/dev/null 2>&1 || { rm -f "${'$'}0"; exit 0; }
             |[ -f $dir/keepalive ] || exit 0
-            |pidof $PACKAGE >/dev/null || am start-foreground-service -n $SERVICE >/dev/null 2>&1
+            |{ ${aliveTest("$dir/service.pid")}; } || am start-foreground-service -n $SERVICE >/dev/null 2>&1
             |sleep 10
             |[ -f $dir/keepalive.sh ] && exec sh $dir/keepalive.sh
             |
