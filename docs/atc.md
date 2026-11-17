@@ -67,6 +67,11 @@ qu'`app_process` ne prépare pas de `Looper`, et sur l'autoradio de Reo Au In, `
 (status 0 -> 2): hardware video and cameras free », `runtime.arm2.finish=y`). **hd2cam peut donc être retiré**, avec
 le root ; sans root, le garder. Une mise en veille libère probablement aussi l'ARM2 (`backcar_suspend` force son arrêt puis envoie
 `APP_READY`) : non vérifié.
+Au premier démarrage de la ROM LineageOS de LibreHU (installation propre, Format Data), le service démarre avant que
+la ROM ne lui accorde le root KernelSU (`librehu_ksugrant`, à `sys.boot_completed`) : la passation, le lecteur tactile
+brut (boutons tactiles), la calibration et la garde root attendent maintenant le root, 10 s entre deux essais, 5 min au
+plus (`RootShell.waitAvailable()`, `89757b3`, 17/11/2026) ; avant, ils abandonnaient jusqu'au redémarrage suivant
+(vidéo verte ou noire, scrcpy compris, pas de boutons tactiles).
 
 ## Adresses metazone utilisées
 | Adresse | Valeur |
