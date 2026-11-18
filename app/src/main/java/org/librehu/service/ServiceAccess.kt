@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 
 /**
- * Who may use the service's API, like SuperSU does for root: the LibreHU apps (`org.librehu.*`) and the system are
- * allowed at once, any other app is refused until the user allows it from the notification or the service app.
+ * Who may use the service's API, like SuperSU does for root: the LibreHU apps (`org.librehu.*`, or signed with the
+ * LibreHU key like ViPER4Android LibreHU) and the system are allowed at once, any other app is refused until the user
+ * allows it from the notification or the service app.
  *
  * This replaces the `org.librehu.permission.HEADUNIT` check on the service: Android only grants a custom permission
  * to apps installed after the app that defines it, so a LibreHU app installed before the service was refused
@@ -48,8 +49,9 @@ class ServiceAccess private constructor(
         if (uid == Process.myUid() || uid < Process.FIRST_APPLICATION_UID) return
         val packages = app.packageManager.getPackagesForUid(uid).orEmpty()
         if (packages.isEmpty()) throw SecurityException("LibreHU-service: unknown caller uid $uid")
-        if (packages.any(::isLibreHu)) {
-            packages.filter(::isLibreHu).forEach { seen(it, auto = true) }
+        val trusted = packages.filter { isLibreHu(it) || signedLikeUs(it) }
+        if (trusted.isNotEmpty()) {
+            trusted.forEach { seen(it, auto = true) }
             return
         }
         val decisions = packages.map { decision(it) }
@@ -61,6 +63,14 @@ class ServiceAccess private constructor(
         if (decisions.all { it == null }) ask(packages.first())
         throw SecurityException("LibreHU-service: ${packages.first()} is not allowed (LibreHU-service → Access)")
     }
+
+    /**
+     * Signed with the LibreHU key, like this service: the LibreHU apps outside `org.librehu.*` (ViPER4Android LibreHU,
+     * `com.llsl.viper4android`, crashed at its start after a clean install: refused until allowed by hand, 18/11/2026).
+     */
+    private fun signedLikeUs(pkg: String): Boolean =
+        runCatching { app.packageManager.checkSignatures(app.packageName, pkg) == android.content.pm.PackageManager.SIGNATURE_MATCH }
+            .getOrDefault(false)
 
     fun set(
         pkg: String,
