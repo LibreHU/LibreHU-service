@@ -63,7 +63,9 @@ Les ROM LibreHU construites après le 21/11/2026 ont un patch de `cameraserver` 
 et `persist.librehu.camera.facing` (orientation imposée, « 3:back,0:front,8:external »). Sans elles (ou sans le patch :
 ROM stock, build plus ancien), rien ne change.
 
-Carte **Applis caméra** (Véhicule → Vidéo, `car/CameraApps.kt`) : pour chaque caméra, « comme détectée », masquée,
+Carte **Applis caméra** (Véhicule → Vidéo, `car/CameraApps.kt`) : chaque ligne donne l'id, l'orientation vue par les
+applis, la taille, le rôle Jancar de l'id (comme la page Vue arrière) et, pour la caméra 0, le nom de la caméra USB
+branchée (« caméra USB : … », lu dans `/sys/class/video4linux`) ; pour chaque caméra, « comme détectée », masquée,
 arrière, avant ou externe (montrée aux applis mais ni arrière ni avant : l'appli Caméra la saute). **Trouver les
 caméras mortes** ouvre chacune un instant et met sur « masquée » celles qui refusent. **Arrière = caméra de la vue
 arrière** met la caméra de la vue de recul en arrière et les autres caméras « arrière » du HAL en externe (caméra de

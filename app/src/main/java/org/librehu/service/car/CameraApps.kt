@@ -59,6 +59,12 @@ object CameraApps {
     private const val NONE = "none"
     private const val PROBE_TIMEOUT_S = 4L
 
+    /**
+     * Jancar's HAL gives the USB (UVC) camera this id ("web" camera of its config): on the unit of 21/11/2026 camera 0
+     * left and came back with the webcam (cameraserver REMOVE / ADD device 0, /dev/video0 made at the same time).
+     */
+    const val USB_ID = "0"
+
     /** The ids Jancar's HAL may declare (cameraList of the rear view looks at the same). */
     val IDS: List<String> = (0..15).map { it.toString() }
 

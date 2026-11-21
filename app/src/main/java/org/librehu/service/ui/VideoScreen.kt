@@ -22,6 +22,8 @@ import org.librehu.service.car.CameraRole
 import org.librehu.service.car.CvbsActivity
 import org.librehu.service.car.CvbsInput
 import org.librehu.service.car.CvbsPosition
+import org.librehu.service.car.ReverseView
+import org.librehu.service.car.UvcCameras
 import org.librehu.service.car.VideoOut
 
 /** CVBS IN 1 / 2 (video only), the CVBS rear camera's input and the rear video output (VIDEO OUT / AUDIO OUT). */
@@ -90,11 +92,13 @@ private fun CameraAppsCard() {
     var roles by remember(revision) { mutableStateOf(CameraApps.read()) }
     var cameras by remember { mutableStateOf<List<CameraAppsInfo>>(emptyList()) }
     var inUse by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var usb by remember { mutableStateOf<List<String>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(revision) {
         cameras = withContext(Dispatchers.IO) { CameraApps.list(context) }
         inUse = withContext(Dispatchers.IO) { CameraApps.inUse(context) }
+        usb = withContext(Dispatchers.IO) { UvcCameras.list().map { it.name } }
     }
     val noRoot = stringResource(R.string.atc_no_root)
     val facingLabel =
@@ -118,7 +122,12 @@ private fun CameraAppsCard() {
                     listOfNotNull(info.facing?.let { facingLabel[it] }, info.size.ifEmpty { null }).joinToString(" · ")
                 }
             val used = id in inUse
-            BodyText(stringResource(R.string.camapps_camera, id, detail) + if (used) " · " + stringResource(R.string.camapps_in_use) else "")
+            // Jancar's role of the id; camera 0 is the USB (UVC) camera of Jancar's HAL: it comes and goes with it
+            val jancarRole = ReverseView.roleLabel(id)?.let { stringResource(it) }
+            val usbName =
+                if (id == CameraApps.USB_ID && usb.isNotEmpty()) stringResource(R.string.camapps_usb, usb.joinToString(", ")) else null
+            val label = listOfNotNull(stringResource(R.string.camapps_camera, id, detail), jancarRole, usbName).joinToString(" · ")
+            BodyText(label + if (used) " · " + stringResource(R.string.camapps_in_use) else "")
             val role = roles[id] ?: CameraRole.AUTO
             Choices(if (used) options.filter { it.first != CameraRole.HIDDEN } else options, role) { r ->
                 roles = roles + (id to r)

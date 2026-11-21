@@ -819,6 +819,9 @@ class ReverseView private constructor(
         /** Jancar's camera ids (BackCarCommon of its apps, `[CameraIndex]` of ivi-config.ini). */
         private const val CVBS_ID = "3"
         private val AHD_IDS = listOf("2", "10", "8")
+        /** Jancar's role of a camera id (`BackCarCommon`, `[CameraIndex]`), as shown on the settings pages. */
+        fun roleLabel(id: String): Int? = ROLES[id]
+
         private val ROLES =
             mapOf(
                 "2" to R.string.rv_role_ahd,

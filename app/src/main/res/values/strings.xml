@@ -1110,6 +1110,7 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="camapps_camera">Camera %1$s · %2$s</string>
     <string name="camapps_not_listed">hidden now</string>
     <string name="camapps_in_use">used by the rear view or the CVBS inputs (never hidden)</string>
+    <string name="camapps_usb">USB camera: %1$s</string>
     <string name="camapps_none">No camera listed by Android.</string>
     <string name="camapps_apply">Apply</string>
     <string name="camapps_applied">Applied: the camera service restarted. Reopen the camera app.</string>

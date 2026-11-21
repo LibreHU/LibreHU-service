@@ -1110,6 +1110,7 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="camapps_camera">Caméra %1$s · %2$s</string>
     <string name="camapps_not_listed">masquée actuellement</string>
     <string name="camapps_in_use">utilisée par la vue arrière ou les entrées CVBS (jamais masquée)</string>
+    <string name="camapps_usb">caméra USB : %1$s</string>
     <string name="camapps_none">Aucune caméra listée par Android.</string>
     <string name="camapps_apply">Appliquer</string>
     <string name="camapps_applied">Appliqué : le service caméra a redémarré. Rouvrir l\'appli caméra.</string>
