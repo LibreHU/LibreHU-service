@@ -276,6 +276,33 @@ dans son chargeur de modules), pas LibreHU-service.
 
 Piste noyau (non faite) : dans `fast_disp_composer_thread`, ne pas attendre la VSYNC quand l'affichage est en veille
 (`pgc->state == DISP_SLEPT` → `msleep(100)`), ce qui supprime le flot d'erreurs ; sans garantie sur le blocage.
+(Faite depuis dans les noyaux LibreHU : 4.9 `3083afcea`, même code en 4.19 : le thread attend la reprise de
+l'affichage.)
+
+### Verrouillage contact mis : SoC suspendu pour de bon (21/11, corrigé)
+
+Sous LineageOS 17.1, la touche power ou le double appui sur la barre d'état (verrouillage) éteignait l'écran, puis
+l'écran revenait noir rétroéclairé et l'unité redémarrait. Journaux : extinction de l'écran, sortie audio en veille,
+puis `PM: suspend entry (deep)` environ 3 s après, plus aucun verrou (`mWakeLockSummary=0x0`) ; expdb au démarrage
+suivant : `[pmic_check_rst] AP Watchdog`, `wdt_status 0x2` = `MTK_WDT_STATUS_SPM_RST` (le chien de garde du SPM est
+armé en mode reset pendant la suspension, `mtk_spm_suspend.c`). Couper le Wi-Fi et le Bluetooth ne change rien.
+
+Contact mis, rien ne réveille un SoC suspendu : la dalle tactile n'est pas une source de réveil, la touche power passe
+par la MCU (UART), la MCU n'est pas prévenue (pas de `F1`) et le minuteur de réveil du SPM est coupé
+(`CONFIG_ATC_AOSP_ENHANCEMENT` : `timer_val = 0`). Même constat le 18/11 avec `echo mem` contact mis (et avec le noyau
+stock le 29/10). La veille contact coupé marche parce que la MCU est prévenue et réveille le SoC au retour du contact.
+Preuve : avec un verrou noyau tenu à la main (`echo lockdiag > /sys/power/wake_lock`), le même verrouillage marche
+et la touche power de la dalle rallume l'écran.
+
+Correctif : `Standby` tient un verrou partiel (`PARTIAL_WAKE_LOCK` « LibreHU:ignition-on », permission `WAKE_LOCK`)
+tant que le contact est mis (après le délai « démarrage moteur ») et que l'unité n'est pas en veille ; il est relâché
+dès que le contact est coupé, donc avant la préparation de la veille et `stopWakelockHolders()`. Le journal note la
+prise et le relâchement. Android ne suspend donc plus contact mis : l'écran s'éteint seul, la dalle reste active
+(`mtk_tpd.sleep_on_blank=0`) et sa touche power le rallume. Si le processus du service meurt, Android relâche le
+verrou de lui-même.
+
+À vérifier : écran verrouillé plus de 10 min contact mis (le reboot `hang_detect` du 28/10 venait de cette
+situation, avec l'ancien noyau).
 
 ## À vérifier sur l'appareil
 

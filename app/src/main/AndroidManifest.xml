@@ -28,6 +28,8 @@
     <uses-permission android:name="org.librehu.permission.ROOT_REQUEST" />
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- SoC kept awake while the ignition is on (power/Standby: a screen off with the ignition on must not suspend). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Volume panel over the apps (overlay/VolumeOverlay), granted by the user or with
          adb shell appops set org.librehu.service SYSTEM_ALERT_WINDOW allow -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />

@@ -101,6 +101,24 @@ class Standby private constructor(
 
     private val prepare = Runnable { enter() }
 
+    /**
+     * Partial wake lock held while the ignition is on and the head unit is not in standby ([keepAwake]). With the
+     * ignition on nothing wakes a suspended SoC: the touch controller is not a wake up source, the power key goes
+     * through the MCU (UART) and the MCU is not told (no `F1`), and the SPM's wake up timer is off
+     * (CONFIG_ATC_AOSP_ENHANCEMENT, mtk_spm_suspend.c). A screen off by the power key or the lock gesture (double tap
+     * on the status bar) then suspended the SoC for good, black backlit screen, until the SPM watchdog reset it
+     * (21/11, LineageOS 17.1: `PM: suspend entry (deep)` 3 s after the screen off, no wake lock left, expdb
+     * `wdt_status 0x2` = SPM reset; the same lock with `/sys/power/wake_lock` held: the screen comes back). The
+     * standby releases it: there the MCU is told and the ignition coming back wakes the SoC.
+     */
+    private val ignitionLock: PowerManager.WakeLock? =
+        runCatching {
+            app
+                .getSystemService(PowerManager::class.java)
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LibreHU:ignition-on")
+                ?.apply { setReferenceCounted(false) }
+        }.getOrNull()
+
     init {
         // A crash of the service process written down before Android kills it.
         val previous = Thread.getDefaultUncaughtExceptionHandler()
@@ -192,6 +210,18 @@ class Standby private constructor(
         } else if (old == true && _settings.value.mode != StandbyMode.OFF) {
             main.postDelayed(prepare, PREPARE_DELAY_MS)
         }
+        keepAwake()
+    }
+
+    /** [ignitionLock] held exactly while the ignition is on (past the engine-start delay) and not in standby. */
+    @Synchronized
+    private fun keepAwake() {
+        val lock = ignitionLock ?: return
+        val want = acc == true && !_asleep.value
+        if (want == lock.isHeld) return
+        runCatching { if (want) lock.acquire() else lock.release() }
+            .onSuccess { note(if (want) "Ignition on: wake lock held, the SoC stays awake with the screen off" else "Wake lock released: the SoC may suspend") }
+            .onFailure { note("Wake lock ${if (want) "acquire" else "release"} FAILED: $it") }
     }
 
     /** The ACC wire as the MCU reports it, at once (written down only: [onAcc] acts after the engine-start delay). */
@@ -225,6 +255,7 @@ class Standby private constructor(
         lockSnapshotDone = false
         nextBeatAt = standbyAt + FIRST_BEAT_MS
         _asleep.value = true
+        keepAwake()
         // From now on: the SoC may suspend as soon as the screen is off and its wake locks are gone (29/10: under a
         // second). A watch started after that would take its first reading after the resume and never see it.
         if (s.mode == StandbyMode.SLEEP) watchResume()
@@ -295,6 +326,7 @@ class Standby private constructor(
         main.removeCallbacks(suspendDeadline)
         if (!_asleep.value) return
         _asleep.value = false
+        keepAwake()
         prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).apply()
         val total = (SystemClock.elapsedRealtime() - standbyAt) / 1000
         note("Wake up ($why) after $total s of standby, SoC suspended ${suspendedMs / 1000} s of it")
