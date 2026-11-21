@@ -295,11 +295,16 @@ Preuve : avec un verrou noyau tenu à la main (`echo lockdiag > /sys/power/wake_
 et la touche power de la dalle rallume l'écran.
 
 Correctif : `Standby` tient un verrou partiel (`PARTIAL_WAKE_LOCK` « LibreHU:ignition-on », permission `WAKE_LOCK`)
-tant que le contact est mis (après le délai « démarrage moteur ») et que l'unité n'est pas en veille ; il est relâché
-dès que le contact est coupé, donc avant la préparation de la veille et `stopWakelockHolders()`. Le journal note la
-prise et le relâchement. Android ne suspend donc plus contact mis : l'écran s'éteint seul, la dalle reste active
-(`mtk_tpd.sleep_on_blank=0`) et sa touche power le rallume. Si le processus du service meurt, Android relâche le
-verrou de lui-même.
+tant que le contact est mis (après le délai « démarrage moteur »), puis, contact coupé, jusqu'à ce que la veille soit
+prête (`F1` envoyé, stockage écrit) : il est relâché juste avant l'extinction de l'écran de la veille, donc avant
+`stopWakelockHolders()`. En mode « rien » (OFF), il reste tenu jusqu'à la coupure du SoC par la MCU (un contact remis
+avant les 15 s trouve le SoC éveillé). Le journal note la prise et le relâchement. Android ne suspend donc plus
+contact mis : l'écran s'éteint seul, la dalle reste active (`mtk_tpd.sleep_on_blank=0`) et sa touche power le
+rallume. Si le processus du service meurt, Android relâche le verrou de lui-même.
+
+Première version (service `b8e0e8d`) : verrou relâché dès que le contact était signalé coupé. Écran déjà verrouillé,
+Android suspendait alors le SoC dans la seconde, avant la préparation de la veille (1,5 s plus tard) : pas de `F1`,
+la MCU ne le réveillait pas et le coupait à 15 s, même plantage (retour utilisateur du 21/11). Corrigé comme ci-dessus.
 
 À vérifier : écran verrouillé plus de 10 min contact mis (le reboot `hang_detect` du 28/10 venait de cette
 situation, avec l'ancien noyau).

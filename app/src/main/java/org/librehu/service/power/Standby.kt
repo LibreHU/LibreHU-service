@@ -109,7 +109,9 @@ class Standby private constructor(
      * on the status bar) then suspended the SoC for good, black backlit screen, until the SPM watchdog reset it
      * (21/11, LineageOS 17.1: `PM: suspend entry (deep)` 3 s after the screen off, no wake lock left, expdb
      * `wdt_status 0x2` = SPM reset; the same lock with `/sys/power/wake_lock` held: the screen comes back). The
-     * standby releases it: there the MCU is told and the ignition coming back wakes the SoC.
+     * standby releases it once it is prepared ([suspendAllowed]): there the MCU is told and the ignition coming back
+     * wakes the SoC. Not before: with the screen already off, a release at the ignition off let the SoC suspend
+     * within a second, before `F1` (sent [PREPARE_DELAY_MS] later), and the same crash followed (21/11).
      */
     private val ignitionLock: PowerManager.WakeLock? =
         runCatching {
@@ -118,6 +120,10 @@ class Standby private constructor(
                 ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LibreHU:ignition-on")
                 ?.apply { setReferenceCounted(false) }
         }.getOrNull()
+
+    /** Standby prepared (`F1` sent, storage written): the SoC may suspend, [ignitionLock] is released. */
+    @Volatile
+    private var suspendAllowed = false
 
     init {
         // A crash of the service process written down before Android kills it.
@@ -144,6 +150,7 @@ class Standby private constructor(
                 standbyAt = SystemClock.elapsedRealtime()
                 standbyUp = SystemClock.uptimeMillis()
                 _asleep.value = true
+                suspendAllowed = true
                 main.post { watchResume() }
                 if (acc == true) main.post { exit("ignition already on") }
                 return@let
@@ -213,11 +220,20 @@ class Standby private constructor(
         keepAwake()
     }
 
-    /** [ignitionLock] held exactly while the ignition is on (past the engine-start delay) and not in standby. */
+    /**
+     * [ignitionLock] held while the ignition is on (past the engine-start delay), and after it goes off until the
+     * standby is prepared ([suspendAllowed]): with the "nothing" mode (OFF) it stays held until the MCU cuts the SoC,
+     * so that an ignition back before the cut finds the SoC awake. Not held before the MCU first reports the ACC.
+     */
     @Synchronized
     private fun keepAwake() {
         val lock = ignitionLock ?: return
-        val want = acc == true && !_asleep.value
+        val want =
+            when (acc) {
+                null -> false
+                true -> true
+                false -> !(suspendAllowed && _asleep.value)
+            }
         if (want == lock.isHeld) return
         runCatching { if (want) lock.acquire() else lock.release() }
             .onSuccess { note(if (want) "Ignition on: wake lock held, the SoC stays awake with the screen off" else "Wake lock released: the SoC may suspend") }
@@ -254,8 +270,8 @@ class Standby private constructor(
         suspendedMs = 0L
         lockSnapshotDone = false
         nextBeatAt = standbyAt + FIRST_BEAT_MS
+        suspendAllowed = false
         _asleep.value = true
-        keepAwake()
         // From now on: the SoC may suspend as soon as the screen is off and its wake locks are gone (29/10: under a
         // second). A watch started after that would take its first reading after the resume and never see it.
         if (s.mode == StandbyMode.SLEEP) watchResume()
@@ -279,7 +295,10 @@ class Standby private constructor(
             if (s.mode == StandbyMode.SLEEP) {
                 note(if (QuickBootGuard.start(app)) "QuickBoot guard on (${since()})" else "QuickBoot guard FAILED (no root): no PC_READY after the wake up")
             }
-            // The SoC may suspend as soon as the screen is off: what is written so far goes to the storage first.
+            // Prepared (MCU told, storage written): the wake lock goes, the SoC may suspend as soon as the screen is off
+            // (at once when it was already off). What is written so far goes to the storage first.
+            suspendAllowed = true
+            keepAwake()
             journal.flush()
             screen(false)
             note("Screen off (${since()}): preparation done${if (accWireOffAt > 0L && SystemClock.elapsedRealtime() - accWireOffAt > MCU_CUT_MS) ", LATE: after the MCU's 15 s" else ""}")
@@ -326,6 +345,7 @@ class Standby private constructor(
         main.removeCallbacks(suspendDeadline)
         if (!_asleep.value) return
         _asleep.value = false
+        suspendAllowed = false
         keepAwake()
         prefs.edit().remove(KEY_ASLEEP_SINCE).remove(KEY_ASLEEP_BOOT).apply()
         val total = (SystemClock.elapsedRealtime() - standbyAt) / 1000
