@@ -44,6 +44,33 @@ Réglage **Commuter sur l'entrée de la caméra arrière avant la vue de recul**
 d'ouvrir la caméra 3, la vue de recul et le widget en direct mettent le commutateur sur cette position, comme Jancar.
 Sans ivi-services, rien d'autre ne le faisait. Le widget ne commute pas pendant que l'écran CVBS IN est ouvert.
 
+## Applis caméra (appli Caméra, appels vidéo)
+
+Le service caméra de Jancar (`camhal3lite`) déclare des caméras sans rien derrière et dit « arrière » de toutes sauf la
+0. Carte relevée le 21/11/2026 (LineageOS 17.1, `dumpsys media.camera`, caméra USB branchée) :
+
+| Id | Orientation du HAL | Taille | Ce que c'est |
+|---|---|---|---|
+| 0 | avant | 1920×1080 | caméra USB (UVC), branchée à chaud |
+| 2 | arrière | 1920×1080 | rien : `initMipi: Invalid device ID 1`, ouverture en -38 |
+| 3 | arrière | 720×576 | décodeur CVBS (AV IN 1 / 2, caméra de recul CVBS, commutateur) |
+| 8, 9 | arrière | 1920×1080 | s'ouvrent ; AHD (puce 9963) pour la 8 selon Jancar |
+| 10, 11, 12 | arrière | 1920×1080, 3840×2160 | rien : ouverture en -38 |
+
+L'appli Caméra d'AOSP prend la première caméra « arrière » et la première « avant » : elle ouvrait la 2, morte.
+Les ROM LibreHU construites après le 21/11/2026 ont un patch de `cameraserver` (`frameworks/av`, marqueur
+`librehuCameraHiddenFacing`) qui lit deux propriétés : `persist.librehu.camera.hidden` (caméras masquées, « 2,10,11,12 »)
+et `persist.librehu.camera.facing` (orientation imposée, « 3:back,0:front,8:external »). Sans elles (ou sans le patch :
+ROM stock, build plus ancien), rien ne change.
+
+Carte **Applis caméra** (Véhicule → Vidéo, `car/CameraApps.kt`) : pour chaque caméra, « comme détectée », masquée,
+arrière, avant ou externe (montrée aux applis mais ni arrière ni avant : l'appli Caméra la saute). **Trouver les
+caméras mortes** ouvre chacune un instant et met sur « masquée » celles qui refusent. **Arrière = caméra de la vue
+arrière** met la caméra de la vue de recul en arrière et les autres caméras « arrière » du HAL en externe (caméra de
+recul AHD : 8 avec la puce 9963, sinon 2 ou 10 ; CVBS : 3). **Appliquer** écrit les propriétés (root) et redémarre
+`cameraserver` (environ 3 s ; une appli qui affiche une caméra la perd jusqu'à ce qu'elle la rouvre). Une caméra
+masquée ne s'ouvre plus pour personne : celles de la vue arrière et des entrées CVBS ne peuvent pas être masquées.
+
 ## VIDEO OUT
 L'APK `ivi-usbdisplay` (`com.jancar.usbdisplay`, fourni depuis l'autoradio) montre que VIDEO OUT n'est **pas** une
 sortie vidéo du SoC : c'est une **puce d'affichage USB MacroSilicon** (sortie CVBS) alimentée par une capture d'écran.

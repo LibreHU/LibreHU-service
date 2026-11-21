@@ -1,6 +1,8 @@
 package org.librehu.service.ui
 
+import android.hardware.camera2.CameraCharacteristics
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librehu.service.R
+import org.librehu.service.car.CameraApps
+import org.librehu.service.car.CameraAppsInfo
+import org.librehu.service.car.CameraRole
 import org.librehu.service.car.CvbsActivity
 import org.librehu.service.car.CvbsInput
 import org.librehu.service.car.CvbsPosition
@@ -25,6 +30,7 @@ fun VideoScreen() {
     Page(stringResource(R.string.tab_video)) {
         CvbsInputsCard()
         CvbsReverseCard()
+        CameraAppsCard()
         VideoOutCard()
         Card(stringResource(R.string.cvbs_audio_out_title)) { Hint(stringResource(R.string.cvbs_audio_out_hint)) }
     }
@@ -69,6 +75,101 @@ private fun CvbsReverseCard() {
                 CvbsInput.update(context) { it.copy(reverse = p) }
             }
         }
+    }
+}
+
+/**
+ * Cameras of Android's camera apps ([CameraApps]): a role per camera (as the HAL says, hidden, back, front, external),
+ * written to the properties of the cameraserver patch of the LibreHU ROMs, cameraserver restarted.
+ */
+@Composable
+private fun CameraAppsCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var revision by remember { mutableIntStateOf(0) }
+    var roles by remember(revision) { mutableStateOf(CameraApps.read()) }
+    var cameras by remember { mutableStateOf<List<CameraAppsInfo>>(emptyList()) }
+    var inUse by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(revision) {
+        cameras = withContext(Dispatchers.IO) { CameraApps.list(context) }
+        inUse = withContext(Dispatchers.IO) { CameraApps.inUse(context) }
+    }
+    val noRoot = stringResource(R.string.atc_no_root)
+    val facingLabel =
+        mapOf(
+            CameraCharacteristics.LENS_FACING_FRONT to stringResource(R.string.rv_facing_front),
+            CameraCharacteristics.LENS_FACING_BACK to stringResource(R.string.rv_facing_back),
+            CameraCharacteristics.LENS_FACING_EXTERNAL to stringResource(R.string.rv_facing_external),
+        )
+    val options = CameraRole.entries.map { it to stringResource(it.label) }
+    Card(stringResource(R.string.camapps_title)) {
+        Hint(stringResource(R.string.camapps_hint))
+        // shown now, then the hidden ones (gone from the camera service: no facing nor size to show)
+        val shown = cameras.map { it.id }
+        val ids = (shown + roles.filterValues { it != CameraRole.AUTO }.keys).distinct().sortedBy { it.toIntOrNull() ?: 99 }
+        for (id in ids) {
+            val info = cameras.firstOrNull { it.id == id }
+            val detail =
+                if (info == null) {
+                    stringResource(R.string.camapps_not_listed)
+                } else {
+                    listOfNotNull(info.facing?.let { facingLabel[it] }, info.size.ifEmpty { null }).joinToString(" · ")
+                }
+            val used = id in inUse
+            BodyText(stringResource(R.string.camapps_camera, id, detail) + if (used) " · " + stringResource(R.string.camapps_in_use) else "")
+            val role = roles[id] ?: CameraRole.AUTO
+            Choices(if (used) options.filter { it.first != CameraRole.HIDDEN } else options, role) { r ->
+                roles = roles + (id to r)
+            }
+        }
+        if (ids.isEmpty()) Hint(stringResource(R.string.camapps_none))
+        Actions {
+            Pill(stringResource(R.string.camapps_apply), enabled = !busy) {
+                busy = true
+                scope.launch {
+                    val err = withContext(Dispatchers.IO) { CameraApps.apply(roles) }
+                    status = if (err == null) context.getString(R.string.camapps_applied) else if (err == "root") noRoot else err
+                    // cameraserver lists the cameras again
+                    kotlinx.coroutines.delay(3000)
+                    busy = false
+                    revision++
+                }
+            }
+            Pill(stringResource(R.string.camapps_find_dead), enabled = !busy) {
+                busy = true
+                status = context.getString(R.string.camapps_probing)
+                scope.launch {
+                    val dead = withContext(Dispatchers.IO) { CameraApps.findDead(context, inUse) }
+                    roles = roles + dead.associateWith { CameraRole.HIDDEN }
+                    status =
+                        if (dead.isEmpty()) {
+                            context.getString(R.string.camapps_dead_none)
+                        } else {
+                            context.getString(R.string.camapps_dead_found, dead.joinToString(", "))
+                        }
+                    busy = false
+                }
+            }
+            Pill(stringResource(R.string.camapps_rear_is_back), enabled = !busy) {
+                val rear = CameraApps.rearCamera(context)
+                if (rear == null) {
+                    status = context.getString(R.string.camapps_rear_unknown)
+                } else {
+                    // the Camera app takes the first "back" camera: the other back ones as the HAL says become external
+                    val others =
+                        cameras
+                            .filter { it.id != rear && it.facing == CameraCharacteristics.LENS_FACING_BACK && roles[it.id] == CameraRole.AUTO }
+                            .associate { it.id to CameraRole.EXTERNAL }
+                    roles = roles + others + (rear to CameraRole.BACK)
+                    status = context.getString(R.string.camapps_rear_set, rear)
+                }
+            }
+            Pill(stringResource(R.string.camapps_reset), enabled = !busy) { roles = CameraApps.IDS.associateWith { CameraRole.AUTO } }
+        }
+        Hint(stringResource(R.string.camapps_apply_hint))
+        status?.let { StatusLine(it, false) }
     }
 }
 

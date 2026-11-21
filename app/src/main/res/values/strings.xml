@@ -1100,6 +1100,28 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="cvbs_handbrake_hint">As Jancar\'s AV app: no video for the driver while driving (Highway Code). Ignored when the MCU link is down.</string>
     <string name="cvbs_camera">Camera of the CVBS decoder</string>
     <string name="cvbs_camera_hint">3 in Jancar\'s configuration ([CameraIndex] AV=3, REAR=3).</string>
+    <string name="camapps_title">Camera apps</string>
+    <string name="camapps_hint">How Android\'s camera apps (Camera, video calls) see each camera. Jancar\'s camera service declares cameras with nothing behind them and calls almost every camera \"back\": the Camera app opens the first \"back\" one and the first \"front\" one. Hide the dead ones, choose the back and front cameras. Needs a LibreHU ROM built after 21/11/2026 (without it nothing changes).</string>
+    <string name="camapps_role_auto">As detected</string>
+    <string name="camapps_role_hidden">Hidden</string>
+    <string name="camapps_role_back">Back</string>
+    <string name="camapps_role_front">Front</string>
+    <string name="camapps_role_external">External</string>
+    <string name="camapps_camera">Camera %1$s · %2$s</string>
+    <string name="camapps_not_listed">hidden now</string>
+    <string name="camapps_in_use">used by the rear view or the CVBS inputs (never hidden)</string>
+    <string name="camapps_none">No camera listed by Android.</string>
+    <string name="camapps_apply">Apply</string>
+    <string name="camapps_applied">Applied: the camera service restarted. Reopen the camera app.</string>
+    <string name="camapps_find_dead">Find the dead cameras</string>
+    <string name="camapps_probing">Opening each camera a moment…</string>
+    <string name="camapps_dead_none">Every camera opens: none to hide.</string>
+    <string name="camapps_dead_found">Do not open: %1$s (set to Hidden, press Apply).</string>
+    <string name="camapps_rear_is_back">Back = rear view camera</string>
+    <string name="camapps_rear_unknown">Rear view camera unknown: choose it on the Rear view page.</string>
+    <string name="camapps_rear_set">Camera %1$s set to Back, the other back ones to External: press Apply.</string>
+    <string name="camapps_reset">All as detected</string>
+    <string name="camapps_apply_hint">Apply restarts Android\'s camera service (about 3 s): an app showing a camera loses it until it opens it again. With an AHD rear camera (8 on the 9963 chip, 2 or 10 otherwise), use \"Back = rear view camera\" after changing the Rear view page.</string>
     <string name="cvbs_reverse_title">CVBS rear camera</string>
     <string name="cvbs_reverse_switch">Switch to the rear camera input before the rear view</string>
     <string name="cvbs_reverse_hint">When the rear view opens the CVBS camera (3), the switch is first set to this position, as Jancar\'s AV app does on reverse. The CVBS IN screen gives the camera back during reverse.</string>

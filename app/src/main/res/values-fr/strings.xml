@@ -1100,6 +1100,28 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="cvbs_handbrake_hint">Comme l\'appli AV de Jancar : pas de vidéo visible du conducteur en roulant (Code de la route). Ignoré si le lien MCU est coupé.</string>
     <string name="cvbs_camera">Caméra du décodeur CVBS</string>
     <string name="cvbs_camera_hint">3 dans la configuration Jancar ([CameraIndex] AV=3, REAR=3).</string>
+    <string name="camapps_title">Applis caméra</string>
+    <string name="camapps_hint">Comment les applis caméra d\'Android (Caméra, appels vidéo) voient chaque caméra. Le service caméra de Jancar déclare des caméras sans rien derrière et dit « arrière » de presque toutes : l\'appli Caméra ouvre la première « arrière » et la première « avant ». Masquer les mortes, choisir les caméras arrière et avant. Demande une ROM LibreHU construite après le 21/11/2026 (sinon rien ne change).</string>
+    <string name="camapps_role_auto">Comme détectée</string>
+    <string name="camapps_role_hidden">Masquée</string>
+    <string name="camapps_role_back">Arrière</string>
+    <string name="camapps_role_front">Avant</string>
+    <string name="camapps_role_external">Externe</string>
+    <string name="camapps_camera">Caméra %1$s · %2$s</string>
+    <string name="camapps_not_listed">masquée actuellement</string>
+    <string name="camapps_in_use">utilisée par la vue arrière ou les entrées CVBS (jamais masquée)</string>
+    <string name="camapps_none">Aucune caméra listée par Android.</string>
+    <string name="camapps_apply">Appliquer</string>
+    <string name="camapps_applied">Appliqué : le service caméra a redémarré. Rouvrir l\'appli caméra.</string>
+    <string name="camapps_find_dead">Trouver les caméras mortes</string>
+    <string name="camapps_probing">Ouverture de chaque caméra un instant…</string>
+    <string name="camapps_dead_none">Toutes les caméras s\'ouvrent : aucune à masquer.</string>
+    <string name="camapps_dead_found">Ne s\'ouvrent pas : %1$s (mises sur Masquée, appuyer sur Appliquer).</string>
+    <string name="camapps_rear_is_back">Arrière = caméra de la vue arrière</string>
+    <string name="camapps_rear_unknown">Caméra de la vue arrière inconnue : la choisir sur la page Vue arrière.</string>
+    <string name="camapps_rear_set">Caméra %1$s mise sur Arrière, les autres arrière sur Externe : appuyer sur Appliquer.</string>
+    <string name="camapps_reset">Toutes comme détectées</string>
+    <string name="camapps_apply_hint">Appliquer redémarre le service caméra d\'Android (environ 3 s) : une appli qui affiche une caméra la perd jusqu\'à ce qu\'elle la rouvre. Avec une caméra de recul AHD (8 avec la puce 9963, sinon 2 ou 10), utiliser « Arrière = caméra de la vue arrière » après avoir changé la page Vue arrière.</string>
     <string name="cvbs_reverse_title">Caméra de recul CVBS</string>
     <string name="cvbs_reverse_switch">Commuter sur l\'entrée de la caméra arrière avant la vue de recul</string>
     <string name="cvbs_reverse_hint">Quand la vue de recul ouvre la caméra CVBS (3), le commutateur est d\'abord mis sur cette position, comme le fait l\'appli AV de Jancar en marche arrière. L\'écran CVBS IN rend la caméra pendant le recul.</string>
