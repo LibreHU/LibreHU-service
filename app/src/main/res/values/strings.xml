@@ -1402,12 +1402,12 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="zyg_no_modules">Needs Magisk or KernelSU (root modules): SuperSU does not load a system.prop.</string>
     <string name="zyg_reboot">Takes effect at the next restart of the head unit.</string>
     <string name="led_panel_title">Your front panel</string>
-    <string name="led_panel_hint">The buttons are lit either by colour LEDs or by white LEDs (backlight). Run both tests while looking at the buttons: if colours cycle, it is a colour panel; if they blink bright / dim in white, it is the white backlight. Then pick below: only the settings that apply are shown.</string>
+    <string name="led_panel_hint">The buttons are lit either by colour LEDs or by white LEDs (backlight). Run both tests while looking at the buttons: if colours cycle, it is a colour panel; if they blink bright / dim in white, it is the white backlight. If the screen itself flickers or shows lines during the white test, those outputs drive the panel, not the buttons: do not pick White. Then pick below: only the settings that apply are shown; the white outputs are only driven with White.</string>
     <string name="led_test_colour">Colour test (6 s)</string>
     <string name="led_test_white">White test (4 s)</string>
     <string name="led_panel_colour">Colour LEDs</string>
     <string name="led_panel_white">White backlight</string>
-    <string name="led_panel_unknown">Not sure (both)</string>
+    <string name="led_panel_unknown">Not sure (colour LEDs only)</string>
     <string name="led_colour_title">Colour LEDs</string>
     <string name="led_when_fixed">Fixed colour, with the headlights</string>
     <string name="led_when_cycle_always">Rainbow, always</string>

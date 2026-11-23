@@ -1402,12 +1402,12 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="zyg_no_modules">Il faut Magisk ou KernelSU (modules root) : SuperSU ne charge pas de system.prop.</string>
     <string name="zyg_reboot">Prend effet au prochain redémarrage de l\'autoradio.</string>
     <string name="led_panel_title">Votre façade</string>
-    <string name="led_panel_hint">Les boutons sont éclairés soit par des LED de couleur, soit par des LED blanches (rétroéclairage). Lancez les deux tests en regardant les boutons : si les couleurs défilent, c\'est une façade couleur ; s\'ils clignotent fort / faible en blanc, c\'est le rétroéclairage blanc. Puis choisissez ci-dessous : seuls les réglages utiles s\'affichent.</string>
+    <string name="led_panel_hint">Les boutons sont éclairés soit par des LED de couleur, soit par des LED blanches (rétroéclairage). Lancez les deux tests en regardant les boutons : si les couleurs défilent, c\'est une façade couleur ; s\'ils clignotent fort / faible en blanc, c\'est le rétroéclairage blanc. Si c\'est l\'écran lui-même qui scintille ou montre des lignes pendant le test blanc, ces sorties alimentent la dalle, pas les boutons : ne choisissez pas Blanc. Puis choisissez ci-dessous : seuls les réglages utiles s\'affichent ; les sorties blanches ne sont pilotées qu\'avec Blanc.</string>
     <string name="led_test_colour">Test couleur (6 s)</string>
     <string name="led_test_white">Test blanc (4 s)</string>
     <string name="led_panel_colour">LED de couleur</string>
     <string name="led_panel_white">Rétroéclairage blanc</string>
-    <string name="led_panel_unknown">Je ne sais pas (les deux)</string>
+    <string name="led_panel_unknown">Je ne sais pas (LED de couleur seulement)</string>
     <string name="led_colour_title">LED de couleur</string>
     <string name="led_when_fixed">Couleur fixe, avec les feux</string>
     <string name="led_when_cycle_always">Arc-en-ciel, toujours</string>

@@ -269,8 +269,8 @@ fun LightsScreen(actions: AppActions) {
                 }
             }
         }
-        // 3. White backlight
-        if (s.panel != PanelType.COLOUR) {
+        // 3. White backlight (the PWM outputs: only once the user saw them light the buttons)
+        if (s.panel == PanelType.WHITE) {
             Card(stringResource(R.string.led_backlight_title)) {
                 SwitchRow(stringResource(R.string.led_backlight), s.backlight, stringResource(R.string.led_backlight_hint)) { on ->
                     led.update { it.copy(backlight = on) }

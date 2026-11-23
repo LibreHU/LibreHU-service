@@ -42,9 +42,12 @@ Réponse : `brightness=<index>/<plage>`, … ; `pq contrast=5` règle d'abord (`
 ## Pas repris : AVDD et VCOM
 Dans le firmware MCU de cette carte, `0F 02` / `0F 03` sont les deux sorties PWM de TIM1 (PA8, PB14 ; 5 à 100 %,
 60 et 50 par défaut, gardées dans la flash du MCU et non relisibles : `LibreHU/MCU-tools-app`, `docs/mcu_firmware.md`
-§6.4) que le service règle déjà comme **rétroéclairage blanc des touches** (`car/FrontLed.kt`). L'appli de Jancar,
-commune à plusieurs cartes, y envoie les tensions de la dalle. Avant d'y toucher, vérifier sur l'autoradio ce que ces
-deux sorties alimentent.
+§6.4). L'appli de Jancar y envoie les tensions de la dalle (`/jancar/config/screen_voltage.json` : AVDD 60 / VCOM 38
+sur deux unités UJC201). Le service s'en sert comme **rétroéclairage blanc des touches** (`car/FrontLed.kt`), mais
+**seulement si l'utilisateur a choisi « Blanc »** après le test (depuis le 23/11/2026 : avant, « Je ne sais pas »,
+le choix par défaut, envoyait aussi 100 % le jour et 35 % la nuit ; un scintillement de l'écran avec des lignes a été
+vu de nuit sur une unité, cause non prouvée). Si l'écran lui-même scintille pendant le test blanc, ces sorties
+alimentent la dalle : ne pas choisir « Blanc ».
 
 ## À vérifier sur l'autoradio
 - `libPQjni.so` chargée par l'assistant root (sinon l'écran affiche l'erreur et propose MiraVision s'il est là) ;

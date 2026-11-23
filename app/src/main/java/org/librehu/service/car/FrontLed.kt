@@ -29,7 +29,11 @@ enum class LedMode(
 
 /** Which LEDs light the buttons of this head unit: told by the user, after the test of [FrontLed.testColour] / [FrontLed.testWhite]. */
 enum class PanelType {
-    /** Not told yet: both kinds are driven. */
+    /**
+     * Not told yet: only the colour LEDs are driven. The two PWM outputs are left alone: Jancar's display app sends the
+     * panel's AVDD and VCOM on the same `0F 02` / `0F 03` (`/jancar/config/screen_voltage.json`, 60 / 38 on two units),
+     * so on some boards they may bias the screen, not light buttons.
+     */
     UNKNOWN,
 
     /** Colour (RGB) LEDs: `0F 04`. */
@@ -79,7 +83,7 @@ data class FrontLedSettings(
     val nightPwm2: Int = 35,
 ) {
     val drivesColour: Boolean get() = panel != PanelType.WHITE && ledWhen != LedWhen.MCU
-    val drivesWhite: Boolean get() = panel != PanelType.COLOUR && backlight
+    val drivesWhite: Boolean get() = panel == PanelType.WHITE && backlight
     val day2: Int get() = if (separateOutputs) dayPwm2 else dayPwm1
     val night2: Int get() = if (separateOutputs) nightPwm2 else nightPwm1
 
