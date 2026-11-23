@@ -9,3 +9,6 @@ java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
+
+// The real methods also throw android.os.RemoteException (checked in Java): left out, this module has no Android
+// classes and Kotlin callers do not check exceptions.

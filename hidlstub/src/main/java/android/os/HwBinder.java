@@ -8,11 +8,11 @@ public abstract class HwBinder implements IHwBinder {
         throw new RuntimeException("stub");
     }
 
-    public final void transact(int code, HwParcel request, HwParcel reply, int flags) throws RemoteException {
+    public final void transact(int code, HwParcel request, HwParcel reply, int flags) {
         throw new RuntimeException("stub");
     }
 
-    public abstract void onTransact(int code, HwParcel request, HwParcel reply, int flags) throws RemoteException;
+    public abstract void onTransact(int code, HwParcel request, HwParcel reply, int flags);
 
     public final boolean linkToDeath(DeathRecipient recipient, long cookie) {
         throw new RuntimeException("stub");
@@ -22,8 +22,7 @@ public abstract class HwBinder implements IHwBinder {
         throw new RuntimeException("stub");
     }
 
-    public static final IHwBinder getService(String iface, String serviceName)
-            throws RemoteException, NoSuchElementException {
+    public static final IHwBinder getService(String iface, String serviceName) throws NoSuchElementException {
         throw new RuntimeException("stub");
     }
 
