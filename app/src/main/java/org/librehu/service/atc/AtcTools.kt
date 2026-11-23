@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Point
 import android.graphics.Rect
@@ -290,52 +291,135 @@ object AtcTools {
         if (RootShell.run("svc power reboot") == null) RootShell.run("reboot")
     }
 
+    /** Block device of the logo partition, null without root or partition. */
+    private fun logoBlock(): String? =
+        RootShell
+            .run("ls /dev/block/by-name/logo /dev/block/platform/*/by-name/logo /dev/block/platform/*/*/by-name/logo 2>/dev/null")
+            ?.lineSequence()
+            ?.map { it.trim() }
+            ?.firstOrNull { it.isNotEmpty() }
+
     /** Copy of the logo partition (boot logo and the panel's start-up description) on the internal storage. */
     fun backupLogo(): String? {
         if (!RootShell.isAvailable()) return null
-        val block =
-            RootShell
-                .run("ls /dev/block/by-name/logo /dev/block/platform/*/by-name/logo /dev/block/platform/*/*/by-name/logo 2>/dev/null")
-                ?.lineSequence()
-                ?.map { it.trim() }
-                ?.firstOrNull { it.isNotEmpty() }
-                ?: return null
+        val block = logoBlock() ?: return null
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
         val out = "/sdcard/LibreHU/logo-$stamp.img"
         return RootShell.run("mkdir -p /sdcard/LibreHU && dd if=$block of=$out bs=1M 2>&1 && sync", timeoutS = 60)?.let { out }
     }
 
+    /** MetaZone addresses of the panel, as the LibreHU / stock kernel and the boot loader read them. */
+    private const val MZ_ROTATION = 0x10033
+    private const val MZ_LCM_TYPE = 0x1019C
+    private const val MZ_MIPI_LANE = 0x101DA
+    private const val MZ_MIPI_TABLE_LEN = 0x101DB
+    private const val MZ_MIPI_CLK = 0x101DC
+    private const val MZ_WIDTH = 0x101DD
+    private const val MZ_HEIGHT = 0x101DE
+    private const val MZ_BIT = 0x101EE
+
     /**
-     * New boot logo from a picture: fitted in the screen (its real size, black around), BGRA, top row first, alpha
-     * 0xFF, as ATC Settings writes it. The logo partition is copied first ([backupLogo]); nothing is written without
-     * that copy.
+     * What is known of the screen: panel of the MetaZone (size, interface, rotation), what the kernel drives
+     * (`/sys/class/graphics/fb0/modes`), what Android shows, the boot loader's `lcm=` name, the logo partition's header.
+     * The panel's part number is stored nowhere on the unit: not shown.
+     */
+    data class ScreenInfo(
+        val mzWidth: Int?,
+        val mzHeight: Int?,
+        val mzRotation: Int?,
+        val mzLcmType: Int?,
+        val mipiLanes: Int?,
+        val mipiClock: Int?,
+        val mipiCommands: Int?,
+        val bits: Int?,
+        val propRotation: Int?,
+        val kernelMode: String?,
+        val androidSize: String,
+        val lcmName: String?,
+        val logo: org.librehu.core.unit.LogoHeader?,
+    ) {
+        /** MIPI DSI panel driven directly (start-up commands in the MetaZone), or LVDS through a bridge. */
+        val isMipi: Boolean? get() = mipiCommands?.let { it > 0 }
+
+        fun plan(extraRotation: Int = 0) =
+            org.librehu.core.unit.LogoPlan.plan(logo, mzWidth, mzHeight, mzRotation, propRotation, extraRotation)
+    }
+
+    fun screenInfo(context: Context): ScreenInfo? {
+        if (!RootShell.isAvailable()) return null
+        val mz =
+            (read(context, listOf(MZ_ROTATION, MZ_LCM_TYPE, MZ_MIPI_LANE, MZ_MIPI_TABLE_LEN, MZ_MIPI_CLK, MZ_WIDTH, MZ_HEIGHT, MZ_BIT)) as? Result.Values)
+                ?.values
+        val logo =
+            logoBlock()?.let { block ->
+                RootShell
+                    .run("od -An -tx1 -v -N ${org.librehu.core.unit.LogoHeader.HEADER_BYTES} $block", timeoutS = 20)
+                    ?.let { org.librehu.core.unit.LogoHeader.parseOd(it) }
+            }
+        val size = Point()
+        @Suppress("DEPRECATION")
+        context.getSystemService(WindowManager::class.java).defaultDisplay.getRealSize(size)
+        val cmdline = RootShell.read("/proc/cmdline").orEmpty()
+        return ScreenInfo(
+            mzWidth = mz?.get(MZ_WIDTH),
+            mzHeight = mz?.get(MZ_HEIGHT),
+            mzRotation = mz?.get(MZ_ROTATION),
+            mzLcmType = mz?.get(MZ_LCM_TYPE),
+            mipiLanes = mz?.get(MZ_MIPI_LANE),
+            mipiClock = mz?.get(MZ_MIPI_CLK),
+            mipiCommands = mz?.get(MZ_MIPI_TABLE_LEN),
+            bits = mz?.get(MZ_BIT),
+            propRotation = RootShell.run("getprop persist.vendor.hwc.hwrotation")?.trim()?.toIntOrNull(),
+            kernelMode = RootShell.read("/sys/class/graphics/fb0/modes")?.trim()?.lineSequence()?.firstOrNull(),
+            androidSize = "${size.x}x${size.y}",
+            lcmName = Regex("""(?:^|\s)lcm=(\S+)""").find(cmdline)?.groupValues?.get(1),
+            logo = logo,
+        )
+    }
+
+    /**
+     * New boot logo from a picture, in the format the boot loader draws: the panel's own size and orientation (the
+     * MetaZone's, checked against the logo descriptor at 0x500: [org.librehu.core.unit.LogoPlan]), BGRA, top row first,
+     * alpha 0xFF. The picture is fitted, black around, in the screen as the driver sees it, then turned like ATC
+     * Settings does (MetaZone rotation 0x10033) plus [extraRotation]. Nothing is written when the header disagrees with
+     * the panel, or without a copy of the partition first ([backupLogo]).
      */
     fun writeLogo(
         context: Context,
         uri: Uri,
+        extraRotation: Int = 0,
     ): LogoResult {
         if (!RootShell.isAvailable()) return LogoResult(false, null, "root")
+        val info = screenInfo(context) ?: return LogoResult(false, null, "root")
+        val plan = info.plan(extraRotation)
+        plan.refused?.let { return LogoResult(false, null, it) }
         val backup = backupLogo() ?: return LogoResult(false, null, "backup")
-        val size = Point()
-        @Suppress("DEPRECATION")
-        context.getSystemService(WindowManager::class.java).defaultDisplay.getRealSize(size)
-        val w = maxOf(size.x, size.y)
-        val h = min(size.x, size.y)
         val src =
             context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
                 ?: return LogoResult(false, backup, "image")
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        Canvas(bmp).apply {
+        // Screen as the driver sees it: the panel turned back by the rotation.
+        val sideways = plan.rotation == 90 || plan.rotation == 270
+        val vw = if (sideways) plan.height else plan.width
+        val vh = if (sideways) plan.width else plan.height
+        val view = Bitmap.createBitmap(vw, vh, Bitmap.Config.ARGB_8888)
+        Canvas(view).apply {
             drawColor(Color.BLACK)
-            val scale = min(w.toFloat() / src.width, h.toFloat() / src.height)
+            val scale = min(vw.toFloat() / src.width, vh.toFloat() / src.height)
             val dw = (src.width * scale).roundToInt()
             val dh = (src.height * scale).roundToInt()
-            val left = (w - dw) / 2
-            val top = (h - dh) / 2
+            val left = (vw - dw) / 2
+            val top = (vh - dh) / 2
             drawBitmap(src, null, Rect(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG))
         }
+        val bmp =
+            if (plan.rotation == 0) {
+                view
+            } else {
+                Bitmap.createBitmap(view, 0, 0, vw, vh, Matrix().apply { postRotate(plan.rotation.toFloat()) }, true)
+            }
+        if (bmp.width != plan.width || bmp.height != plan.height) return LogoResult(false, backup, "logo_rotation")
         // ARGB_8888 is stored R, G, B, A: swapped to B, G, R, A.
-        val buf = ByteBuffer.allocate(w * h * 4)
+        val buf = ByteBuffer.allocate(plan.width * plan.height * 4)
         bmp.copyPixelsToBuffer(buf)
         val px = buf.array()
         for (i in px.indices step 4) {
@@ -349,10 +433,11 @@ object AtcTools {
         file.setReadable(true, false)
         val r = helper(context, "logo '${file.absolutePath}'")
         file.delete()
+        val done = "${plan.width}x${plan.height}, ${plan.rotation}°"
         return when {
             r == null -> LogoResult(false, backup, "root")
             r["error"] != null -> LogoResult(false, backup, r["error"])
-            r["logo"] == "0" -> LogoResult(true, backup, "${w}x$h")
+            r["logo"] == "0" -> LogoResult(true, backup, done)
             else -> LogoResult(false, backup, "writelogo=${r["logo"]}")
         }
     }

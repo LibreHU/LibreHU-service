@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
             Thread({
                 val r =
                     org.librehu.service.atc.AtcTools
-                        .writeLogo(applicationContext, uri)
+                        .writeLogo(applicationContext, uri, org.librehu.service.ui.AtcLogoState.extraRotation.value)
                 val text =
                     when {
                         r.ok -> getString(R.string.atc_logo_done, r.detail.orEmpty(), r.backup.orEmpty())

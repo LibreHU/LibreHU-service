@@ -337,9 +337,51 @@ private fun LogoCard(actions: AppActions) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val status by AtcLogoState.status
+    val info by AtcLogoState.info
+    var extra by AtcLogoState.extraRotation
     var confirm by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (AtcLogoState.info.value == null) {
+            AtcLogoState.info.value = withContext(Dispatchers.IO) { AtcTools.screenInfo(context.applicationContext) }
+        }
+    }
+    val plan = info?.plan(extra)
     Card(stringResource(R.string.atc_logo_title)) {
         Hint(stringResource(R.string.atc_logo_hint))
+        info?.let { i ->
+            val panel =
+                if (i.mzWidth != null && i.mzHeight != null) "${i.mzWidth}x${i.mzHeight}" else "?"
+            val kind =
+                when (i.isMipi) {
+                    true -> stringResource(R.string.atc_screen_mipi, i.mipiLanes ?: 0, i.mipiClock ?: 0, i.mipiCommands ?: 0)
+                    false -> stringResource(R.string.atc_screen_lvds)
+                    null -> "?"
+                }
+            Hint(stringResource(R.string.atc_screen_panel, panel, kind, i.bits ?: 0, i.mzLcmType ?: -1))
+            Hint(
+                stringResource(
+                    R.string.atc_screen_driven,
+                    i.kernelMode ?: "?",
+                    i.androidSize,
+                    i.mzRotation ?: -1,
+                    i.propRotation?.toString() ?: "-",
+                    i.lcmName ?: "-",
+                ),
+            )
+            Hint(
+                i.logo?.let { l ->
+                    stringResource(
+                        R.string.atc_screen_logo_header,
+                        l.mrfVersion.orEmpty(),
+                        "${l.logoWidth}x${l.logoHeight}",
+                        l.logoBpp,
+                        "${l.panelWidth}x${l.panelHeight}",
+                        if (l.hasLvdsTable) "LVDS" else "-",
+                    )
+                } ?: stringResource(R.string.atc_screen_logo_unknown),
+            )
+            plan?.refused?.let { StatusLine(stringResource(R.string.atc_logo_refused, it), false) }
+        }
         status?.let { StatusLine(it.first, it.second) }
         Actions {
             Pill(stringResource(R.string.atc_logo_backup)) {
@@ -354,14 +396,30 @@ private fun LogoCard(actions: AppActions) {
                         }
                 }
             }
-            Pill(stringResource(R.string.atc_logo_pick)) { confirm = true }
+            Pill(stringResource(R.string.atc_logo_pick), enabled = info != null && plan?.refused == null) { confirm = true }
+        }
+        Hint(stringResource(R.string.atc_logo_turn_hint))
+        Actions {
+            for (deg in listOf(0, 90, 180, 270)) {
+                Pill(if (deg == 0) stringResource(R.string.atc_logo_turn_none) else "+$deg°", selected = extra == deg) {
+                    extra = deg
+                }
+            }
         }
     }
     if (confirm) {
         CarAlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text(stringResource(R.string.atc_logo_title)) },
-            text = { Text(stringResource(R.string.atc_logo_confirm)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.atc_logo_confirm,
+                        "${plan?.width ?: 0}x${plan?.height ?: 0}",
+                        plan?.rotation ?: 0,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     confirm = false
@@ -376,4 +434,10 @@ private fun LogoCard(actions: AppActions) {
 /** Result of the last logo operation, shown by [LogoCard] (the picture is chosen in the activity). */
 object AtcLogoState {
     val status = mutableStateOf<Pair<String, Boolean?>?>(null)
+
+    /** Screen and logo partition, read once (root). */
+    val info = mutableStateOf<AtcTools.ScreenInfo?>(null)
+
+    /** Extra clockwise turn chosen by the user, added to the MetaZone rotation. */
+    val extraRotation = mutableStateOf(0)
 }

@@ -153,11 +153,41 @@ et **YGPS** (`com.mediatek.ygps/.YgpsActivity`, test GPS MediaTek : satellites, 
 journal NMEA). Ouverts en root (`am start`) s'ils ne sont pas exportés.
 
 ## Logo de démarrage
-L'image est ajustée à la taille réelle de l'écran (fond noir), convertie en BGRA, ligne du haut en premier, alpha
-0xFF : le format qu'ATC Settings produit depuis un BMP. **Avant toute écriture**, la partition `logo` est copiée
-(`dd`) dans `/sdcard/LibreHU/logo-<date>.img` ; sans copie, rien n'est écrit. La partition contient aussi la
-description de démarrage de la dalle (`logo.mrf`) : seule l'API d'Autochips l'écrit. Restauration :
-`dd if=/sdcard/LibreHU/logo-<date>.img of=/dev/block/by-name/logo` (root) ou `fastboot flash logo logo-<date>.img`.
+### Partition `logo` (format MRF d'Autochips)
+Relevé sur deux unités UJC201 (22/11/2026) :
+
+| Offset | Contenu |
+|---|---|
+| 0x0 | en-tête MediaTek « logo » |
+| 0x200 | `MRFv1.1.1`, version à 0x218 (`V2.2.4`), table des entrées |
+| 0x300 | bloc dalle `8257Pa` : largeur 0x318, hauteur 0x31C |
+| 0x500 | descripteur `Logo` : taille en octets 0x508, largeur 0x510, hauteur 0x514, bits par pixel 0x518, copie par défaut 0x524 |
+| 0xE00 | `[Lvds_Init_S]` : table de démarrage du pont LVDS |
+| 0x1200 | pixels du logo (entrée 2 de `writelogo`), BGRA, ligne du haut en premier |
+
+Le chargeur de démarrage (LK) dessine le logo à la taille de la dalle lue dans la MetaZone (0x101DD largeur,
+0x101DE hauteur), pas à celle de l'en-tête. Une unité avait un en-tête 1024x600 et des pixels 720x1280 : le logo
+s'affichait bien, mais un noyau qui prend la taille de l'en-tête se trompe (bandes à l'écran). L'en-tête vient d'un
+flash complet de la partition (usine, outil de flash, sauvegarde restaurée) : `writelogo` n'écrit que les pixels.
+
+### Écriture par LibreHU
+- La taille vient de la MetaZone (repli : le descripteur), l'orientation aussi : la rotation 0x10033, comme ATC Settings
+  sur l'AC8257 (90 ou 270 : dalle montée de côté ; repli : `persist.vendor.hwc.hwrotation`). L'image est ajustée
+  (fond noir) à l'écran tel que le conducteur le voit, puis tournée dans le sens de la dalle. Un quart de tour
+  supplémentaire peut être choisi dans l'appli si le logo apparaît de côté ou à l'envers.
+- **Refus** (rien n'est écrit) : pas d'en-tête MRF ou pas de descripteur `Logo`, pas 32 bits par pixel, taille du
+  descripteur différente de celle de la dalle (`logo_header_size`), pixels qui déborderaient sur la copie par défaut.
+- **Avant toute écriture**, la partition est copiée (`dd`) dans `/sdcard/LibreHU/logo-<date>.img` ; sans copie, rien
+  n'est écrit. Restauration : `dd if=/sdcard/LibreHU/logo-<date>.img of=/dev/block/by-name/logo` (root),
+  `fastboot flash logo logo-<date>.img`, ou TWRP.
+- Code : `core/.../unit/LogoPartition.kt` (lecture de l'en-tête, décision, tests), `AtcTools.screenInfo` /
+  `writeLogo`.
+
+### Infos écran affichées
+Carte « Logo de démarrage » de l'onglet ATC : dalle de la MetaZone (taille, MIPI DSI avec voies, horloge et nombre de
+commandes de démarrage, ou LVDS par un pont ; bits ; type 0x1019C), mode du noyau (`/sys/class/graphics/fb0/modes`),
+taille Android, rotations, nom `lcm=` donné par le LK (`/proc/cmdline`), en-tête de la partition logo. La référence
+commerciale de la dalle n'est stockée nulle part sur l'unité : elle n'est pas affichée.
 
 ## Limites
 Non testé sur l'unité au moment de l'écriture (signatures lues dans le code décompilé de MtkSettings et ivi-settings).

@@ -844,14 +844,23 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="atc_arm2_confirm">L\'ARM2 reçoit les réglages enregistrés (« generate MDP » d\'ATC Settings). Continuer ?</string>
     <string name="atc_arm2_done">Envoyé à l\'ARM2</string>
     <string name="atc_logo_title">Logo de démarrage</string>
-    <string name="atc_logo_hint">Remplace le logo de démarrage par une image (ajustée à l\'écran, fond noir), par l\'API d\'Autochips. La partition logo, qui contient aussi la description de démarrage de la dalle, est d\'abord copiée dans /sdcard/LibreHU : rien n\'est écrit sans cette copie. Restauration : dd de la copie vers la partition logo (root) ou fastboot flash logo.</string>
+    <string name="atc_logo_hint">Remplace le logo de démarrage par une image (ajustée à l\'écran, noir autour), par l\'API d\'Autochips, au format que dessine le chargeur de démarrage : taille propre de la dalle (MetaZone) et son orientation. Écrit seulement si l\'en-tête de la partition logo correspond à la dalle ; la partition, qui contient aussi la description de démarrage de la dalle, est copiée d\'abord.</string>
     <string name="atc_logo_backup">Copier la partition logo</string>
     <string name="atc_logo_backup_done">Copie : %1$s</string>
     <string name="atc_logo_backup_failed">Copie de la partition logo impossible (root, partition introuvable) : rien n\'est écrit</string>
     <string name="atc_logo_pick">Choisir une image…</string>
-    <string name="atc_logo_confirm">La partition logo est copiée, puis l\'image devient le logo de démarrage. Continuer ?</string>
+    <string name="atc_logo_confirm">La partition logo est copiée, puis l\'image devient le logo de démarrage (%1$s, tournée de %2$d°). Continuer ?</string>
     <string name="atc_logo_done">Logo écrit (%1$s). Copie : %2$s</string>
     <string name="atc_logo_failed">Logo non écrit : %1$s. Copie : %2$s</string>
+    <string name="atc_logo_refused">Aucun logo ne peut être écrit sur cette unité : %1$s. logo_header_size : l\'en-tête de la partition logo (première taille) n\'est pas celui de la dalle (seconde taille) ; le chargeur de démarrage dessine avec celle de la dalle, LibreHU laisse donc cette partition telle quelle.</string>
+    <string name="atc_logo_turn_hint">Si le logo apparaît de côté ou à l\'envers au prochain démarrage, tournez-le ici et écrivez-le à nouveau.</string>
+    <string name="atc_logo_turn_none">Comme ATC Settings</string>
+    <string name="atc_screen_panel">Dalle (MetaZone) : %1$s, %2$s, %3$d bits, type %4$d</string>
+    <string name="atc_screen_mipi">MIPI DSI %1$d voies, %2$d MHz, %3$d commandes de démarrage</string>
+    <string name="atc_screen_lvds">LVDS par un pont</string>
+    <string name="atc_screen_driven">Noyau : %1$s · Android : %2$s · rotation MetaZone %3$d°, propriété %4$s · chargeur lcm=%5$s</string>
+    <string name="atc_screen_logo_header">Partition logo : %1$s, logo %2$s %3$d bits, bloc dalle %4$s, table de pont %5$s</string>
+    <string name="atc_screen_logo_unknown">Partition logo : en-tête illisible (root, ou partition non MRF)</string>
     <string name="atc_fr_format">Format de la caméra (comme le règle Jancar)</string>
     <string name="atc_fr_format_other">Les valeurs actuelles ne correspondent à aucun format (réglées à la main ou par ATC Settings).</string>
     <string name="atc_fr_format_hint">Lu au démarrage par le chargeur, l\'ARM2 et le pilote caméra : il vaut pour le recul rapide et pour la vue LibreHU, après un redémarrage. AHD 720p / 1080p à 25 ou 30 images par seconde, comme l\'envoie la caméra : un mauvais format donne une image absente ou qui défile. Pas de mode 60 i/s dans les réglages de Jancar ni d\'Autochips.</string>

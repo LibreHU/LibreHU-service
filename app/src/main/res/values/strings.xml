@@ -844,14 +844,23 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="atc_arm2_confirm">The ARM2 gets the saved settings (\"generate MDP\" of ATC Settings). Continue?</string>
     <string name="atc_arm2_done">Sent to the ARM2</string>
     <string name="atc_logo_title">Boot logo</string>
-    <string name="atc_logo_hint">Replaces the boot logo with a picture (fitted to the screen, black around), through Autochips\' API. The logo partition, which also holds the panel start-up description, is copied first to /sdcard/LibreHU: nothing is written without that copy. Restore: dd of the copy to the logo partition (root) or fastboot flash logo.</string>
+    <string name="atc_logo_hint">Replaces the boot logo with a picture (fitted to the screen, black around), through Autochips\' API, in the format the boot loader draws: the panel\'s own size (MetaZone) and orientation. Written only when the logo partition\'s header matches the panel; the partition, which also holds the panel start-up description, is copied first.</string>
     <string name="atc_logo_backup">Copy the logo partition</string>
     <string name="atc_logo_backup_done">Copy: %1$s</string>
     <string name="atc_logo_backup_failed">Copy of the logo partition failed (root, partition not found): nothing written</string>
     <string name="atc_logo_pick">Choose a picture…</string>
-    <string name="atc_logo_confirm">The logo partition is copied, then the picture becomes the boot logo. Continue?</string>
+    <string name="atc_logo_confirm">The logo partition is copied, then the picture becomes the boot logo (%1$s, turned %2$d°). Continue?</string>
     <string name="atc_logo_done">Logo written (%1$s). Copy: %2$s</string>
     <string name="atc_logo_failed">Logo not written: %1$s. Copy: %2$s</string>
+    <string name="atc_logo_refused">No logo can be written on this unit: %1$s. logo_header_size: the logo partition\'s header (first size) is not the panel\'s (second size); the boot loader draws with the panel\'s, so LibreHU leaves this partition as it is.</string>
+    <string name="atc_logo_turn_hint">If the logo shows sideways or upside down at the next start, turn it here and write it again.</string>
+    <string name="atc_logo_turn_none">As ATC Settings</string>
+    <string name="atc_screen_panel">Panel (MetaZone): %1$s, %2$s, %3$d bits, type %4$d</string>
+    <string name="atc_screen_mipi">MIPI DSI %1$d lanes, %2$d MHz, %3$d start-up commands</string>
+    <string name="atc_screen_lvds">LVDS through a bridge</string>
+    <string name="atc_screen_driven">Kernel: %1$s · Android: %2$s · rotation MetaZone %3$d°, property %4$s · boot loader lcm=%5$s</string>
+    <string name="atc_screen_logo_header">Logo partition: %1$s, logo %2$s %3$d bits, panel block %4$s, bridge table %5$s</string>
+    <string name="atc_screen_logo_unknown">Logo partition: header unreadable (root, or not an MRF partition)</string>
     <string name="atc_fr_format">Camera format (as Jancar sets it)</string>
     <string name="atc_fr_format_other">Current values match no format (set by hand or by ATC Settings).</string>
     <string name="atc_fr_format_hint">Read at start-up by the boot loader, the ARM2 and the camera driver: it applies to the fast reverse and to the LibreHU view, after a restart. AHD 720p / 1080p at 25 or 30 frames per second, as the camera sends it: a wrong format gives no picture or a rolling one. No 60 fps mode in Jancar\'s nor Autochips\' settings.</string>
