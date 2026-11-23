@@ -224,7 +224,9 @@ class FrontLed private constructor(
         blinking = true
         val n = count.coerceIn(1, 10)
         val colour = s.panel != PanelType.WHITE
-        val white = s.panel != PanelType.COLOUR
+        // The PWM outputs only once the user picked "White", as in apply(): with "Not sure" the blink sent 0F 02
+        // (Jancar's AVDD of the screen on the UJC201) and left it at the day / night backlight level.
+        val white = s.panel == PanelType.WHITE
         val on = Mcu.frontLed(s.blinkRed, s.blinkGreen, s.blinkBlue, LedMode.MANUAL.code)
         val off = Mcu.frontLed(0, 0, 0, LedMode.MANUAL.code)
         val lit = if (headlights == true) s.nightPwm1 else s.dayPwm1
