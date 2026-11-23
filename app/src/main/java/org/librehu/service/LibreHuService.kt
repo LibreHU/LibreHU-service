@@ -86,6 +86,9 @@ class LibreHuService : Service() {
     private var linkDetail = ""
 
     private var protocolName = ""
+
+    /** Board read from the kernel (jancar_board_id) at the hardware start; A0_AN profile while unknown. */
+    private var boardProfile = org.librehu.core.unit.BoardProfiles.forBoardId(null)
     private var jancar = false
     private var protocol: McuProtocol? = null
 
@@ -340,8 +343,19 @@ class LibreHuService : Service() {
                 setLink(Link.NO_MCU, e.message ?: "")
                 return
             }
+        boardProfile = org.librehu.core.unit.BoardProfiles.current()
+        val bp = boardProfile
+        log(
+            "Board ${bp.boardId ?: "unknown (${org.librehu.core.unit.BoardProfiles.readBoardAdc() ?: "no board id node"})"}: " +
+                "${bp.chip?.label ?: "no audio platform"} (${bp.platform})",
+        )
+        // Only a BD37534 is driven: BD37534 commands sent to another chip would set wrong registers.
+        val chipSupported = bp.chip == org.librehu.core.unit.AudioChip.BD37534
         val dsp =
-            if (profile.board.audioChip == "bd37534") {
+            if (profile.board.audioChip == "bd37534" && !chipSupported) {
+                log("Audio chip ${bp.chip?.label ?: "unknown"} of board ${bp.boardId}: not driven by LibreHU yet, BD37534 left off")
+                null
+            } else if (profile.board.audioChip == "bd37534") {
                 try {
                     Bd37534(I2cDevice.open(profile.board.audioBus, profile.board.audioAddress))
                 } catch (e: IOException) {
@@ -738,6 +752,24 @@ class LibreHuService : Service() {
             override fun isExternalAmpEnabled() = settings().externalAmp
 
             override fun setExternalAmpEnabled(enabled: Boolean) = change { it.copy(externalAmp = enabled) }
+
+            override fun getAndroidInputGain() = settings().androidInputGain
+
+            override fun setAndroidInputGain(db: Int) = change { it.copy(androidInputGain = db) }
+
+            override fun getBoardInfo(): Bundle {
+                val bp = boardProfile
+                return Bundle().apply {
+                    putString("boardId", bp.boardId.orEmpty())
+                    putBoolean("known", bp.known)
+                    putString("platform", bp.platform)
+                    putString("chip", bp.chip?.label.orEmpty())
+                    putBoolean("supported", bp.chip == org.librehu.core.unit.AudioChip.BD37534)
+                    putInt("jancarAndroidGain", bp.androidGainDb)
+                    putString("iviConfigSection", bp.iviConfigSection.orEmpty())
+                    putString("tuner", bp.tuner.orEmpty())
+                }
+            }
 
             override fun sendMcuFrame(
                 cmd: Int,

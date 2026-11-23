@@ -89,6 +89,9 @@
     <string name="audio_balance">Balance and fader</string>
     <string name="audio_outputs">Outputs</string>
     <string name="external_amp_hint">REM output switched with the ignition</string>
+    <string name="android_input_gain">Android input gain</string>
+    <string name="android_input_gain_hint">Analog gain of the sound processor on Android\'s audio, before the volume. 0 dB by default: the most headroom. Jancar\'s firmware sets +%1$d dB on this board (%2$s). Too high, loud songs distort at any volume (the chip takes 2.1 Vrms at most): above +3 dB, raise it only if no distortion is heard.</string>
+    <string name="chip_not_supported">Sound processor %1$s (board %2$s): not driven by LibreHU yet. Volume, tone and this gain stay with the default settings of the chip.</string>
     <string name="bt_no_phone">No phone connected</string>
     <string name="bt_battery">Phone battery</string>
     <string name="bt_signal">Network</string>

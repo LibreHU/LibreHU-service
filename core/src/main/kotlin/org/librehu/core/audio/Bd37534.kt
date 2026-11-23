@@ -61,6 +61,16 @@ class Bd37534(
         return w(INPUT_SELECT, 0x80 or (input and 0x7F)) && writeInputGain()
     }
 
+    /**
+     * Gain of the selected input alone (0x06, 0..+16 dB here, no pop noise per the datasheet), mute bit kept. The
+     * gain stage comes before the volume: it clips on loud content at any volume once the input level times the gain
+     * goes past about 2.1 Vrms (datasheet: maximum input voltage 2.1 Vrms min, 2.3 typ, at THD+N 1 %).
+     */
+    fun setInputGain(gainDb: Int): Boolean {
+        inputGainDb = gainDb.coerceIn(0, 16)
+        return writeInputGain()
+    }
+
     /** Soft mute through bit 7 of the input gain register, followed by 50 ms for the ramp when muting. */
     fun setMute(on: Boolean): Boolean {
         muted = on
@@ -192,6 +202,12 @@ class Bd37534(
         const val TONE_MAX = 20
         const val SUB_BASE_DB = -5
         const val SUB_MAX_LEVEL = 12
+
+        /**
+         * Gain of the Android input chosen in LibreHU (0 by default: most headroom, see [setInputGain]); ivi-services
+         * sets +4 dB on A0 boards and +5 dB on A1 boards ([org.librehu.core.unit.BoardProfile.androidGainDb]).
+         */
+        const val ANDROID_GAIN_MAX = 8
         const val SUB_DEFAULT_LEVEL = 6
         const val SUB_FC_120HZ = 3
 

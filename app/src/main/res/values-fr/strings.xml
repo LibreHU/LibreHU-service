@@ -89,6 +89,9 @@
     <string name="audio_balance">Balance et fader</string>
     <string name="audio_outputs">Sorties</string>
     <string name="external_amp_hint">Sortie REM commandée avec le contact</string>
+    <string name="android_input_gain">Gain de l\'entrée Android</string>
+    <string name="android_input_gain_hint">Gain analogique de la puce son sur le son d\'Android, avant le volume. 0 dB par défaut : le plus de marge. Le firmware de Jancar met +%1$d dB sur cette carte (%2$s). Trop haut, les morceaux forts saturent à tout volume (la puce accepte 2,1 Vrms au plus) : au-delà de +3 dB, ne montez que si aucune distorsion ne s\'entend.</string>
+    <string name="chip_not_supported">Puce son %1$s (carte %2$s) : pas encore pilotée par LibreHU. Volume, tonalité et ce gain restent aux réglages par défaut de la puce.</string>
     <string name="bt_no_phone">Aucun téléphone connecté</string>
     <string name="bt_battery">Batterie du téléphone</string>
     <string name="bt_signal">Réseau</string>

@@ -36,6 +36,13 @@ data class AudioState(
     val externalAmp: Boolean = false,
     /** 0 = Android, 1 = AUX. */
     val source: Int = 0,
+    /** Gain of the Android input, dB. */
+    val androidInputGain: Int = 0,
+    /** Board id ("" when unknown), sound processor, whether LibreHU drives it, Jancar's Android input gain. */
+    val boardId: String = "",
+    val chip: String = "",
+    val chipSupported: Boolean = true,
+    val jancarAndroidGain: Int = 4,
 )
 
 data class PairingRequest(
@@ -176,6 +183,11 @@ class ServiceClient(
                     subLevel = s.subwooferLevel,
                     externalAmp = s.isExternalAmpEnabled,
                     source = s.audioSource,
+                    androidInputGain = s.androidInputGain,
+                    boardId = s.boardInfo.getString("boardId").orEmpty(),
+                    chip = s.boardInfo.getString("chip").orEmpty(),
+                    chipSupported = s.boardInfo.getBoolean("supported", true),
+                    jancarAndroidGain = s.boardInfo.getInt("jancarAndroidGain", 4),
                 )
         }
     }

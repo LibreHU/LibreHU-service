@@ -310,7 +310,8 @@ fun DiagScreen(
                     "link=${link.state} ${link.detail}",
                     "protocol=${link.protocol}",
                     "api=${client.api != null} bt=${client.bt != null}",
-                    "board=${boardId ?: "?"} audio=${JacDebug.audioChip(boardId) ?: "?"}",
+                    "board=${boardId ?: "? (adc ${org.librehu.core.unit.BoardProfiles.readBoardAdc() ?: "-"})"} audio=${JacDebug.audioChip(boardId) ?: "?"} " +
+                        "platform=${org.librehu.core.unit.BoardProfiles.forBoardId(boardId).platform}",
                     "vehicle=$v",
                 ).joinToString("\n"),
                 mono = true,

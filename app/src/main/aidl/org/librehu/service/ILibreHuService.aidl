@@ -111,4 +111,20 @@ interface ILibreHuService {
      * shown, with its unit), "unit", "number" (double, when scaled) and "error" (boolean). Empty when not connected.
      */
     Bundle getObdCarValues();
+
+    // --- API 9 ---
+
+    /**
+     * Gain of the Android input of the sound processor, dB (0..8, 0 by default). Jancar's firmware sets +4 dB on A0
+     * boards and +5 dB on A1 boards; the gain stage is before the volume and clips loud content at any volume when too
+     * high. Only the ROHM BD37534 boards (see getBoardInfo).
+     */
+    int getAndroidInputGain();
+    void setAndroidInputGain(int db);
+    /**
+     * Board of the head unit: "boardId" (String, empty when unknown), "known" (boolean), "platform" (ivi-services
+     * class), "chip" (ROHM BD37534, ROHM BU32107, AKM AK7604, empty), "supported" (boolean: LibreHU drives this chip),
+     * "jancarAndroidGain" (int, dB), "iviConfigSection" (String), "tuner" (T, W, empty).
+     */
+    Bundle getBoardInfo();
 }

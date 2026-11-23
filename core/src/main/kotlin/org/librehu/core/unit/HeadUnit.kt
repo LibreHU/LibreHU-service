@@ -72,6 +72,8 @@ data class HeadUnitSettings(
     val subwoofer: Boolean = false,
     val subLevel: Int = Bd37534.SUB_DEFAULT_LEVEL,
     val externalAmp: Boolean = false,
+    /** Gain of the Android input of the BD37534, dB (0..[Bd37534.ANDROID_GAIN_MAX]). */
+    val androidInputGain: Int = 0,
 )
 
 interface SettingsStore {
@@ -431,7 +433,11 @@ class HeadUnit(
             val dsp = dsp ?: return@execute
             val wasMuted = dsp.isMuted
             if (!wasMuted) dsp.setMute(true)
-            if (aux) dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB) else dsp.setInput(Bd37534.INPUT_ANDROID, 0)
+            if (aux) {
+                dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB)
+            } else {
+                dsp.setInput(Bd37534.INPUT_ANDROID, settings.androidInputGain)
+            }
             applyMixing()
             if (!wasMuted) dsp.setMute(false)
             log("Audio source: ${if (aux) "AUX" else "Android"}")
@@ -608,6 +614,9 @@ class HeadUnit(
             if (old == null || old.subwoofer != s.subwoofer || old.subLevel != s.subLevel) {
                 dsp.setSubwoofer(s.subwoofer, s.subLevel)
             }
+            if ((old == null || old.androidInputGain != s.androidInputGain) && source != SOURCE_AUX) {
+                dsp.setInputGain(s.androidInputGain)
+            }
         }
         applyMute(s.muted || !state.powered || forcedMute)
     }
@@ -627,6 +636,7 @@ class HeadUnit(
             fade = fade.coerceIn(0, Bd37534.FADER_MAX),
             loudness = loudness.coerceIn(0, 15),
             subLevel = subLevel.coerceIn(0, Bd37534.SUB_MAX_LEVEL),
+            androidInputGain = androidInputGain.coerceIn(0, Bd37534.ANDROID_GAIN_MAX),
         )
 
     private inline fun update(transform: (VehicleState) -> VehicleState) {

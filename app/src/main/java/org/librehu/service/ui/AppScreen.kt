@@ -419,6 +419,16 @@ fun AudioScreen(client: ServiceClient) {
                 client.call { it.setExternalAmpEnabled(on) }
             }
         }
+        Card(stringResource(R.string.android_input_gain)) {
+            if (!a.chipSupported) {
+                BodyText(stringResource(R.string.chip_not_supported, a.chip.ifEmpty { "?" }, a.boardId.ifEmpty { "?" }))
+            } else {
+                SliderRow(stringResource(R.string.android_input_gain), a.androidInputGain, 0..Bd37534.ANDROID_GAIN_MAX, {
+                    "+$it dB"
+                }) { v -> client.call { it.setAndroidInputGain(v) } }
+                BodyText(stringResource(R.string.android_input_gain_hint, a.jancarAndroidGain, a.boardId.ifEmpty { "A0_AN ?" }))
+            }
+        }
     }
 }
 

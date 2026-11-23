@@ -118,18 +118,16 @@ object JacDebug {
     fun simVersion() = McuFrame(Mcu.CMD_VERSION, SIM_VERSION.toByteArray(Charsets.US_ASCII))
 
     /** Node ivi-services reads to pick its audio driver (MCU-tools-app docs/ivi_audio.md §2). */
-    const val BOARD_ID_NODE = "/sys/devices/virtual/mtk-adc-cali/mtk-adc-cali/jancar_board_id"
+    const val BOARD_ID_NODE = org.librehu.core.unit.BoardProfiles.BOARD_ID_NODE
 
-    /** Audio chip of a board id, with ivi-services' rule: 4th character A / B / C, else A1 = AK7604, other = BU32107. */
+    /**
+     * Audio chip of a board id, with ivi-services' rule (`Platform.identifyBoardTypeAC8257`, see [BoardProfiles]):
+     * 4th character A -> BD37534; A1 boards: B -> none, other -> AK7604; other boards: other -> BU32107.
+     */
     fun audioChip(boardId: String?): String? {
         val id = boardId?.trim()
         if (id == null || id.length < 4) return null
-        return when (id[3]) {
-            'A' -> "ROHM BD37534"
-            'B' -> "ROHM BU32107"
-            'C' -> "AKM AK7604"
-            else -> if (id.startsWith("A1")) "AKM AK7604" else "ROHM BU32107"
-        }
+        return org.librehu.core.unit.BoardProfiles.forBoardId(id).chip?.label
     }
 
     // --- Descriptions --------------------------------------------------------------------------------------------

@@ -9,8 +9,11 @@ class JacDebugTest {
     @Test
     fun audioChipFromBoardId() {
         assertEquals("ROHM BD37534", JacDebug.audioChip("XYZA01"))
+        assertEquals("ROHM BD37534", JacDebug.audioChip("A1_AN"))
         assertEquals("AKM AK7604", JacDebug.audioChip("A1xD"))
         assertEquals("ROHM BU32107", JacDebug.audioChip("B2xD"))
+        assertEquals("ROHM BU32107", JacDebug.audioChip("C0_CN"))
+        assertNull(JacDebug.audioChip("A1_BN"))
         assertNull(JacDebug.audioChip("AB"))
         assertNull(JacDebug.audioChip(null))
     }

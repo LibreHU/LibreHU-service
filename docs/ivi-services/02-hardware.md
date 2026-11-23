@@ -5,7 +5,23 @@ C'est ce que le nouveau service devra piloter directement. Sources : `platform/A
 
 ## 2.1 Identification de la carte [A]
 - Board id lu dans `/sys/devices/virtual/mtk-adc-cali/mtk-adc-cali/jancar_board_id` (ex. `A0_AN`).
-- `boardId[0..1]` (`A0`, `A1`) et `boardId[3]` → puce audio : `A` BD37534, `B` BU32107, `C` AK7604.
+- Puce audio, règle exacte de `Platform.identifyBoardTypeAC8257` (désassemblée le 23/11/2026, ivi-services 3.0.0 du
+  firmware 260729) : préfixe `boardId[0..1]` et 4e caractère.
+
+  | Préfixe | 4e car. | Plateforme | Puce, bus I2C | Entrées Android / radio / AUX / AV | Gains (dB) | Caisson |
+  |---|---|---|---|---|---|---|
+  | A0, B0, C0, C1, autre | `A` | `Platform_AutoChips_8257_37534` | BD37534, i2c-6 | 11 / 3 / 0 / 0 | 4 / 2 / 5 / 5 | −10 |
+  | A0, B0, C0, C1, autre | autre | `Platform_AutoChips_8257_32107` | BU32107 | 16 / 3 / 4 / 4 | 0 / 11 / 5 / 5 | −18 |
+  | A1 | `A` | `Platform_AutoChips_8257A1_37534` | BD37534, i2c-6 | 11 / 3 / 0 / 0 | 5 / 13 / 5 / 5 | −5 |
+  | A1 | `B` | aucune | — | — | — | — |
+  | A1 | autre | `Platform_AutoChips_8257A1_Ak7604` | AK7604, i2c-5, reset GPIO 14 | 16 / 6 / 1 / 1 | 3 / 4 / −2 / −2 | — |
+  | D0 | `A` | `Platform_Ac8257D_37534` | BD37534 | comme A0 | comme A0 | −10 |
+  | D0 | autre | `Platform_Ac8257D_32107` | BU32107 | comme 32107 | comme 32107 | −18 |
+
+  Section de `ivi-config.ini` : `Audio_A0_AN` (37534, D0 37534), `Audio_A1` (A1 37534, 32107, AK7604). Commun : reset
+  de la puce GPIO 168, MCU `/dev/ttyS1`. Dans LibreHU : `core/.../unit/BoardProfile.kt` (`BoardProfiles.forBoardId`),
+  carte lue dans `jancar_board_id` du noyau (LibreHU, depuis le 23/11/2026 : table du noyau stock, canaux AUXADC 2 et 3) ;
+  seule la BD37534 est pilotée, une autre puce n'est pas touchée.
 - `boardId[4]` → tuner : `T` → id 6, `W` → id 14, **autre (ici `N`) → -1 = détection automatique** (voir §2.6).
 - `isRemove1821` : `AtcMetazone_.readval(65952)` == `0x5A5A5A51` → sens du frein à main inversé.
 

@@ -25,6 +25,7 @@ class PrefsSettingsStore(
             subwoofer = prefs.getBoolean("subwoofer", d.subwoofer),
             subLevel = prefs.getInt("sub_level", d.subLevel),
             externalAmp = prefs.getBoolean("external_amp", d.externalAmp),
+            androidInputGain = prefs.getInt("android_input_gain", d.androidInputGain),
         )
     }
 
@@ -42,6 +43,7 @@ class PrefsSettingsStore(
             .putBoolean("subwoofer", settings.subwoofer)
             .putInt("sub_level", settings.subLevel)
             .putBoolean("external_amp", settings.externalAmp)
+            .putInt("android_input_gain", settings.androidInputGain)
             .apply()
     }
 }
