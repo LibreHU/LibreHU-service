@@ -444,13 +444,17 @@ private fun MicrophoneCard() {
         .get(context)
         .collectAsStateWithLifecycle()
     var now by remember { mutableStateOf<Pair<Int?, Boolean?>>(null to null) }
+    var library by remember { mutableStateOf<org.librehu.service.EcnrLibrary?>(null) }
     LaunchedEffect(mic) {
         kotlinx.coroutines.delay(300)
-        now =
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            now =
                 org.librehu.service.Microphone
                     .current()
-            }
+            library =
+                org.librehu.service.Microphone
+                    .ecnrLibrary()
+        }
     }
     Card(stringResource(R.string.mic_title)) {
         BodyText(stringResource(R.string.mic_gain))
@@ -482,6 +486,60 @@ private fun MicrophoneCard() {
                 now.second?.let { stringResource(if (it) R.string.on else R.string.off) } ?: "?",
             ),
         )
+        BodyText(stringResource(R.string.mic_webrtc))
+        Hint(
+            stringResource(
+                when (library) {
+                    org.librehu.service.EcnrLibrary.WEBRTC -> R.string.mic_webrtc_installed
+                    org.librehu.service.EcnrLibrary.OTHER -> R.string.mic_webrtc_other
+                    org.librehu.service.EcnrLibrary.MISSING -> R.string.mic_webrtc_missing
+                    org.librehu.service.EcnrLibrary.NO_HOOK -> R.string.mic_webrtc_no_hook
+                    null -> R.string.mic_webrtc_checking
+                },
+            ),
+        )
+        if (library == org.librehu.service.EcnrLibrary.WEBRTC) {
+            BodyText(stringResource(R.string.mic_webrtc_aec))
+            Choices(
+                listOf(0 to stringResource(R.string.off), 1 to "AEC3", 2 to stringResource(R.string.mic_webrtc_aecm)),
+                mic.aec,
+            ) { v ->
+                org.librehu.service.Microphone
+                    .update(context) { it.copy(aec = v) }
+            }
+            BodyText(stringResource(R.string.mic_webrtc_ns))
+            Choices(
+                listOf(
+                    0 to stringResource(R.string.off),
+                    1 to stringResource(R.string.mic_webrtc_low),
+                    2 to stringResource(R.string.mic_webrtc_moderate),
+                    3 to stringResource(R.string.mic_webrtc_high),
+                    4 to stringResource(R.string.mic_webrtc_very_high),
+                ),
+                mic.ns,
+            ) { v ->
+                org.librehu.service.Microphone
+                    .update(context) { it.copy(ns = v) }
+            }
+            BodyText(stringResource(R.string.mic_webrtc_agc))
+            Choices(listOf(false to stringResource(R.string.off), true to stringResource(R.string.on)), mic.agc) { v ->
+                org.librehu.service.Microphone
+                    .update(context) { it.copy(agc = v) }
+            }
+            BodyText(stringResource(R.string.mic_webrtc_channel))
+            Choices(
+                listOf(
+                    0 to stringResource(R.string.mic_webrtc_left),
+                    1 to stringResource(R.string.mic_webrtc_right),
+                    2 to stringResource(R.string.mic_webrtc_both),
+                ),
+                mic.micChannel,
+            ) { v ->
+                org.librehu.service.Microphone
+                    .update(context) { it.copy(micChannel = v) }
+            }
+            Hint(stringResource(R.string.mic_webrtc_hint))
+        }
     }
 }
 

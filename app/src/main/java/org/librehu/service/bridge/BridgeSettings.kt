@@ -139,6 +139,30 @@ object BridgeSettings {
         pick("mic_ecnr", r(R.string.mic_ecnr), listOf(-1 to r(R.string.mic_rom), 0 to r(R.string.off), 1 to r(R.string.on)), get = {
             mic.ecnr?.let { if (it) 1 else 0 } ?: -1
         }) { v -> Microphone.update(app) { it.copy(ecnr = if (v < 0) null else v == 1) } }
+        if (Microphone.ecnrLibrary() == org.librehu.service.EcnrLibrary.WEBRTC) {
+            pick("mic_webrtc_aec", r(R.string.mic_webrtc_aec), listOf(0 to r(R.string.off), 1 to "AEC3", 2 to r(R.string.mic_webrtc_aecm)), get = { mic.aec }) { v ->
+                Microphone.update(app) { it.copy(aec = v) }
+            }
+            pick(
+                "mic_webrtc_ns",
+                r(R.string.mic_webrtc_ns),
+                listOf(
+                    0 to r(R.string.off),
+                    1 to r(R.string.mic_webrtc_low),
+                    2 to r(R.string.mic_webrtc_moderate),
+                    3 to r(R.string.mic_webrtc_high),
+                    4 to r(R.string.mic_webrtc_very_high),
+                ),
+                get = { mic.ns },
+            ) { v -> Microphone.update(app) { it.copy(ns = v) } }
+            switch("mic_webrtc_agc", r(R.string.mic_webrtc_agc), get = { mic.agc }) { on -> Microphone.update(app) { it.copy(agc = on) } }
+            pick(
+                "mic_webrtc_channel",
+                r(R.string.mic_webrtc_channel),
+                listOf(0 to r(R.string.mic_webrtc_left), 1 to r(R.string.mic_webrtc_right), 2 to r(R.string.mic_webrtc_both)),
+                get = { mic.micChannel },
+            ) { v -> Microphone.update(app) { it.copy(micChannel = v) } }
+        }
         if (api != null) {
             section(r(R.string.audio_tone))
             val t = api.tone

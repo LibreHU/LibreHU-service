@@ -876,6 +876,25 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="mic_rom">ROM</string>
     <string name="mic_ecnr">Echo cancellation / noise reduction (ECNR 1)</string>
     <string name="mic_hint">Same settings as Jancar\'s factory settings (Mic gain 1 / 2 / 3, ECNR), without ivi-settings: the gain is sent to the audio HAL (MIC1_HW_GAIN / MIC2_HW_GAIN = 3 / 4 / 5) and again at each start; ECNR applies from the next call. Root keeps them in the ROM\'s properties. Now: gain %1$s, ECNR %2$s.</string>
+    <string name="mic_webrtc">WebRTC echo cancellation / noise reduction (calls)</string>
+    <string name="mic_webrtc_installed">LibreHU\'s WebRTC library is installed: the audio HAL uses it during calls when ECNR is on. Changes apply even during a call.</string>
+    <string name="mic_webrtc_other">The audio HAL loads another ECNR library (Jancar\'s uVoice). To use WebRTC: zip ecnr-webrtc (LibreHU Apps, Zips, Drivers), or the LibreHU LineageOS ROM.</string>
+    <string name="mic_webrtc_missing">No ECNR library: calls go through without echo cancellation. To add WebRTC: zip ecnr-webrtc (LibreHU Apps, Zips, Drivers), or the LibreHU LineageOS ROM.</string>
+    <string name="mic_webrtc_no_hook">This vendor\'s audio HAL has no ECNR hook (no libecnrhelper.so): WebRTC cannot be used here.</string>
+    <string name="mic_webrtc_checking">Checking the ECNR library…</string>
+    <string name="mic_webrtc_aec">Echo canceller</string>
+    <string name="mic_webrtc_aecm">AECM (lighter)</string>
+    <string name="mic_webrtc_ns">Noise reduction</string>
+    <string name="mic_webrtc_low">Low</string>
+    <string name="mic_webrtc_moderate">Moderate</string>
+    <string name="mic_webrtc_high">High</string>
+    <string name="mic_webrtc_very_high">Very high</string>
+    <string name="mic_webrtc_agc">Automatic gain</string>
+    <string name="mic_webrtc_channel">Microphone channel</string>
+    <string name="mic_webrtc_left">Left</string>
+    <string name="mic_webrtc_right">Right</string>
+    <string name="mic_webrtc_both">Both (average)</string>
+    <string name="mic_webrtc_hint">AEC3 is WebRTC\'s full echo canceller (finds the echo delay alone); AECM uses less CPU. Noise reduction: a higher level removes more road noise but can make the voice duller. Automatic gain evens out a voice that is too quiet or too loud. Channel: the microphone input the library takes (try Right or Both if the other person hears you badly). Log: adb logcat -s LibreHU-ECNR.</string>
     <string name="aux_mix_level">Android level over AUX</string>
     <string name="atc_ygps">YGPS (GPS test)</string>
     <string name="atc_usb_not_switched">The port did not switch now (role file missing or refused): saved for the next start-up, restart the head unit.</string>

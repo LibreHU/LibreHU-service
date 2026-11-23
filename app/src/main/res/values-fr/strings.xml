@@ -876,6 +876,25 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="mic_rom">ROM</string>
     <string name="mic_ecnr">Annulation d\'écho / réduction du bruit (ECNR 1)</string>
     <string name="mic_hint">Mêmes réglages que les réglages usine Jancar (Gain micro 1 / 2 / 3, ECNR), sans ivi-settings : le gain est envoyé au HAL audio (MIC1_HW_GAIN / MIC2_HW_GAIN = 3 / 4 / 5) et de nouveau à chaque démarrage ; l\'ECNR s\'applique à partir de l\'appel suivant. Avec root, ils sont aussi gardés dans les propriétés de la ROM. Actuellement : gain %1$s, ECNR %2$s.</string>
+    <string name="mic_webrtc">Annulation d\'écho / réduction du bruit WebRTC (appels)</string>
+    <string name="mic_webrtc_installed">La bibliothèque WebRTC de LibreHU est installée : le HAL audio l\'utilise pendant les appels quand l\'ECNR est activé. Les changements s\'appliquent même pendant un appel.</string>
+    <string name="mic_webrtc_other">Le HAL audio charge une autre bibliothèque ECNR (uVoice de Jancar). Pour passer à WebRTC : zip ecnr-webrtc (LibreHU Apps, Zips, Pilotes), ou la ROM LineageOS LibreHU.</string>
+    <string name="mic_webrtc_missing">Aucune bibliothèque ECNR : les appels passent sans annulation d\'écho. Pour ajouter WebRTC : zip ecnr-webrtc (LibreHU Apps, Zips, Pilotes), ou la ROM LineageOS LibreHU.</string>
+    <string name="mic_webrtc_no_hook">Le HAL audio de ce vendor n\'a pas de point d\'accroche ECNR (pas de libecnrhelper.so) : WebRTC n\'est pas utilisable ici.</string>
+    <string name="mic_webrtc_checking">Vérification de la bibliothèque ECNR…</string>
+    <string name="mic_webrtc_aec">Annulation d\'écho</string>
+    <string name="mic_webrtc_aecm">AECM (plus légère)</string>
+    <string name="mic_webrtc_ns">Réduction du bruit</string>
+    <string name="mic_webrtc_low">Faible</string>
+    <string name="mic_webrtc_moderate">Moyenne</string>
+    <string name="mic_webrtc_high">Forte</string>
+    <string name="mic_webrtc_very_high">Très forte</string>
+    <string name="mic_webrtc_agc">Gain automatique</string>
+    <string name="mic_webrtc_channel">Voie du micro</string>
+    <string name="mic_webrtc_left">Gauche</string>
+    <string name="mic_webrtc_right">Droite</string>
+    <string name="mic_webrtc_both">Les deux (moyenne)</string>
+    <string name="mic_webrtc_hint">AEC3 est l\'annulation d\'écho complète de WebRTC (elle trouve seule le retard de l\'écho) ; AECM demande moins de processeur. Réduction du bruit : un niveau plus fort retire plus de bruit de roulement mais peut rendre la voix plus terne. Le gain automatique égalise une voix trop faible ou trop forte. Voie : l\'entrée micro que prend la bibliothèque (essayer Droite ou Les deux si le correspondant vous entend mal). Journal : adb logcat -s LibreHU-ECNR.</string>
     <string name="aux_mix_level">Niveau d\'Android sur l\'AUX</string>
     <string name="atc_ygps">YGPS (test GPS)</string>
     <string name="atc_usb_not_switched">Le port n\'a pas basculé tout de suite (fichier de rôle absent ou refusé) : enregistré pour le prochain démarrage, redémarrer l\'autoradio.</string>
