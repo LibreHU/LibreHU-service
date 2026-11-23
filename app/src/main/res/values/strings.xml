@@ -1528,4 +1528,10 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="sys_settings_android_auto">Android Auto</string>
     <string name="sys_settings_system">Head unit</string>
     <string name="sys_settings_link_stopped">MCU link stopped</string>
+    <string name="phone_modem_title">4G modem (MediaTek)</string>
+    <string name="phone_modem_calls">Let incoming calls ring</string>
+    <string name="phone_modem_calls_hint">Boards with a SIM slot: MediaTek\'s radio waits for an approval before an incoming call rings, which LineageOS does not send; LibreHU sends it (root). Experimental, untested with a SIM.</string>
+    <string name="phone_modem_ready">Modem ready for incoming calls (%1$s)</string>
+    <string name="phone_modem_none">No MediaTek modem running on this board.</string>
+    <string name="phone_modem_error">Incoming call helper stopped (%1$s); started again automatically.</string>
 </resources>

@@ -28,3 +28,16 @@
 -keep class org.librehu.core.relay.PhoneRelay {
     public static void main(java.lang.String[]);
 }
+
+# Run as root through app_process: accepts incoming calls on MediaTek modems (ril/MtkCallHelper). It uses Android's
+# HIDL Java classes, system APIs known at compile time only through :hidlstub (compileOnly).
+-keep class org.librehu.service.ril.MtkCallHelper {
+    public static void main(java.lang.String[]);
+}
+-keep class org.librehu.service.ril.MtkCallHelper$* { *; }
+-dontwarn android.os.HwBinder
+-dontwarn android.os.HwParcel
+-dontwarn android.os.HwBlob
+-dontwarn android.os.IHwBinder
+-dontwarn android.os.IHwBinder$DeathRecipient
+-dontwarn android.os.IHwInterface

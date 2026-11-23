@@ -1528,4 +1528,10 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="sys_settings_android_auto">Android Auto</string>
     <string name="sys_settings_system">Autoradio</string>
     <string name="sys_settings_link_stopped">Liaison MCU arrêtée</string>
+    <string name="phone_modem_title">Modem 4G (MediaTek)</string>
+    <string name="phone_modem_calls">Faire sonner les appels entrants</string>
+    <string name="phone_modem_calls_hint">Cartes avec emplacement SIM : la radio MediaTek attend une autorisation avant de faire sonner un appel entrant, que LineageOS n\'envoie pas ; LibreHU l\'envoie (root). Expérimental, non testé avec une SIM.</string>
+    <string name="phone_modem_ready">Modem prêt pour les appels entrants (%1$s)</string>
+    <string name="phone_modem_none">Aucun modem MediaTek actif sur cette carte.</string>
+    <string name="phone_modem_error">Assistant des appels entrants arrêté (%1$s) ; relancé automatiquement.</string>
 </resources>

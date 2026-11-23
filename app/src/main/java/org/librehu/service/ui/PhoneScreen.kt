@@ -43,6 +43,21 @@ fun PhoneScreen() {
             Hint(stringResource(R.string.phone_bt_hint))
         }
         IphoneCard(iphone)
+        Card(stringResource(R.string.phone_modem_title)) {
+            val ril by org.librehu.service.ril.MtkIncomingCalls.status
+                .collectAsStateWithLifecycle()
+            var accept by remember { mutableStateOf(org.librehu.service.ril.MtkIncomingCalls.enabled(context)) }
+            SwitchRow(stringResource(R.string.phone_modem_calls), accept, stringResource(R.string.phone_modem_calls_hint)) { on ->
+                org.librehu.service.ril.MtkIncomingCalls
+                    .setEnabled(context, on)
+                accept = on
+            }
+            when {
+                ril.startsWith("registered") -> StatusLine(stringResource(R.string.phone_modem_ready, ril.removePrefix("registered ")), true)
+                ril == "noril" || ril == "none" -> Hint(stringResource(R.string.phone_modem_none))
+                ril == "error" || ril.startsWith("died") -> StatusLine(stringResource(R.string.phone_modem_error, ril), false)
+            }
+        }
         Card(stringResource(R.string.phone_iphone_pair_title)) {
             var auto by remember { mutableStateOf(PhoneInfo.autoPair(context)) }
             SwitchRow(stringResource(R.string.phone_iphone_pair), auto, stringResource(R.string.phone_iphone_pair_hint)) { on ->

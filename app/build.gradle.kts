@@ -94,6 +94,8 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    // android.os.HwBinder & co. (system APIs): signatures only, the device's framework provides them.
+    compileOnly(project(":hidlstub"))
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.compose.ui)

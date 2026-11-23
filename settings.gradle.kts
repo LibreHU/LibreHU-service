@@ -21,6 +21,8 @@ include(":core")
 // The Android module needs the Android SDK; `-PcoreOnly` builds and tests the pure Kotlin core without it.
 if (!providers.gradleProperty("coreOnly").isPresent) {
     include(":app")
+    // Compile-time signatures of Android's HIDL Java classes for the root helpers (compileOnly in :app).
+    include(":hidlstub")
     // Replacement for the settings provider of Jancar's settings app (com.jancar.settings), a small APK of its own.
     include(":jacsettings")
 }

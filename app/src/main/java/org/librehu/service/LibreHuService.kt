@@ -144,6 +144,8 @@ class LibreHuService : Service() {
             .start(this) // CarPlay (xcertplay LibreHU): session state, day / night from the headlights
         org.librehu.service.phone.PhoneInfo
             .start(this) // iPhone details from the CarPlay app, Bluetooth on and pairing when an iPhone is plugged in
+        org.librehu.service.ril.MtkIncomingCalls
+            .start(this) // boards with a MediaTek 4G modem: lets incoming calls ring (MediaTek RIL waits for approval)
         org.librehu.service.tweaks.Tweaks
             .get(this)
             .applyAtStart() // kernel tweaks kept by the user (skipped after a start that died right after them)
@@ -304,6 +306,8 @@ class LibreHuService : Service() {
         runCatching { contentResolver.unregisterContentObserver(brightnessObserver) }
         org.librehu.service.net.cable.CableInternet.stop()
         stopHardware()
+        org.librehu.service.ril.MtkIncomingCalls
+            .stop()
         bluetoothModule.stop()
         display.stop()
         obd.stop()
