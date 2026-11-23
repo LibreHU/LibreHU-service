@@ -34,6 +34,7 @@ internal class BtMedia(
 
     // Bounce detection (see [onState]).
     private var playingSince = 0L
+    private var lastState: Int? = null
     private var pausedByCar = false
     private var lastRecovery = 0L
 
@@ -104,16 +105,26 @@ internal class BtMedia(
      */
     private fun onState(state: Int?) {
         val now = SystemClock.uptimeMillis()
+        val previous = lastState
+        lastState = state
         when (state) {
             PlaybackState.STATE_PLAYING -> {
-                playingSince = now
+                // The start of the playing only. Android 10's AVRCP controller tells the play position about every
+                // second, each time as a PLAYING state (AvrcpControllerStateMachine PLAY_POS_CHANGED → notifyChanged):
+                // taken as a new start, every pause (phone, Android Auto, widget) looked like the sink's bounce and
+                // was played again 300 ms later.
+                if (previous != PlaybackState.STATE_PLAYING) playingSince = now
                 pausedByCar = false
             }
 
             PlaybackState.STATE_PAUSED -> {
+                if (previous == PlaybackState.STATE_PAUSED) return
                 val bounced = playingSince != 0L && now - playingSince < BOUNCE_MS && !pausedByCar
                 playingSince = 0L
-                if (bounced && now - lastRecovery > RECOVERY_GAP_MS) {
+                // Android Auto or CarPlay drive the phone's music themselves: never played again from here.
+                if (bounced && projecting()) {
+                    Log.i(TAG, "Phone paused soon after playing, during Android Auto / CarPlay: left paused")
+                } else if (bounced && now - lastRecovery > RECOVERY_GAP_MS) {
                     lastRecovery = now
                     Log.i(TAG, "Phone play paused by the A2DP sink (no audio focus): playing through the car")
                     main.postDelayed({ play() }, 300)
@@ -124,6 +135,12 @@ internal class BtMedia(
                 playingSince = 0L
             }
         }
+    }
+
+    private fun projecting(): Boolean {
+        val aa = org.librehu.service.projection.AndroidAuto.session.value.state
+        val cp = org.librehu.service.projection.CarPlay.session.value.state
+        return aa == "connected" || aa == "projecting" || cp == "connecting" || cp == "active"
     }
 
     fun start() {
