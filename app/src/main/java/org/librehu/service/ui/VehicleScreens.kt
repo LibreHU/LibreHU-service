@@ -32,6 +32,7 @@ import org.librehu.core.unit.VehicleInput
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
+import org.librehu.service.car.BlinkOutput
 import org.librehu.service.car.CarName
 import org.librehu.service.car.FrontLed
 import org.librehu.service.car.LedWhen
@@ -322,12 +323,35 @@ fun LightsScreen(actions: AppActions) {
                 stringResource(if (s.panel == PanelType.WHITE) R.string.led_blink_hint_white else R.string.led_blink_hint),
             ) { on -> led.update { it.copy(blinkOnNotification = on) } }
             if (s.blinkOnNotification) {
-                if (s.panel != PanelType.WHITE) {
+                // Where the notifications come from
+                SwitchRow(stringResource(R.string.led_source_android), s.blinkAndroid) { on -> led.update { it.copy(blinkAndroid = on) } }
+                SwitchRow(stringResource(R.string.led_source_aa), s.blinkAndroidAuto, stringResource(R.string.led_source_aa_hint)) { on ->
+                    led.update { it.copy(blinkAndroidAuto = on) }
+                }
+                SwitchRow(stringResource(R.string.led_source_carplay), s.blinkCarPlay, stringResource(R.string.led_source_carplay_hint)) { on ->
+                    led.update { it.copy(blinkCarPlay = on) }
+                }
+                // Which LEDs blink
+                Hint(stringResource(R.string.led_blink_output))
+                Choices(
+                    listOf(
+                        BlinkOutput.PANEL to stringResource(R.string.led_output_panel),
+                        BlinkOutput.COLOUR to stringResource(R.string.led_output_colour),
+                        BlinkOutput.PWM1 to stringResource(R.string.led_output_pwm1),
+                        BlinkOutput.PWM2 to stringResource(R.string.led_output_pwm2),
+                        BlinkOutput.PWM_BOTH to stringResource(R.string.led_output_pwm_both),
+                        BlinkOutput.ALL to stringResource(R.string.led_output_all),
+                    ),
+                    s.blinkOutput,
+                ) { o -> led.update { it.copy(blinkOutput = o) } }
+                if ((s.blinksPwm1 || s.blinksPwm2) && s.panel != PanelType.WHITE) Hint(stringResource(R.string.led_output_pwm_hint))
+                if (s.blinksColour) {
                     ColourChoices(Triple(s.blinkRed, s.blinkGreen, s.blinkBlue)) { (r, g, b) ->
                         led.update { it.copy(blinkRed = r, blinkGreen = g, blinkBlue = b) }
                     }
                 }
                 SliderRow(stringResource(R.string.led_blink_count), s.blinkCount, 1..10) { n -> led.update { it.copy(blinkCount = n) } }
+                Hint(stringResource(R.string.led_blink_gap, (FrontLed.BLINK_MIN_GAP_MS / 1000).toInt()))
                 StatusLine(stringResource(if (access) R.string.led_access_ok else R.string.led_access_missing), access)
                 Actions {
                     if (!access) {

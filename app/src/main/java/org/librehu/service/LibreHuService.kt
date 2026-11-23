@@ -144,6 +144,8 @@ class LibreHuService : Service() {
             .start(this) // CarPlay (xcertplay LibreHU): session state, day / night from the headlights
         org.librehu.service.phone.PhoneInfo
             .start(this) // iPhone details from the CarPlay app, Bluetooth on and pairing when an iPhone is plugged in
+        org.librehu.service.car.ProjectionNotifications
+            .start(this) // notifications and calls from Android Auto / CarPlay: front LED blink
         org.librehu.service.ril.MtkIncomingCalls
             .start(this) // boards with a MediaTek 4G modem: lets incoming calls ring (MediaTek RIL waits for approval)
         org.librehu.service.tweaks.Tweaks
@@ -316,6 +318,8 @@ class LibreHuService : Service() {
         org.librehu.service.projection.AndroidAuto
             .stop(this)
         org.librehu.service.projection.CarPlay
+            .stop(this)
+        org.librehu.service.car.ProjectionNotifications
             .stop(this)
         callbacks.kill()
         super.onDestroy()

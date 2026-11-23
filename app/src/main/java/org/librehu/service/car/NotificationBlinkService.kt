@@ -14,7 +14,8 @@ class NotificationBlinkService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val led = FrontLed.get(this)
-        if (!led.settings.value.blinkOnNotification) return
+        val s = led.settings.value
+        if (!s.blinkOnNotification || !s.blinkAndroid) return
         val n = sbn.notification
         val first = seen.add(sbn.key)
         if (seen.size > MAX_KEYS) seen.remove(seen.first())
@@ -25,7 +26,7 @@ class NotificationBlinkService : NotificationListenerService() {
                 (!first && n.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0) ||
                 sbn.packageName == packageName ||
                 sbn.packageName == "android"
-        if (!silent) led.blink()
+        if (!silent) led.onNotification(NotificationSource.ANDROID)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +61,39 @@ enum class LedWhen(
     LIGHTS_CYCLE(LedMode.SEMI_AUTO),
 }
 
+/** Which LEDs blink for a notification. */
+enum class BlinkOutput {
+    /** The LEDs of the panel type: the colour LEDs, or the white PWM output 1 once "White" is picked. */
+    PANEL,
+
+    /** Colour (RGB) LEDs: `0F 04`. */
+    COLOUR,
+
+    /** White PWM output 1: `0F 02`. */
+    PWM1,
+
+    /** White PWM output 2: `0F 03`. */
+    PWM2,
+
+    /** Both white PWM outputs. */
+    PWM_BOTH,
+
+    /** The colour LEDs and both white PWM outputs. */
+    ALL,
+}
+
+/** Where a notification comes from. */
+enum class NotificationSource {
+    /** A notification of this head unit's Android ([NotificationBlinkService]). */
+    ANDROID,
+
+    /** Sent by Open Headunit LibreHU from the Android Auto phone ([ProjectionNotifications]). */
+    ANDROID_AUTO,
+
+    /** Sent by CarPlay (xcertplay LibreHU) from the iPhone ([ProjectionNotifications]). */
+    CARPLAY,
+}
+
 data class FrontLedSettings(
     val panel: PanelType = PanelType.UNKNOWN,
     val ledWhen: LedWhen = LedWhen.MCU,
@@ -73,6 +107,12 @@ data class FrontLedSettings(
     val blinkGreen: Int = 99,
     val blinkBlue: Int = 99,
     val blinkCount: Int = 3,
+    /** The LEDs that blink. */
+    val blinkOutput: BlinkOutput = BlinkOutput.PANEL,
+    /** The sources that blink. */
+    val blinkAndroid: Boolean = true,
+    val blinkAndroidAuto: Boolean = true,
+    val blinkCarPlay: Boolean = true,
     /** White backlight brightness following the headlights (on by default). */
     val backlight: Boolean = true,
     /** The two PWM outputs set apart (else output 2 takes output 1's levels). */
@@ -89,6 +129,29 @@ data class FrontLedSettings(
 
     /** The fixed colour at its intensity, on the MCU's 0..99 scale. */
     fun scaled(c: Int) = (c * ledBrightness.coerceIn(0, 100) + 50) / 100
+
+    fun blinks(source: NotificationSource) =
+        when (source) {
+            NotificationSource.ANDROID -> blinkAndroid
+            NotificationSource.ANDROID_AUTO -> blinkAndroidAuto
+            NotificationSource.CARPLAY -> blinkCarPlay
+        }
+
+    val blinksColour: Boolean
+        get() =
+            when (blinkOutput) {
+                BlinkOutput.PANEL -> panel != PanelType.WHITE
+                BlinkOutput.COLOUR, BlinkOutput.ALL -> true
+                else -> false
+            }
+    val blinksPwm1: Boolean
+        get() =
+            when (blinkOutput) {
+                BlinkOutput.PANEL -> panel == PanelType.WHITE
+                BlinkOutput.PWM1, BlinkOutput.PWM_BOTH, BlinkOutput.ALL -> true
+                else -> false
+            }
+    val blinksPwm2: Boolean get() = blinkOutput == BlinkOutput.PWM2 || blinkOutput == BlinkOutput.PWM_BOTH || blinkOutput == BlinkOutput.ALL
 }
 
 /**
@@ -111,6 +174,9 @@ class FrontLed private constructor(
 
     @Volatile
     private var blinking = false
+
+    @Volatile
+    private var lastBlinkAt = 0L
 
     fun update(transform: (FrontLedSettings) -> FrontLedSettings) {
         val s = transform(_settings.value)
@@ -214,8 +280,22 @@ class FrontLed private constructor(
     }
 
     /**
-     * A notification: [count] blinks, in the blink colour on colour LEDs, in brightness on white ones; then the
-     * settings again.
+     * A notification from [source]: a blink when the blink and that source are on, at most one every
+     * [BLINK_MIN_GAP_MS] (the white PWM levels are kept in the MCU's flash: a burst of notifications must not
+     * write it again and again).
+     */
+    fun onNotification(source: NotificationSource) {
+        val s = _settings.value
+        if (!s.blinkOnNotification || !s.blinks(source)) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastBlinkAt != 0L && now - lastBlinkAt < BLINK_MIN_GAP_MS) return
+        lastBlinkAt = now
+        main.post { blink() }
+    }
+
+    /**
+     * A notification: [count] blinks on the LEDs chosen in [FrontLedSettings.blinkOutput], in the blink colour on
+     * colour LEDs, in brightness on white ones; then the settings again.
      */
     fun blink(count: Int = _settings.value.blinkCount) {
         val s = _settings.value
@@ -223,22 +303,31 @@ class FrontLed private constructor(
         if (blinking) return
         blinking = true
         val n = count.coerceIn(1, 10)
-        val colour = s.panel != PanelType.WHITE
-        // The PWM outputs only once the user picked "White", as in apply(): with "Not sure" the blink sent 0F 02
-        // (Jancar's AVDD of the screen on the UJC201) and left it at the day / night backlight level.
-        val white = s.panel == PanelType.WHITE
-        val on = Mcu.frontLed(s.blinkRed, s.blinkGreen, s.blinkBlue, LedMode.MANUAL.code)
+        val colour = s.blinksColour
+        // The PWM outputs only when chosen ("White" panel, or a white output picked for the blink): with "Not sure"
+        // the blink sent 0F 02 (Jancar's AVDD of the screen on the UJC201) and left it at the backlight level.
+        val pwm1 = s.blinksPwm1
+        val pwm2 = s.blinksPwm2
+        // The firmware lights a fixed colour with the headlights only: in the daytime the colour cycle (always lit)
+        // is what blinks, at night the chosen colour.
+        val onMode = if (headlights == true) LedMode.MANUAL else LedMode.AUTO
+        val on = Mcu.frontLed(s.blinkRed, s.blinkGreen, s.blinkBlue, onMode.code)
         val off = Mcu.frontLed(0, 0, 0, LedMode.MANUAL.code)
-        val lit = if (headlights == true) s.nightPwm1 else s.dayPwm1
-        val low = if (lit > 50) 5 else 100
+        val night = headlights == true
+        val lit1 = if (night) s.nightPwm1 else s.dayPwm1
+        val lit2 = if (night) s.night2 else s.day2
+        val low1 = if (lit1 > 50) 5 else 100
+        val low2 = if (lit2 > 50) 5 else 100
         for (i in 0 until n) {
             main.postDelayed({
                 if (colour) send(on)
-                if (white) send(Mcu.pwmBrightness(1, low))
+                if (pwm1) send(Mcu.pwmBrightness(1, low1))
+                if (pwm2) main.postDelayed({ send(Mcu.pwmBrightness(2, low2)) }, if (pwm1) PWM_GAP_MS else 0L)
             }, i * 2L * STEP_MS)
             main.postDelayed({
                 if (colour) send(off)
-                if (white) send(Mcu.pwmBrightness(1, lit))
+                if (pwm1) send(Mcu.pwmBrightness(1, lit1))
+                if (pwm2) main.postDelayed({ send(Mcu.pwmBrightness(2, lit2)) }, if (pwm1) PWM_GAP_MS else 0L)
             }, (i * 2L + 1) * STEP_MS)
         }
         main.postDelayed({
@@ -289,6 +378,10 @@ class FrontLed private constructor(
                     blinkGreen = o.optInt("bg", 99),
                     blinkBlue = o.optInt("bb", 99),
                     blinkCount = o.optInt("bn", 3),
+                    blinkOutput = BlinkOutput.entries.firstOrNull { b -> b.name == o.optString("bo") } ?: BlinkOutput.PANEL,
+                    blinkAndroid = o.optBoolean("bsa", true),
+                    blinkAndroidAuto = o.optBoolean("bsaa", true),
+                    blinkCarPlay = o.optBoolean("bscp", true),
                     backlight = o.optBoolean("bl", true),
                     separateOutputs = o.optBoolean("sep", false),
                     dayPwm1 = o.optInt("d1", 100),
@@ -312,6 +405,10 @@ class FrontLed private constructor(
             .put("bg", s.blinkGreen)
             .put("bb", s.blinkBlue)
             .put("bn", s.blinkCount)
+            .put("bo", s.blinkOutput.name)
+            .put("bsa", s.blinkAndroid)
+            .put("bsaa", s.blinkAndroidAuto)
+            .put("bscp", s.blinkCarPlay)
             .put("bl", s.backlight)
             .put("sep", s.separateOutputs)
             .put("d1", s.dayPwm1)
@@ -325,6 +422,9 @@ class FrontLed private constructor(
         private const val PREF_PWM_SENT = "front_led_pwm_sent"
         private const val PWM_GAP_MS = 150L
         private const val STEP_MS = 350L
+
+        /** One blink at most in this time, whatever the number of notifications. */
+        const val BLINK_MIN_GAP_MS = 10_000L
         private const val PREVIEW_MS = 3000L
         private const val TEST_COLOUR_MS = 6000L
         private const val TEST_WHITE_STEPS = 6
