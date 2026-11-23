@@ -57,3 +57,9 @@ signal, opérateur) ; un toucher ouvre la page Téléphone.
 ## À vérifier sur l'autoradio
 - que l'iPhone accepte `diagnostics_relay` par la session de CarPlay (sinon : seulement nom, modèle, iOS, batterie) ;
 - l'échelle du niveau de batterie iAP2 (0..65535 ou pourcentage, les deux sont gérés).
+
+## Modem 4G (cartes avec emplacement SIM)
+Carte « Modem 4G (MediaTek) » de la page Téléphone : interrupteur « Faire sonner les appels entrants » (activé par
+défaut, sans effet sans modem) et état (`registered slot1`…, aucun modem, assistant relancé). Le RIL MediaTek attend
+une autorisation avant de faire sonner un appel, que la téléphonie de LineageOS n'envoie pas : l'assistant root
+`ril/MtkCallHelper` l'envoie. **Expérimental, non testé avec une SIM.** Détails et vérification : [ril-mtk.md](ril-mtk.md).
