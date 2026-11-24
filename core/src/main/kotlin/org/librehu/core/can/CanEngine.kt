@@ -9,7 +9,7 @@ package org.librehu.core.can
  * [CanVehicles.toJson], checked by the profiles repository).
  */
 object CanEngine {
-    const val VERSION = "2.8.0"
+    const val VERSION = "2.9.0"
 
     /** What each version brought (service versionCode in brackets), newest last. */
     val HISTORY =
@@ -24,6 +24,7 @@ object CanEngine {
             "2.6.0" to "box types as data: the generic profile of each type (\"box_type\" + \"framing\"), built in or from the boxes pack; no car profile built in (v184)",
             "2.7.0" to "framings without CMD, LEN, head or checksum, with a tail, and the head unit's own (\"out\"): CYT's BYD and Ford boxes, Simple's Audi box (v190)",
             "2.8.0" to "keys: event_value (key frames by the value of their event byte) and pressed_for (other press values per code), for the KSW MCU's A1 17 keys (v194)",
+            "2.9.0" to "keys: repeat (frames of a held key that press it again: Raise's \"still held\", a stalk wheel's clicks without a release), proposed by TalikTheVampire (v237)",
         )
 
     data class Version(
@@ -79,6 +80,7 @@ object CanEngine {
                 "2.6".takeIf { v.boxType != null },
                 "2.7".takeIf { v.framing?.needs27 == true },
                 "2.8".takeIf { (listOfNotNull(v.wheelKeys) + v.moreKeys).any { it.needs28 } },
+                "2.9".takeIf { (listOfNotNull(v.wheelKeys) + v.moreKeys).any { it.needs29 } },
             )
         return ">=" + (needs.maxByOrNull { parse(it)!! } ?: "1.0")
     }

@@ -54,6 +54,15 @@ class CanWheelKeys private constructor(
     private val _learned = MutableStateFlow<Pair<Int, Long>?>(null)
     val learned: StateFlow<Pair<Int, Long>?> = _learned.asStateFlow()
 
+    /**
+     * The code just learnt and until when (elapsedRealtime) its frames are still that press: the button is often still
+     * held when the dialog closes (a Hiworld box repeats the whole press, a Raise box says "still held"), and its action
+     * must not run while its editor opens. Pushed back by each of its frames, so it ends [HiworldWheelKeys.REPEAT_MS]
+     * after the button is let go.
+     */
+    private var learnt = 0
+    private var learntUntil = 0L
+
     private val _long = MutableStateFlow(load(KEY_LONG, emptyMap()))
 
     /** Key code → action of a long press (key held); without one, holding repeats the click action (volume). */
@@ -173,8 +182,11 @@ class CanWheelKeys private constructor(
         if (learning) {
             android.util.Log.i(TAG, "wheel key $code (${name(code)}): learnt in the CAN tab, no action")
             _learned.value = code to now
+            learnt = code
+            learntUntil = now + HiworldWheelKeys.REPEAT_MS
             return
         }
+        if (stillLearnt(code, now)) return
         // One line per press in the log (LibreHU Helper reports): what the box sent and what became of it.
         val name = name(code)
         when {
@@ -198,8 +210,19 @@ class CanWheelKeys private constructor(
     }
 
     private fun onUp(code: Int) {
+        if (stillLearnt(code, SystemClock.elapsedRealtime())) return
         hold.up(code, SystemClock.elapsedRealtime())
         schedule()
+    }
+
+    /** A frame of the press that was just learnt (see [learnt]): ignored, and the press goes on a little longer. */
+    private fun stillLearnt(
+        code: Int,
+        now: Long,
+    ): Boolean {
+        if (code != learnt || now >= learntUntil) return false
+        learntUntil = now + HiworldWheelKeys.REPEAT_MS
+        return true
     }
 
     private fun onTick() {

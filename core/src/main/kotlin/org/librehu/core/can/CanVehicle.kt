@@ -720,7 +720,7 @@ object CanVehicles {
 
     /**
      * `"wheel_keys": { "cmd": "0x11", "code_byte": 2, "state_byte": 3, "pressed": [1], "event_byte": 1, "event_mask": "0x08", "names": {…} }`;
-     * engine 2.8: `"event_value": "0x17"`, `"pressed_for": { "21": [0] }`.
+     * engine 2.8: `"event_value": "0x17"`, `"pressed_for": { "21": [0] }`; engine 2.9: `"repeat": { "1": [2], "3": [1] }`.
      */
     private fun wheelKeys(
         o: JsonObject,
@@ -774,6 +774,7 @@ object CanVehicles {
                         val c = k.toIntOrNull()?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$w: repeat code \"$k\" (0..255, as in names)")
                         val states = (v as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.intOrNull }?.toSet()
                         if (states.isNullOrEmpty()) throw CanVehicleException("$w: repeat $k: a list of values")
+                        if (states.any { it !in 0..0xFF }) throw CanVehicleException("$w: repeat $k: values 0..255 (state_byte values)")
                         c to states
                     }?.toMap()
                     .orEmpty(),

@@ -92,6 +92,7 @@ object TwrpCanConf {
             if (k != null && k.needs28) {
                 append("# wheel keys: event_value / pressed_for (engine 2.8), not read by TWRP\n")
             } else if (f != null && k != null && k.codeBase == 0 && k.stepsByte == null) {
+                if (k.needs29) append("# wheel keys: repeat (engine 2.9) not read by TWRP: a held key presses once there\n")
                 val mask = if (k.codeMask != 0xFF) " ${hex(k.codeMask)}" else ""
                 append(
                     "keys %s %s %s %s %s %s%s\n".format(

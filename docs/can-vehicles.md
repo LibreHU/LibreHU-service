@@ -364,6 +364,7 @@ L'export écrit le moteur minimum calculé d'après ce que le profil utilise (`C
 | 2.6.0 | types de boîtiers en données (`box_type` + `framing`), aucun profil de voiture intégré | v184 |
 | 2.7.0 | trames sans CMD, LEN, en-tête ou somme, avec une fin, et celle de l'autoradio (`out`) | v190 |
 | 2.8.0 | touches : `event_value`, `pressed_for` (MCU KSW) | v194 |
+| 2.9.0 | touches : `repeat` (touche tenue et molette des boîtiers Raise), proposé par TalikTheVampire | v237 |
 
 **Sources combinées, sans se disputer un port (service v189)** : le boîtier CAN (par le MCU, un adaptateur USB-série,
 Bluetooth ou un port série) et l'adaptateur OBD-II (USB ou Bluetooth) marchent **ensemble**, chacun sur son port.
@@ -515,7 +516,20 @@ de `pressed` (sans `state_byte` : tant que le code n'est pas 0), et seulement si
 les autres messages de la même commande sont ignorés (les données voiture `A1 19` ne relâchent pas une touche tenue).
 `"pressed_for": { "21": [0] }` : codes (comme dans `names`) appuyés sur d'autres valeurs de `state_byte` que
 `pressed` (KSW : 0 pour volume ±, piste précédente / suivante et lecture, 1 pour les autres). TWRP ne lit pas ces
-deux champs : pas de ligne `keys` dans son fichier pour un tel profil. Un profil Hiworld sans `wheel_keys` mais avec
+deux champs : pas de ligne `keys` dans son fichier pour un tel profil.
+
+**Moteur 2.9 (service v237, proposé par [TalikTheVampire](https://github.com/TalikTheVampire))**, pour les boîtiers
+Raise : une touche y arrive en `20 kk 01` (appui), `20 kk 02` toutes les ~240 ms tant qu'elle est tenue, `20 kk 00`
+(relâchée) ; la molette du commodo Renault envoie `20 03 01` / `20 04 01` à chaque cran, sans relâché. Sans rien de
+plus, seul le premier appui comptait (volume tenu sans répétition, crans de molette perdus après le premier).
+`"repeat": { "1": [2], "2": [2], "3": [1], "4": [1] }` : codes (comme dans `names`) appuyés de nouveau par une trame
+de la touche tenue avec une de ces valeurs de `state_byte`. La valeur qui a commencé l'appui (`1` de la molette)
+compte à chaque trame (un nouveau cran) ; une autre valeur (« toujours tenue », `2` du volume) à partir de sa
+deuxième trame, car un appui court en contient déjà une (`01 02 00` = un cran de volume, pas deux). Par code : la
+sourdine tapée tient aussi un `02` et ne doit pas basculer deux fois. TWRP ne répète pas (une touche tenue y compte
+une fois) ; un service plus ancien refuse le profil (`"engine": ">=2.9"`).
+
+Un profil Hiworld sans `wheel_keys` mais avec
 un signal `wheel_key` dans `0x11` garde la lecture LNP002 : D1 bit 3 = événement touche, D2 = code, D3 = 1 à
 l'appui (`core/.../can/HiworldWheelKeys.kt`). Chaque code reçoit une action comme les touches de façade (onglet CAN,
 carte Touches du volant). Codes par défaut, d'après `HdRenaultProtocolLNP002` de l'appli Hiworld : 1 volume +,
@@ -530,6 +544,10 @@ dernière touche et la **trame brute** (D1 D2 D3) pour identifier un bouton.
 - **Appui long** : le boîtier répète l'appui toutes les ~380 ms tant que la touche est tenue. Une touche avec un appui
   long choisi : appui court au relâchement, appui long après 2 répétitions (~0,8 s). Sans appui long : chaque
   répétition refait l'appui court (volume tenu).
+- **Apprendre un bouton** (service v237, proposé par TalikTheVampire) : le bouton de la carte attend un appui sur
+  une touche du volant (son action actuelle ne s'exécute pas pendant l'attente) puis ouvre l'éditeur de son action,
+  sans chercher quel code correspond à quel bouton. Tant que la touche apprise reste tenue (et 650 ms après), ses
+  trames sont encore ignorées : son action ne part pas pendant que l'éditeur s'ouvre.
 - **Touches ignorées au démarrage** (5 s par défaut, 0 à 15 s) : au démarrage du service et au réveil de l'écran
   (contact mis), les touches sont ignorées ; la commande de Clio 3 envoie seule un appui SRC à la mise du contact.
 - **Sélecteur de LibreHU EasySource affiché** : ▶▶ / ◀◀ / ▶‖ (touches média, qu'Android donne aux sessions média et

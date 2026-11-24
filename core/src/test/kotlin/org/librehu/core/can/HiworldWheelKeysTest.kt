@@ -87,15 +87,17 @@ class HiworldWheelKeysTest {
             s: Int,
         ) = CanboxFrame(0x20, byteArrayOf(k.toByte(), s.toByte()), true)
         listOf(
-            // mute tap (one 02 in it: no repeat), wheel up x3 (no release), wheel down x1, volume + held, source held
+            // mute tap (one 02 in it: no repeat), wheel up x3 (no release), wheel down x1, volume + held (its first 02
+            // is a tap's: repeats from the second), volume - tapped (one 02: one step), source held
             f(6, 1), f(6, 2), f(6, 0),
             f(4, 1), f(4, 1), f(4, 1),
             f(3, 1),
             f(1, 1), f(1, 2), f(1, 2), f(1, 2), f(1, 0),
+            f(2, 1), f(2, 2), f(2, 0),
             f(7, 1), f(7, 2), f(7, 2), f(7, 2), f(7, 0),
         ).forEach(keys::onFrame)
-        assertEquals(listOf(6, 4, 4, 4, 3, 1, 1, 1, 1, 7), got)
-        assertEquals(listOf(6, 4, 3, 1, 7), ups)
+        assertEquals(listOf(6, 4, 4, 4, 3, 1, 1, 1, 2, 7), got)
+        assertEquals(listOf(6, 4, 3, 1, 2, 7), ups)
     }
 
     @Test
@@ -106,5 +108,16 @@ class HiworldWheelKeysTest {
                    "wheel_keys":{"cmd":"0x20","code_byte":0,"state_byte":1,"pressed":[1,2],"repeat":{"1":[2],"4":[1]}},"messages":{}}""",
             )
         assertEquals(mapOf(1 to setOf(2), 4 to setOf(1)), v.keys?.repeat)
+        // Engine 2.9: written in the profile, refused by older services
+        assertEquals(">=2.9", CanEngine.requiredBy(v))
+        assertEquals(v.keys?.repeat, CanVehicles.fromJson(CanVehicles.toJson(v)).keys?.repeat)
+    }
+
+    @Test(expected = CanVehicleException::class)
+    fun repeatValuesAreStateBytes() {
+        CanVehicles.fromJson(
+            """{"format":"librehu-can-vehicle","version":2,"id":"test-raise","box":"raise",
+               "wheel_keys":{"cmd":"0x20","code_byte":0,"state_byte":1,"pressed":[1,2],"repeat":{"1":[256]}},"messages":{}}""",
+        )
     }
 }
