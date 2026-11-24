@@ -428,6 +428,20 @@
       },
       "minItems": 1
      }
+    },
+    "repeat": {
+     "type": "object",
+     "description": "codes (as in names) pressed again by a frame of the held key with one of these state_byte values (Raise: 2 = still held; a wheel's 1 = new click without a release)",
+     "propertyNames": {
+      "pattern": "^[0-9]{1,3}$"
+     },
+     "additionalProperties": {
+      "type": "array",
+      "items": {
+       "type": "integer"
+      },
+      "minItems": 1
+     }
     }
    }
   },
@@ -499,6 +513,20 @@
      "pressed_for": {
       "type": "object",
       "description": "engine 2.8: codes (as in names) pressed on other values of state_byte than pressed",
+      "propertyNames": {
+       "pattern": "^[0-9]{1,3}$"
+      },
+      "additionalProperties": {
+       "type": "array",
+       "items": {
+        "type": "integer"
+       },
+       "minItems": 1
+      }
+     },
+     "repeat": {
+      "type": "object",
+      "description": "codes (as in names) pressed again by a frame of the held key with one of these state_byte values (Raise: 2 = still held; a wheel's 1 = new click without a release)",
       "propertyNames": {
        "pattern": "^[0-9]{1,3}$"
       },

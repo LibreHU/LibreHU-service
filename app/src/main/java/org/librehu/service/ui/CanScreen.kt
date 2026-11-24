@@ -14,6 +14,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -360,9 +362,11 @@ fun CanWheelKeysCard() {
     var ignoreS by remember { mutableStateOf(keys.ignoreAfterOnS()) }
     var longMs by remember { mutableStateOf(keys.longMs()) }
     var editing by remember { mutableStateOf<Int?>(null) }
+    var learn by remember { mutableStateOf(false) }
     Card(stringResource(R.string.can_keys)) {
         Hint(stringResource(R.string.can_keys_hint))
         SwitchRow(stringResource(R.string.can_keys_enable), enabled) { keys.setEnabled(it) }
+        Actions { Pill(stringResource(R.string.can_keys_learn), selected = learn) { learn = true } }
         val claimed = claims.values.flatten().count { it.startsWith("can:") }
         if (claimed > 0) Hint(stringResource(R.string.can_keys_claimed, claimed))
         Hint(last?.let { stringResource(R.string.can_keys_last, it, keyName(it)) } ?: stringResource(R.string.can_keys_none))
@@ -399,6 +403,12 @@ fun CanWheelKeysCard() {
         }
         Actions { Pill(stringResource(R.string.can_keys_defaults)) { keys.resetDefaults() } }
     }
+    if (learn) {
+        LearnKeyDialog(keys, onDismiss = { learn = false }) { code ->
+            learn = false
+            editing = code
+        }
+    }
     editing?.let { code ->
         WheelKeyDialog(code, mapping[code] ?: ZoneAction(), longs[code] ?: ZoneAction(), onDismiss = { editing = null }) { click, long ->
             keys.set(code, click)
@@ -406,6 +416,32 @@ fun CanWheelKeysCard() {
             editing = null
         }
     }
+}
+
+/** Waits for a press of a steering wheel button (its action paused meanwhile), then hands its code to [onKey]. */
+@Composable
+private fun LearnKeyDialog(
+    keys: CanWheelKeys,
+    onDismiss: () -> Unit,
+    onKey: (Int) -> Unit,
+) {
+    val learned by keys.learned.collectAsStateWithLifecycle()
+    // A press before the dialog opened is not the one asked for.
+    val before = remember { keys.learned.value }
+    DisposableEffect(Unit) {
+        keys.learning = true
+        onDispose { keys.learning = false }
+    }
+    LaunchedEffect(learned) {
+        val l = learned
+        if (l != null && l != before) onKey(l.first)
+    }
+    CarAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.can_keys_learn)) },
+        text = { Text(stringResource(R.string.can_keys_learn_press)) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+    )
 }
 
 @Composable

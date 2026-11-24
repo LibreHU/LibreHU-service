@@ -39,6 +39,9 @@ class HiworldWheelKeys(
         val down = event && key != 0 && (spec.stateByte == null || st in (spec.pressedFor[key] ?: spec.pressed))
         if (pressed != 0 && (!down || pressed != key)) onRelease(spec.codeBase + pressed)
         if (down && pressed != key) onPress(spec.codeBase + key)
+        // A box that says "still held" (Raise 20 kk 02 every ~240 ms) or sends each click of a wheel as a new press
+        // without a release (Renault stalk 20 03 01 / 20 04 01): for the codes in "repeat", those frames press again.
+        if (down && pressed == key && st in spec.repeat[key].orEmpty()) onPress(spec.codeBase + key)
         pressed = if (down) key else 0
     }
 
@@ -124,6 +127,12 @@ data class WheelKeySpec(
     val eventValue: Int? = null,
     /** Engine 2.8: codes pressed on other values of [stateByte] than [pressed] (KSW: 0 for volume, tracks, play). */
     val pressedFor: Map<Int, Set<Int>> = emptyMap(),
+    /**
+     * Codes pressed again by a frame of the held key with one of these [stateByte] values (Raise: volume 2 = still
+     * held, repeated; a wheel's 1 = a new click without a release). Only for keys whose repeat is wanted: a short tap
+     * of mute already holds for one 02.
+     */
+    val repeat: Map<Int, Set<Int>> = emptyMap(),
 ) {
     /** Uses what engine 2.8 brought: older services and TWRP's reader cannot read it. */
     val needs28: Boolean get() = eventValue != null || pressedFor.isNotEmpty()

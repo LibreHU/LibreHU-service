@@ -768,6 +768,15 @@ object CanVehicles {
                         c to states
                     }?.toMap()
                     .orEmpty(),
+            repeat =
+                (o["repeat"] as? JsonObject)
+                    ?.map { (k, v) ->
+                        val c = k.toIntOrNull()?.takeIf { it in 0..0xFF } ?: throw CanVehicleException("$w: repeat code \"$k\" (0..255, as in names)")
+                        val states = (v as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.intOrNull }?.toSet()
+                        if (states.isNullOrEmpty()) throw CanVehicleException("$w: repeat $k: a list of values")
+                        c to states
+                    }?.toMap()
+                    .orEmpty(),
         )
     }
 
@@ -785,6 +794,14 @@ object CanVehicles {
             w.stepsByte?.let { put("steps_byte", it) }
             if (!w.stepsSigned) put("steps_signed", false)
             w.eventValue?.let { put("event_value", "0x%02X".format(it)) }
+            if (w.repeat.isNotEmpty()) {
+                put(
+                    "repeat",
+                    buildJsonObject {
+                        w.repeat.toSortedMap().forEach { (k, v) -> put(k.toString(), kotlinx.serialization.json.JsonArray(v.sorted().map { JsonPrimitive(it) })) }
+                    },
+                )
+            }
             if (w.pressedFor.isNotEmpty()) {
                 put(
                     "pressed_for",

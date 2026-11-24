@@ -44,6 +44,16 @@ class CanWheelKeys private constructor(
     private val _seen = MutableStateFlow<Set<Int>>(emptySet())
     val seen: StateFlow<Set<Int>> = _seen.asStateFlow()
 
+    /**
+     * "Learn a button" in the CAN tab: while it waits ([learning]), a press is only recorded here (code, time) and its
+     * action does not run, so the button can be pressed to pick it without doing what it does now.
+     */
+    @Volatile
+    var learning = false
+
+    private val _learned = MutableStateFlow<Pair<Int, Long>?>(null)
+    val learned: StateFlow<Pair<Int, Long>?> = _learned.asStateFlow()
+
     private val _long = MutableStateFlow(load(KEY_LONG, emptyMap()))
 
     /** Key code → action of a long press (key held); without one, holding repeats the click action (volume). */
@@ -160,6 +170,11 @@ class CanWheelKeys private constructor(
         val now = SystemClock.elapsedRealtime()
         _lastKey.value = code
         _seen.value = _seen.value + code
+        if (learning) {
+            android.util.Log.i(TAG, "wheel key $code (${name(code)}): learnt in the CAN tab, no action")
+            _learned.value = code to now
+            return
+        }
         // One line per press in the log (LibreHU Helper reports): what the box sent and what became of it.
         val name = name(code)
         when {
