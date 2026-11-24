@@ -47,6 +47,7 @@ class BluetoothModule(
     private val btMedia = BtMedia(context, main) { info -> each { it.onMediaChanged(info) } }
     private val phonebook = BtPhonebook(context, main) { each { it.onPhonebookChanged() } }
     private val ringer = BtRinger(context)
+    private val atcCall = AtcCallAudio(context)
 
     private val plan = AutoConnectPlan()
     private var attempt = 0
@@ -162,6 +163,7 @@ class BluetoothModule(
         PhoneInfo.carPlayHoldListener = null
         phonebook.stop()
         ringer.release()
+        atcCall.off()
         profiles?.close()
         profiles = null
         callbacks.kill()
@@ -230,7 +232,9 @@ class BluetoothModule(
                 val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                 when (intent.action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
-                        if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, 0) == BluetoothAdapter.STATE_ON) restartAutoConnect()
+                        val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, 0)
+                        if (state == BluetoothAdapter.STATE_ON) restartAutoConnect()
+                        if (state == BluetoothAdapter.STATE_TURNING_OFF || state == BluetoothAdapter.STATE_OFF) atcCall.off()
                     }
 
                     BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
@@ -281,6 +285,7 @@ class BluetoothModule(
 
                     CarProfiles.ACTION_HFP_AUDIO -> {
                         logCallAudio(intent)
+                        atcCall.onScoChanged(intent)
                     }
 
                     CarProfiles.ACTION_PBAP_CONNECTION -> {

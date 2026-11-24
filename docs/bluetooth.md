@@ -129,6 +129,14 @@ d'Android 9 (`HeadsetClientStateMachine`) envoie lui-même `hfp_set_sampling_rat
 `hfp_volume` (tiré du volume « appel vocal ») à la couche audio, qui relie la liaison Bluetooth au haut-parleur et au
 micro. Android Auto passe aussi par ce chemin : ses appels utilisent le mains libres Bluetooth, pas l'USB.
 
+**Clés Autochips (`bt/AtcCallAudio.kt`).** Ces clés AOSP ne suffisent pas sur l'UJC201 : l'appli Bluetooth du stock
+(`MtkBluetooth`, version Autochips) envoie aussi `bt_wbs=on|off`, `atc_hfp_set_sampling_rate=8000|16000`,
+`atc_hfp_enable=true|false` et `atc_hfp_volume=0..15`, que la couche audio (`audio.primary.ac8257.so`) connaît. Sans
+elles (LineageOS 17.1, appels des 23 et 24/11/2026), la couche audio n'ouvrait jamais la voie Bluetooth (BTCVSD) ni
+son annuleur d'écho : ni son ni micro dans la voiture. Le service les envoie à chaque ouverture / fermeture de la
+liaison SCO (16 kHz si le téléphone a choisi le mSBC, sinon 8 kHz), et suit le volume « appel vocal » pendant l'appel.
+Journal : `Autochips call audio on (16 kHz, mSBC)` / `off`. Désactiver : `adb shell setprop persist.librehu.atc_hfp 0`.
+
 Pour les rapports de LibreHU Helper, le service écrit une ligne `LibreHU-BT` à chaque changement de cette liaison :
 `Call audio connected|connecting|disconnected: mode …, voice call volume …/…, microphone muted …, music active …`.
 Appel test : appeler ~30 s, puis faire le rapport tout de suite (le journal tourne vite) ; pendant l'appel, Avancé →
