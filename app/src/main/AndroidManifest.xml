@@ -143,9 +143,12 @@
         <provider android:authorities="org.librehu.carplay.bridge" />
     </queries>
 
+    <!-- requestLegacyExternalStorage: under Android 10 (LineageOS 17.1) the storage of a phone-like app is filtered,
+         and the phone's file manager (bridge) read nothing in /sdcard; ignored from Android 11. -->
     <!-- persistent: honoured for a system app only (LineageOS ROM, /system/app): persistent priority, restarted at
          once, no Force stop button; a user app gets the root guard instead (power/Keepalive). -->
     <application
+        android:requestLegacyExternalStorage="true"
         android:allowBackup="false"
         android:persistent="true"
         android:icon="@drawable/ic_launcher"

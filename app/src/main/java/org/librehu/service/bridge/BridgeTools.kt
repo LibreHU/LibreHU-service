@@ -217,8 +217,10 @@ object BridgeTools {
     ): JSONArray {
         val p = check(path, root)
         val out = JSONArray()
-        val files = File(p).listFiles()
-        if (files != null) {
+        val dir = File(p)
+        val files = dir.listFiles()
+        // An empty answer from a folder this app may not read (Android 10 storage rules) is not an empty folder.
+        if (files != null && (files.isNotEmpty() || dir.canRead() || !RootShell.isAvailable())) {
             files.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() })).forEach {
                 out.put(JSONObject().put("name", it.name).put("dir", it.isDirectory).put("size", it.length()).put("mtime", it.lastModified() / 1000))
             }
@@ -227,7 +229,11 @@ object BridgeTools {
         if (!RootShell.isAvailable()) throw IllegalStateException("cannot read $p")
         val text =
             RootShell.run(
-                "cd ${q(p)} && for f in * .*; do [ \"\$f\" = . ] || [ \"\$f\" = .. ] || { [ -e \"\$f\" ] || [ -L \"\$f\" ]; } && stat -c '%F|%s|%Y|%n' -- \"\$f\"; done",
+                // `.[!.]* ..?*` rather than `.*`: Android's shell (mksh) leaves `.*` as it is when there is no hidden
+                // file, and a last iteration that ended on its failed test made the whole listing exit 1, read as
+                // "cannot read" (/data/media, with only 0 and obb). `if` and `exit 0`: a missing name is not an error.
+                "cd ${q(p)} || exit 1; for f in * .[!.]* ..?*; do if [ -e \"\$f\" ] || [ -L \"\$f\" ]; " +
+                    "then stat -c '%F|%s|%Y|%n' -- \"\$f\"; fi; done; exit 0",
                 timeoutS = 30,
             ) ?: throw IllegalStateException("cannot read $p")
         text
