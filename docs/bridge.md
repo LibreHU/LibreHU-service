@@ -5,6 +5,14 @@ règle l'autoradio et les applis LibreHU et lit ses valeurs (OBD, batterie…), 
 **C'est LibreHU-service qui décrit les pages de réglages** : l'appli du téléphone les dessine sans les connaître, donc
 un nouveau réglage n'a pas besoin d'une mise à jour du téléphone.
 
+**Garde-fou** (`bridge/BridgeCoverage.kt`, test `BridgeCoverageTest` lancé par la CI) : chaque page du service
+(`Tab`) est soit sur le téléphone (la page de `BridgeSettings` qui porte ses réglages), soit marquée « autoradio
+seulement » avec sa raison (tableau de bord, MCU, diagnostics, Autochips, Infos). Une page ajoutée au service sans
+l'un ni l'autre fait échouer la CI. Ajouté avec lui (v238) : appels du modem intégré, Internet du téléphone par le
+câble, dialogue avec le boîtier CAN, actions par défaut des touches du volant, réécriture du fichier TWRP,
+téléchargement du paquet du profil manquant. Restent sur l'autoradio : zones tactiles et calibration, « Apprendre
+un bouton », action de chaque touche du volant (dessinées ou choisies à l'écran).
+
 ## Liaison
 
 - **Connexions** : 4 au plus en même temps (Wi-Fi et Bluetooth) ; une connexion qui n'a pas fini l'échange de clés

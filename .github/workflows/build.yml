@@ -34,6 +34,10 @@ jobs:
       - name: Core unit tests
         run: ./gradlew --no-daemon :core:test
 
+      # Every page of the service is on the phone app or marked head unit only (bridge/BridgeCoverage.kt)
+      - name: Phone app coverage
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests 'org.librehu.service.bridge.BridgeCoverageTest'
+
       - name: Signing key from the secrets (optional)
         env:
           KEYSTORE_B64: ${{ secrets.LIBREHU_KEYSTORE_B64 }}

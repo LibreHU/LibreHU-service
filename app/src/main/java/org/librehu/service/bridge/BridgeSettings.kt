@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
+import android.net.VpnService
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
@@ -14,6 +15,8 @@ import org.librehu.service.AuxMix
 import org.librehu.service.LibreHuService
 import org.librehu.service.Microphone
 import org.librehu.service.R
+import org.librehu.service.can.CanBoxTalk
+import org.librehu.service.can.CanVehicleStore
 import org.librehu.service.can.CanWheelKeys
 import org.librehu.service.car.CameraLayout
 import org.librehu.service.car.CarName
@@ -38,6 +41,7 @@ import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DarkMode
 import org.librehu.service.display.DisplayController
 import org.librehu.service.net.UsbNet
+import org.librehu.service.net.cable.CableInternet
 import org.librehu.service.obd.BatteryWatch
 import org.librehu.service.obd.ObdCarStore
 import org.librehu.service.obd.ObdLabels
@@ -63,6 +67,7 @@ import org.librehu.service.power.StandbySettings
 import org.librehu.service.projection.AndroidAuto
 import org.librehu.service.projection.CarPlay
 import org.librehu.service.projection.HeadunitApp
+import org.librehu.service.ril.MtkIncomingCalls
 import org.librehu.service.time.TimeController
 import org.librehu.service.touch.TouchKeys
 import org.librehu.service.tweaks.Tweaks
@@ -83,6 +88,7 @@ object BridgeSettings {
     fun pages(context: Context): List<BridgePage> {
         val app = context.applicationContext
         val r: (Int) -> String = app::getString
+        // Same ids and order as BridgeCoverage.PAGE_IDS (checked by BridgeCoverageTest through that list)
         return listOf(
             audio(app, r),
             vehicle(app, r),
@@ -297,6 +303,12 @@ object BridgeSettings {
         slider("can_long", r(R.string.can_keys_long_ms), CanWheelKeys.MIN_LONG_MS / 100..CanWheelKeys.MAX_LONG_MS / 100, display = { "${it * 100} ms" }, get = {
             can.longMs() / 100
         }) { can.setLongMs(it * 100) }
+        button("can_defaults", r(R.string.can_keys_defaults), confirm = true) { can.resetDefaults() }
+        section(r(R.string.tab_can))
+        switch("can_talk", r(R.string.can_talk_enable), get = { CanBoxTalk.enabled.value }) { CanBoxTalk.setEnabled(it) }
+        val store = CanVehicleStore.get(app)
+        if (store.missing.value != null) button("can_missing", r(R.string.can_missing_retry)) { store.fetchMissing() }
+        button("can_twrp", r(R.string.can_twrp_write)) { store.writeTwrpNow() }
         section(r(R.string.tab_touch))
         val touch = TouchKeys.get(app)
         switch("touch_keys", r(R.string.touch_keys_enable), r(R.string.touch_keys_ivi), get = { touch.enabled.value }) { touch.setEnabled(it) }
@@ -555,8 +567,16 @@ object BridgeSettings {
         }
         section(r(R.string.tab_phone))
         switch("iphone_pair", r(R.string.phone_iphone_pair), r(R.string.phone_iphone_pair_hint), get = { PhoneInfo.autoPair(app) }) { PhoneInfo.setAutoPair(app, it) }
+        switch("modem_calls", r(R.string.phone_modem_calls), r(R.string.phone_modem_calls_hint), get = { MtkIncomingCalls.enabled(app) }) {
+            MtkIncomingCalls.setEnabled(app, it)
+        }
         section(r(R.string.tab_network))
         switch("iphone_net", r(R.string.net_iphone_auto), r(R.string.net_iphone_auto_hint), get = { UsbNet.iphoneAuto(app) }) { UsbNet.setIphoneAuto(app, it) }
+        switch("cable_internet", r(R.string.cable_switch), r(R.string.cable_switch_hint), get = { CableInternet.enabled(app) }) { on ->
+            // Android's VPN consent, as the Network screen asks it (once; with root the service gives it itself)
+            if (on) VpnService.prepare(app)?.let { consent -> runCatching { app.startActivity(consent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+            CableInternet.setEnabled(app, on)
+        }
     }
 
     // --- Android Auto and CarPlay ------------------------------------------------------------------------------------
