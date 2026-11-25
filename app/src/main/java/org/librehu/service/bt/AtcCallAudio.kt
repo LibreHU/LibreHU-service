@@ -12,13 +12,20 @@ import android.util.Log
 /**
  * Call audio of the car's hands-free link (SCO) through the Autochips audio HAL.
  *
- * The stock firmware's Bluetooth app (MediaTek / Autochips `MtkBluetooth`) tells the HAL about the call audio with its
- * own keys: `bt_wbs=on|off`, `atc_hfp_set_sampling_rate=8000|16000`, `atc_hfp_enable=true|false` and
- * `atc_hfp_volume=0..15`. The HAL of the UJC201 knows them (`strings audio.primary.ac8257.so`, 24/11/2026), next to the
- * AOSP ones. LineageOS's Bluetooth app (AOSP) only sends `hfp_set_sampling_rate`, `hfp_enable` and `hfp_volume`: in the
- * logs of LineageOS 17.1 calls (23 and 24/11/2026) the HAL then never opened the Bluetooth voice path (BTCVSD) nor its
- * echo canceller, so the car had no call audio and no microphone. Sent here on every change of the SCO link, like the
- * stock app; `adb shell setprop persist.librehu.atc_hfp 0` turns it off.
+ * The stock firmware's Bluetooth app (MediaTek / Autochips `MtkBluetooth`) tells the HAL about the call audio of its
+ * hands-free client with its own keys: `atc_hfp_set_sampling_rate=8000|16000`, `atc_hfp_enable=true|false` and
+ * `atc_hfp_volume=0..15` (`HeadsetClientStateMachine.enableScoAudio` / `routeHfpAudio`; its `bt_wbs` is for the other
+ * role, the phone side, and is not sent here). The HAL of the UJC201 knows them (`strings audio.primary.ac8257.so`,
+ * 24/11/2026), next to the AOSP ones. LineageOS's Bluetooth app (AOSP) only sends `hfp_set_sampling_rate`, `hfp_enable`
+ * and `hfp_volume`.
+ *
+ * Who sends them:
+ * - stock firmware: its own Bluetooth app; nothing here.
+ * - LibreHU ROM with `ro.librehu.hfp_atc_keys=bluetooth`: its patched Bluetooth app (tools/patch_lineage_sources.sh of
+ *   the device tree), which also keeps the call in MODE_IN_COMMUNICATION as the stock does; nothing here.
+ * - LibreHU ROM built before that patch: this class, on every change of the SCO link. The call still goes through
+ *   MODE_IN_CALL there, where the HAL waits for a modem the unit does not have, so these keys alone may not be enough.
+ * `adb shell setprop persist.librehu.atc_hfp 0` turns it off.
  */
 internal class AtcCallAudio(
     private val context: Context,
@@ -36,7 +43,6 @@ internal class AtcCallAudio(
             AUDIO_CONNECTED -> {
                 if (!enabled()) return
                 val wbs = intent.getBooleanExtra(EXTRA_AUDIO_WBS, false)
-                set(am, "bt_wbs=" + if (wbs) "on" else "off")
                 set(am, "atc_hfp_set_sampling_rate=" + if (wbs) 16000 else 8000)
                 set(am, "atc_hfp_enable=true")
                 set(am, "atc_hfp_volume=${hfVolume(am)}")
@@ -92,17 +98,27 @@ internal class AtcCallAudio(
         runCatching { am.setParameters(keyValue) }.onFailure { Log.w(TAG, "$keyValue: ${it.message}") }
     }
 
+    /**
+     * The keys are this class's job: LibreHU ROM (LineageOS or crDroid) whose Bluetooth app does not send them itself,
+     * and not turned off.
+     */
     private fun enabled(): Boolean =
+        prop(PROP_ENABLED) != "0" &&
+            prop(PROP_ROM_KEYS) != "bluetooth" &&
+            (prop("ro.lineage.build.version").isNotEmpty() || prop("ro.crdroid.version").isNotEmpty())
+
+    private fun prop(name: String): String =
         runCatching {
             Class
                 .forName("android.os.SystemProperties")
                 .getMethod("get", String::class.java, String::class.java)
-                .invoke(null, PROP_ENABLED, "1") as String
-        }.getOrDefault("1") != "0"
+                .invoke(null, name, "") as String
+        }.getOrDefault("")
 
     private companion object {
         const val TAG = "LibreHU-BT"
         const val PROP_ENABLED = "persist.librehu.atc_hfp"
+        const val PROP_ROM_KEYS = "ro.librehu.hfp_atc_keys"
         const val EXTRA_AUDIO_WBS = "android.bluetooth.headsetclient.extra.AUDIO_WBS"
         const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
         const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"

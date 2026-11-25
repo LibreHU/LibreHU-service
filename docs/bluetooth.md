@@ -125,17 +125,29 @@ série.
 ## Appels sans son ni micro : ce que journalise le service
 
 Le son d'un appel ne passe pas par le service : quand le téléphone ouvre la liaison audio (SCO), le client mains libres
-d'Android 9 (`HeadsetClientStateMachine`) envoie lui-même `hfp_set_sampling_rate`, `hfp_enable=true` et
-`hfp_volume` (tiré du volume « appel vocal ») à la couche audio, qui relie la liaison Bluetooth au haut-parleur et au
-micro. Android Auto passe aussi par ce chemin : ses appels utilisent le mains libres Bluetooth, pas l'USB.
+d'Android (`HeadsetClientStateMachine`) l'annonce lui-même à la couche audio, qui relie la liaison Bluetooth au
+haut-parleur et au micro. Android Auto passe aussi par ce chemin : ses appels utilisent le mains libres Bluetooth, pas
+l'USB.
 
-**Clés Autochips (`bt/AtcCallAudio.kt`).** Ces clés AOSP ne suffisent pas sur l'UJC201 : l'appli Bluetooth du stock
-(`MtkBluetooth`, version Autochips) envoie aussi `bt_wbs=on|off`, `atc_hfp_set_sampling_rate=8000|16000`,
-`atc_hfp_enable=true|false` et `atc_hfp_volume=0..15`, que la couche audio (`audio.primary.ac8257.so`) connaît. Sans
-elles (LineageOS 17.1, appels des 23 et 24/11/2026), la couche audio n'ouvrait jamais la voie Bluetooth (BTCVSD) ni
-son annuleur d'écho : ni son ni micro dans la voiture. Le service les envoie à chaque ouverture / fermeture de la
-liaison SCO (16 kHz si le téléphone a choisi le mSBC, sinon 8 kHz), et suit le volume « appel vocal » pendant l'appel.
-Journal : `Autochips call audio on (16 kHz, mSBC)` / `off`. Désactiver : `adb shell setprop persist.librehu.atc_hfp 0`.
+**Ce que fait le stock.** Son appli Bluetooth (`MtkBluetooth`, version Autochips) envoie les clés de la couche audio
+Autochips `atc_hfp_set_sampling_rate=8000|16000`, `atc_hfp_enable=true|false` et `atc_hfp_volume=0..15` au lieu des
+clés AOSP `hfp_*`, et son Telecom garde un appel Bluetooth en `MODE_IN_COMMUNICATION` (« [hj_bt]BT call in
+MODE_IN_COMMUNICATION »). LineageOS (AOSP) envoie les `hfp_*` et met l'appel en `MODE_IN_CALL` : la couche audio ouvre
+alors la voix d'un modem que l'unité n'a pas (`SpeechDriverDummy` « modem not ready », plus de 1000 fois pendant un appel
+des journaux du 25/11/2026), d'où des appels sans son ni micro.
+
+**Correctif : dans la ROM.** Depuis le correctif « audio des appels Bluetooth (voie Autochips) » de l'arbre de la ROM
+(`tools/patch_lineage_sources.sh`, toutes les versions de LineageOS et crDroid), l'appli Bluetooth de la ROM fait comme
+le stock : appel en `MODE_IN_COMMUNICATION` et clés `atc_hfp_*`. La ROM l'annonce par
+`ro.librehu.hfp_atc_keys=bluetooth`.
+
+**Clés Autochips du service (`bt/AtcCallAudio.kt`).** Pour une ROM LibreHU construite avant ce correctif seulement, le
+service envoie lui-même les clés `atc_hfp_*` à chaque ouverture / fermeture de la liaison SCO (16 kHz si le téléphone a
+choisi le mSBC, sinon 8 kHz) et suit le volume « appel vocal » pendant l'appel. L'appel reste alors en `MODE_IN_CALL` :
+ces clés seules peuvent ne pas suffire, la ROM corrigée est la vraie solution. Rien n'est envoyé sous le stock (son appli
+Bluetooth le fait) ni avec `ro.librehu.hfp_atc_keys=bluetooth`. `bt_wbs` n'est plus envoyé : le stock ne s'en sert que
+côté téléphone (rôle AG), pas en kit mains libres. Journal : `Autochips call audio on (16 kHz, mSBC)` / `off`.
+Désactiver : `adb shell setprop persist.librehu.atc_hfp 0`.
 
 Pour les rapports de LibreHU Helper, le service écrit une ligne `LibreHU-BT` à chaque changement de cette liaison :
 `Call audio connected|connecting|disconnected: mode …, voice call volume …/…, microphone muted …, music active …`.
