@@ -6,6 +6,7 @@
 /build
 /core/build
 /app/build
+/hidlstub/build
 .externalNativeBuild
 .cxx
 *.jks
