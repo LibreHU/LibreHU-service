@@ -310,22 +310,28 @@ class FrontLed private constructor(
         val pwm2 = s.blinksPwm2
         // The firmware lights a fixed colour with the headlights only: in the daytime the colour cycle (always lit)
         // is what blinks, at night the chosen colour.
-        val onMode = if (headlights == true) LedMode.MANUAL else LedMode.AUTO
+        val night = headlights == true
+        val onMode = if (night) LedMode.MANUAL else LedMode.AUTO
         val on = Mcu.frontLed(s.blinkRed, s.blinkGreen, s.blinkBlue, onMode.code)
         val off = Mcu.frontLed(0, 0, 0, LedMode.MANUAL.code)
-        val night = headlights == true
+        // At night the panel LEDs are already lit by the headlights: the loop runs the other way round, "off" first,
+        // then lit again. Caveat (firmware JCST_AC8257_8T7 2024.08.09, disassembled 26/11/2026): the MCU powers the
+        // white panel LEDs (PF7) from the headlights input in every mode but auto, where they are always on, so
+        // "off" may not show on a panel without colour LEDs; kept as asked, to be checked on the unit.
+        val first = if (night) off else on
+        val second = if (night) on else off
         val lit1 = if (night) s.nightPwm1 else s.dayPwm1
         val lit2 = if (night) s.night2 else s.day2
         val low1 = if (lit1 > 50) 5 else 100
         val low2 = if (lit2 > 50) 5 else 100
         for (i in 0 until n) {
             main.postDelayed({
-                if (colour) send(on)
+                if (colour) send(first)
                 if (pwm1) send(Mcu.pwmBrightness(1, low1))
                 if (pwm2) main.postDelayed({ send(Mcu.pwmBrightness(2, low2)) }, if (pwm1) PWM_GAP_MS else 0L)
             }, i * 2L * STEP_MS)
             main.postDelayed({
-                if (colour) send(off)
+                if (colour) send(second)
                 if (pwm1) send(Mcu.pwmBrightness(1, lit1))
                 if (pwm2) main.postDelayed({ send(Mcu.pwmBrightness(2, lit2)) }, if (pwm1) PWM_GAP_MS else 0L)
             }, (i * 2L + 1) * STEP_MS)
