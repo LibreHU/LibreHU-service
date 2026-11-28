@@ -729,13 +729,17 @@ class LibreHuService : Service() {
 
             override fun setMuted(muted: Boolean) = change { it.copy(muted = muted) }
 
-            override fun getTone() = settings().let { intArrayOf(it.bass, it.middle, it.treble) }
+            // API 1-9: steps 0..20 of 2 dB (10 = flat); the settings keep 1 dB gains (getAudioAdvanced).
+            override fun getTone() =
+                settings().let {
+                    intArrayOf(toneStep(it.bassDb), toneStep(it.middleDb), toneStep(it.trebleDb))
+                }
 
             override fun setTone(
                 bass: Int,
                 middle: Int,
                 treble: Int,
-            ) = change { it.copy(bass = bass, middle = middle, treble = treble) }
+            ) = change { it.copy(bassDb = 2 * bass - 20, middleDb = 2 * middle - 20, trebleDb = 2 * treble - 20) }
 
             override fun getBalanceFade() = settings().let { intArrayOf(it.balance, it.fade) }
 
@@ -764,6 +768,65 @@ class LibreHuService : Service() {
             override fun getAndroidInputGain() = settings().androidInputGain
 
             override fun setAndroidInputGain(db: Int) = change { it.copy(androidInputGain = db) }
+
+            override fun getAudioAdvanced(): Bundle {
+                val s = settings()
+                return Bundle().apply {
+                    putInt("bassDb", s.bassDb)
+                    putInt("middleDb", s.middleDb)
+                    putInt("trebleDb", s.trebleDb)
+                    putInt("bassFreq", s.tone.bassFreq)
+                    putInt("bassQ", s.tone.bassQ)
+                    putInt("middleFreq", s.tone.middleFreq)
+                    putInt("middleQ", s.tone.middleQ)
+                    putInt("trebleFreq", s.tone.trebleFreq)
+                    putInt("trebleQ", s.tone.trebleQ)
+                    putInt("loudness", s.loudness)
+                    putInt("loudnessFreq", s.loudnessFreq)
+                    putInt("loudnessHicut", s.loudnessHicut)
+                    putInt("subCutoff", s.sub.cutoffHz)
+                    putBoolean("subPhase180", s.sub.phase180)
+                    putInt("subOutput", s.sub.output)
+                    putIntArray("trims", s.trims.toIntArray())
+                    putInt("maxVolume", s.maxVolume)
+                    putBoolean("toneByViper", s.toneByViper)
+                    putBoolean("supported", boardProfile.chip == org.librehu.core.unit.AudioChip.BD37534)
+                }
+            }
+
+            override fun setAudioAdvanced(values: Bundle?) {
+                val b = values ?: return
+                fun int(key: String) = if (b.containsKey(key)) b.getInt(key) else null
+                fun bool(key: String) = if (b.containsKey(key)) b.getBoolean(key) else null
+                change { s ->
+                    s.copy(
+                        bassDb = int("bassDb") ?: s.bassDb,
+                        middleDb = int("middleDb") ?: s.middleDb,
+                        trebleDb = int("trebleDb") ?: s.trebleDb,
+                        tone =
+                            s.tone.copy(
+                                bassFreq = int("bassFreq") ?: s.tone.bassFreq,
+                                bassQ = int("bassQ") ?: s.tone.bassQ,
+                                middleFreq = int("middleFreq") ?: s.tone.middleFreq,
+                                middleQ = int("middleQ") ?: s.tone.middleQ,
+                                trebleFreq = int("trebleFreq") ?: s.tone.trebleFreq,
+                                trebleQ = int("trebleQ") ?: s.tone.trebleQ,
+                            ),
+                        loudness = int("loudness") ?: s.loudness,
+                        loudnessFreq = int("loudnessFreq") ?: s.loudnessFreq,
+                        loudnessHicut = int("loudnessHicut") ?: s.loudnessHicut,
+                        sub =
+                            s.sub.copy(
+                                cutoffHz = int("subCutoff") ?: s.sub.cutoffHz,
+                                phase180 = bool("subPhase180") ?: s.sub.phase180,
+                                output = int("subOutput") ?: s.sub.output,
+                            ),
+                        trims = b.getIntArray("trims")?.toList() ?: s.trims,
+                        maxVolume = int("maxVolume") ?: s.maxVolume,
+                        toneByViper = bool("toneByViper") ?: s.toneByViper,
+                    )
+                }
+            }
 
             override fun getBoardInfo(): Bundle {
                 val bp = boardProfile
@@ -1052,3 +1115,6 @@ class LibreHuService : Service() {
         }
     }
 }
+
+/** 1 dB tone gain (-20..+20) to the 2 dB step of API 1-9 (0..20, 10 = flat), rounded towards flat. */
+internal fun toneStep(db: Int): Int = 10 + db.coerceIn(-20, 20) / 2

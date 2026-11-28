@@ -116,7 +116,7 @@ class HeadUnitTest {
         settle(700)
         assertTrue(unit.state.reverse)
 
-        unit.changeSettings { it.copy(volume = 99, bass = 14) }
+        unit.changeSettings { it.copy(volume = 99, bassDb = 8) }
         settle()
         assertEquals(Bd37534.MAX_VOLUME, saved.volume)
         assertEquals(Bd37534.tone(14), regs[Bd37534.BASS_GAIN])

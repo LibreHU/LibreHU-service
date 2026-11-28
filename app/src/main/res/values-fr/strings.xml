@@ -1569,4 +1569,26 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="phone_modem_ready">Modem prêt pour les appels entrants (%1$s)</string>
     <string name="phone_modem_none">Aucun modem MediaTek actif sur cette carte.</string>
     <string name="phone_modem_error">Assistant des appels entrants arrêté (%1$s) ; relancé automatiquement.</string>
+    <string name="volume_limit">Volume maximal</string>
+    <string name="volume_limit_hint">Cran le plus haut atteint par les commandes de volume : le régler juste sous le cran où le son commence à saturer (ampli à pleine puissance).</string>
+    <string name="tone_by_viper">Tonalité gérée par ViPER4Android</string>
+    <string name="tone_by_viper_hint">Graves, médiums, aigus et loudness de la puce restent à plat (vos valeurs sont gardées) pour ne pas égaliser le son deux fois.</string>
+    <string name="tone_freq">Fréquence centrale</string>
+    <string name="tone_q">Largeur (Q)</string>
+    <string name="loudness_freq">Fréquence du loudness</string>
+    <string name="loudness_hicut">Coupe-aigus du loudness</string>
+    <string name="speaker_trims">Niveau de chaque haut-parleur</string>
+    <string name="speaker_trims_hint">En plus de la balance et du fader : égalise un haut-parleur mesuré plus fort ou plus faible que les autres.</string>
+    <string name="trim_fl">Avant gauche</string>
+    <string name="trim_fr">Avant droit</string>
+    <string name="trim_rl">Arrière gauche</string>
+    <string name="trim_rr">Arrière droit</string>
+    <string name="sub_tuning_hint">Coupure et phase : garder le couple qui raccorde le mieux caisson et portières (mesuré avec REW, ou à l\'oreille vers 80-120 Hz).</string>
+    <string name="sub_cutoff">Coupure du caisson</string>
+    <string name="sub_cutoff_off">Sans filtre</string>
+    <string name="sub_phase">Phase du caisson</string>
+    <string name="sub_output">La sortie caisson transmet</string>
+    <string name="sub_output_lpf">Caisson (filtré)</string>
+    <string name="sub_output_front">Copie de l\'avant</string>
+    <string name="sub_output_rear">Copie de l\'arrière</string>
 </resources>

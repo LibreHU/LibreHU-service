@@ -1,6 +1,8 @@
 package org.librehu.core.unit
 
 import org.librehu.core.audio.Bd37534
+import org.librehu.core.audio.SubConfig
+import org.librehu.core.audio.ToneSetup
 import org.librehu.core.mcu.BoardSpec
 import org.librehu.core.mcu.JacProtocol
 import org.librehu.core.mcu.McuEvent
@@ -63,14 +65,28 @@ data class VehicleState(
 data class HeadUnitSettings(
     val volume: Int = 12,
     val muted: Boolean = false,
-    val bass: Int = Bd37534.TONE_FLAT,
-    val middle: Int = Bd37534.TONE_FLAT,
-    val treble: Int = Bd37534.TONE_FLAT,
+    /** Bass / middle / treble gains, dB (-20..+20, 1 dB steps). */
+    val bassDb: Int = 0,
+    val middleDb: Int = 0,
+    val trebleDb: Int = 0,
+    /** Centre frequency and Q of the three bands. */
+    val tone: ToneSetup = ToneSetup(),
     val balance: Int = Bd37534.FADER_CENTER,
     val fade: Int = Bd37534.FADER_CENTER,
+    /** Loudness gain (0..20 dB), centre frequency (250/400/800 Hz) and high cut (1..4). */
     val loudness: Int = 0,
+    val loudnessFreq: Int = 800,
+    val loudnessHicut: Int = 1,
     val subwoofer: Boolean = false,
     val subLevel: Int = Bd37534.SUB_DEFAULT_LEVEL,
+    /** Subwoofer low-pass (55/85/120/160 Hz), phase and output select. */
+    val sub: SubConfig = SubConfig(),
+    /** Own level of each speaker on top of balance / fader, dB, in the order FL, FR, RL, RR. */
+    val trims: List<Int> = listOf(0, 0, 0, 0),
+    /** Highest volume step the controls reach (below the amplifier's clipping point, for instance). */
+    val maxVolume: Int = Bd37534.MAX_VOLUME,
+    /** Tone and loudness of the chip held flat (the equaliser is in ViPER4Android), the user's values kept. */
+    val toneByViper: Boolean = false,
     val externalAmp: Boolean = false,
     /** Gain of the Android input of the BD37534, dB (0..[Bd37534.ANDROID_GAIN_MAX]). */
     val androidInputGain: Int = 0,
@@ -606,13 +622,21 @@ class HeadUnit(
                 dsp.setVolume(s.volume)
                 applyMixing()
             }
-            if (old == null || old.bass != s.bass || old.middle != s.middle || old.treble != s.treble) {
-                dsp.setTone(s.bass, s.middle, s.treble)
+            if (old == null || old.toneGains() != s.toneGains()) {
+                val (b, m, t) = s.toneGains()
+                dsp.setToneDb(b, m, t)
             }
-            if (old == null || old.balance != s.balance || old.fade != s.fade) dsp.setBalanceFade(s.balance, s.fade)
-            if (old == null || old.loudness != s.loudness) dsp.setLoudness(s.loudness)
-            if (old == null || old.subwoofer != s.subwoofer || old.subLevel != s.subLevel) {
-                dsp.setSubwoofer(s.subwoofer, s.subLevel)
+            if (old == null || old.tone != s.tone) dsp.setToneSetup(s.tone)
+            if (old == null || old.balance != s.balance || old.fade != s.fade || old.trims != s.trims) {
+                dsp.setBalanceFade(s.balance, s.fade, s.trims.toIntArray())
+            }
+            if (old == null || old.loudnessGain() != s.loudnessGain() || old.loudnessFreq != s.loudnessFreq ||
+                old.loudnessHicut != s.loudnessHicut
+            ) {
+                dsp.setLoudness(s.loudnessGain(), s.loudnessFreq, s.loudnessHicut)
+            }
+            if (old == null || old.subwoofer != s.subwoofer || old.subLevel != s.subLevel || old.sub != s.sub) {
+                dsp.setSubwoofer(s.subwoofer, s.subLevel, s.sub)
             }
             if ((old == null || old.androidInputGain != s.androidInputGain) && source != SOURCE_AUX) {
                 dsp.setInputGain(s.androidInputGain)
@@ -626,18 +650,28 @@ class HeadUnit(
         setGpio(board.ampMuteGpio, mute)
     }
 
-    private fun HeadUnitSettings.normalized() =
-        copy(
-            volume = volume.coerceIn(0, Bd37534.MAX_VOLUME),
-            bass = bass.coerceIn(0, Bd37534.TONE_MAX),
-            middle = middle.coerceIn(0, Bd37534.TONE_MAX),
-            treble = treble.coerceIn(0, Bd37534.TONE_MAX),
+    private fun HeadUnitSettings.normalized(): HeadUnitSettings {
+        val max = maxVolume.coerceIn(1, Bd37534.MAX_VOLUME)
+        return copy(
+            volume = volume.coerceIn(0, max),
+            maxVolume = max,
+            bassDb = bassDb.coerceIn(-Bd37534.TONE_DB_MAX, Bd37534.TONE_DB_MAX),
+            middleDb = middleDb.coerceIn(-Bd37534.TONE_DB_MAX, Bd37534.TONE_DB_MAX),
+            trebleDb = trebleDb.coerceIn(-Bd37534.TONE_DB_MAX, Bd37534.TONE_DB_MAX),
             balance = balance.coerceIn(0, Bd37534.FADER_MAX),
             fade = fade.coerceIn(0, Bd37534.FADER_MAX),
-            loudness = loudness.coerceIn(0, 15),
+            loudness = loudness.coerceIn(0, Bd37534.LOUDNESS_MAX),
+            loudnessHicut = loudnessHicut.coerceIn(1, 4),
             subLevel = subLevel.coerceIn(0, Bd37534.SUB_MAX_LEVEL),
+            trims = List(4) { trims.getOrElse(it) { 0 }.coerceIn(Bd37534.TRIM_MIN_DB, Bd37534.TRIM_MAX_DB) },
             androidInputGain = androidInputGain.coerceIn(0, Bd37534.ANDROID_GAIN_MAX),
         )
+    }
+
+    /** Gains written to the chip: flat while the equaliser is ViPER4Android's. */
+    private fun HeadUnitSettings.toneGains() = if (toneByViper) Triple(0, 0, 0) else Triple(bassDb, middleDb, trebleDb)
+
+    private fun HeadUnitSettings.loudnessGain() = if (toneByViper) 0 else loudness
 
     private inline fun update(transform: (VehicleState) -> VehicleState) {
         val new = transform(state)

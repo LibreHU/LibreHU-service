@@ -1569,4 +1569,26 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="phone_modem_ready">Modem ready for incoming calls (%1$s)</string>
     <string name="phone_modem_none">No MediaTek modem running on this board.</string>
     <string name="phone_modem_error">Incoming call helper stopped (%1$s); started again automatically.</string>
+    <string name="volume_limit">Maximum volume</string>
+    <string name="volume_limit_hint">Highest step the volume controls reach: set it just below the step where the sound starts to distort (amplifier at full power).</string>
+    <string name="tone_by_viper">Tone managed by ViPER4Android</string>
+    <string name="tone_by_viper_hint">The chip\'s bass, middle, treble and loudness stay flat (your values are kept) so the sound is not equalised twice.</string>
+    <string name="tone_freq">Centre frequency</string>
+    <string name="tone_q">Width (Q)</string>
+    <string name="loudness_freq">Loudness frequency</string>
+    <string name="loudness_hicut">Loudness high cut</string>
+    <string name="speaker_trims">Level of each speaker</string>
+    <string name="speaker_trims_hint">On top of balance and fader: evens out a speaker measured louder or quieter than the others.</string>
+    <string name="trim_fl">Front left</string>
+    <string name="trim_fr">Front right</string>
+    <string name="trim_rl">Rear left</string>
+    <string name="trim_rr">Rear right</string>
+    <string name="sub_tuning_hint">Cut-off and phase: keep the pair that joins the subwoofer and the doors best (measured with REW, or by ear around 80-120 Hz).</string>
+    <string name="sub_cutoff">Subwoofer cut-off</string>
+    <string name="sub_cutoff_off">No filter</string>
+    <string name="sub_phase">Subwoofer phase</string>
+    <string name="sub_output">The subwoofer output carries</string>
+    <string name="sub_output_lpf">Subwoofer (filtered)</string>
+    <string name="sub_output_front">Copy of the front</string>
+    <string name="sub_output_rear">Copy of the rear</string>
 </resources>

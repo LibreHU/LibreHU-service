@@ -12,7 +12,8 @@ import org.librehu.service.bt.ILibreHuBluetooth;
  *
  * Vehicle flags: see the FLAG_* constants of org.librehu.service.LibreHu.
  * Ranges: volume 0..getMaxVolume(), tone 0..20 (10 = flat), balance/fade 0..60 (30 = centre, balance 0 = left,
- * fade 0 = front), loudness 0..15, subwoofer level 0..12 (-5..+7 dB).
+ * fade 0 = front), loudness 0..20 dB, subwoofer level 0..12 (-5..+7 dB). getTone/setTone keep the 2 dB steps of
+ * API 1-9; the 1 dB gains and every other setting of the chip are in getAudioAdvanced (API 10).
  */
 interface ILibreHuService {
     int getApiVersion();
@@ -115,7 +116,7 @@ interface ILibreHuService {
     // --- API 9 ---
 
     /**
-     * Gain of the Android input of the sound processor, dB (0..8, 0 by default). Jancar's firmware sets +4 dB on A0
+     * Gain of the Android input of the sound processor, dB (0..20 since API 10, 0..8 before; 0 by default). Jancar's firmware sets +4 dB on A0
      * boards and +5 dB on A1 boards; the gain stage is before the volume and clips loud content at any volume when too
      * high. Only the ROHM BD37534 boards (see getBoardInfo).
      */
@@ -127,4 +128,20 @@ interface ILibreHuService {
      * "jancarAndroidGain" (int, dB), "iviConfigSection" (String), "tuner" (T, W, empty).
      */
     Bundle getBoardInfo();
+
+    // --- API 10 ---
+
+    /**
+     * Every setting of the sound processor (ROHM BD37534), in one Bundle (ints unless noted):
+     * "bassDb", "middleDb", "trebleDb" (-20..+20, 1 dB steps); "bassFreq" (60/80/100/120 Hz), "bassQ" (x100:
+     * 50/100/150/200), "middleFreq" (500/1000/1500/2500 Hz), "middleQ" (75/100/125/150), "trebleFreq"
+     * (7500/10000/12500/15000 Hz), "trebleQ" (75/125); "loudness" (0..20 dB), "loudnessFreq" (250/400/800 Hz),
+     * "loudnessHicut" (1..4); "subCutoff" (55/85/120/160 Hz, 0 = filter off), "subPhase180" (boolean), "subOutput"
+     * (0 low-pass, 1 copy of the front, 2 copy of the rear); "trims" (int[4]: FL, FR, RL, RR, -20..+6 dB on top of
+     * balance / fader); "maxVolume" (1..getMaxVolume(): highest step the controls reach); "toneByViper" (boolean:
+     * the chip's tone and loudness held flat, the equaliser being ViPER4Android's); "supported" (boolean).
+     */
+    Bundle getAudioAdvanced();
+    /** Changes the keys present in the Bundle (same keys as getAudioAdvanced, "supported" ignored). */
+    void setAudioAdvanced(in Bundle values);
 }

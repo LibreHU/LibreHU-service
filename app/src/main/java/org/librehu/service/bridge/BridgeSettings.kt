@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
+import org.librehu.core.audio.Bd37534
 import org.librehu.core.obd.ObdPid
 import org.librehu.core.unit.VehicleInput
 import org.librehu.service.AuxMix
@@ -105,7 +106,24 @@ object BridgeSettings {
         )
     }
 
-    private fun db(step: Int) = String.format(Locale.ROOT, "%+d dB", (step - 10) * 2)
+    private fun signed(v: Int) = String.format(Locale.ROOT, "%+d dB", v)
+
+    private fun hz(v: Int) = if (v >= 1000) String.format(Locale.ROOT, "%.1f kHz", v / 1000.0).replace(".0 kHz", " kHz") else "$v Hz"
+
+    private fun q(v: Int) = String.format(Locale.ROOT, "%.2f", v / 100.0).trimEnd('0').trimEnd('.')
+
+    private data class Band(
+        val key: String,
+        val label: Int,
+        val freqs: IntArray,
+        val qs: IntArray,
+    )
+
+    /** One or more settings of getAudioAdvanced (API 10). */
+    private fun adv(
+        api: org.librehu.service.ILibreHuService,
+        fill: android.os.Bundle.() -> Unit,
+    ) = api.setAudioAdvanced(android.os.Bundle().apply(fill))
 
     private fun centred(v: Int) = (v - 30).let { if (it == 0) "0" else String.format(Locale.ROOT, "%+d", it) }
 
@@ -123,8 +141,12 @@ object BridgeSettings {
         if (api == null) info("offline", r(R.string.audio_offline)) { "" }
         if (api != null) {
             section(r(R.string.section_audio))
-            slider("volume", r(R.string.volume), 0..api.maxVolume, get = { api.volume }) { api.volume = it }
+            val limit = api.audioAdvanced.getInt("maxVolume", api.maxVolume)
+            slider("volume", r(R.string.volume), 0..limit, get = { api.volume }) { api.volume = it }
             switch("mute", r(R.string.mute), get = { api.isMuted }) { api.isMuted = it }
+            slider("volume_limit", r(R.string.volume_limit), 1..api.maxVolume, hint = r(R.string.volume_limit_hint), get = {
+                api.audioAdvanced.getInt("maxVolume", api.maxVolume)
+            }) { v -> adv(api) { putInt("maxVolume", v) } }
             section(r(R.string.audio_source))
             pick("source", r(R.string.audio_source), listOf(0 to r(R.string.audio_source_android), 1 to r(R.string.audio_source_aux)), r(R.string.audio_source_hint), get = {
                 api.audioSource
@@ -171,17 +193,60 @@ object BridgeSettings {
         }
         if (api != null) {
             section(r(R.string.audio_tone))
-            val t = api.tone
-            slider("bass", r(R.string.bass), 0..20, display = ::db, get = { t[0] }) { v -> api.setTone(v, api.tone[1], api.tone[2]) }
-            slider("middle", r(R.string.middle), 0..20, display = ::db, get = { t[1] }) { v -> api.setTone(api.tone[0], v, api.tone[2]) }
-            slider("treble", r(R.string.treble), 0..20, display = ::db, get = { t[2] }) { v -> api.setTone(api.tone[0], api.tone[1], v) }
-            slider("loudness", r(R.string.loudness), 0..15, display = { "$it dB" }, get = { api.loudness }) { api.loudness = it }
+            val a = api.audioAdvanced
+            switch("tone_by_viper", r(R.string.tone_by_viper), r(R.string.tone_by_viper_hint), get = { api.audioAdvanced.getBoolean("toneByViper") }) { on ->
+                adv(api) { putBoolean("toneByViper", on) }
+            }
+            if (!a.getBoolean("toneByViper")) {
+                for ((key, label, freqs, qs) in listOf(
+                    Band("bass", R.string.bass, Bd37534.BASS_FREQS, Bd37534.BASS_QS),
+                    Band("middle", R.string.middle, Bd37534.MIDDLE_FREQS, Bd37534.MIDDLE_QS),
+                    Band("treble", R.string.treble, Bd37534.TREBLE_FREQS, Bd37534.TREBLE_QS),
+                )) {
+                    slider(key, r(label), -20..20, display = ::signed, get = { api.audioAdvanced.getInt("${key}Db") }) { v -> adv(api) { putInt("${key}Db", v) } }
+                    pick("${key}_freq", "${r(label)} · ${r(R.string.tone_freq)}", freqs.map { it to hz(it) }, get = {
+                        api.audioAdvanced.getInt("${key}Freq")
+                    }) { v -> adv(api) { putInt("${key}Freq", v) } }
+                    pick("${key}_q", "${r(label)} · ${r(R.string.tone_q)}", qs.map { it to q(it) }, get = { api.audioAdvanced.getInt("${key}Q") }) { v ->
+                        adv(api) { putInt("${key}Q", v) }
+                    }
+                }
+                slider("loudness", r(R.string.loudness), 0..Bd37534.LOUDNESS_MAX, display = { "$it dB" }, get = { api.loudness }) { api.loudness = it }
+                pick("loudness_freq", r(R.string.loudness_freq), Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, get = {
+                    api.audioAdvanced.getInt("loudnessFreq")
+                }) { v -> adv(api) { putInt("loudnessFreq", v) } }
+                pick("loudness_hicut", r(R.string.loudness_hicut), (1..4).map { it to "$it" }, get = { api.audioAdvanced.getInt("loudnessHicut") }) { v ->
+                    adv(api) { putInt("loudnessHicut", v) }
+                }
+            }
             section(r(R.string.audio_balance))
             slider("balance", r(R.string.balance), 0..60, display = ::centred, get = { api.balanceFade[0] }) { v -> api.setBalanceFade(v, api.balanceFade[1]) }
             slider("fade", r(R.string.fade), 0..60, display = ::centred, get = { api.balanceFade[1] }) { v -> api.setBalanceFade(api.balanceFade[0], v) }
+            val trimNames = listOf(R.string.trim_fl, R.string.trim_fr, R.string.trim_rl, R.string.trim_rr)
+            for (i in 0..3) {
+                slider("trim_$i", "${r(R.string.speaker_trims)} · ${r(trimNames[i])}", Bd37534.TRIM_MIN_DB..Bd37534.TRIM_MAX_DB, display = ::signed, hint = if (i == 0) r(R.string.speaker_trims_hint) else "", get = {
+                    api.audioAdvanced.getIntArray("trims")?.getOrNull(i) ?: 0
+                }) { v ->
+                    val t = api.audioAdvanced.getIntArray("trims") ?: IntArray(4)
+                    t[i] = v
+                    adv(api) { putIntArray("trims", t) }
+                }
+            }
             section(r(R.string.audio_outputs))
             switch("subwoofer", r(R.string.subwoofer), get = { api.isSubwooferOn }) { on -> api.setSubwoofer(on, api.subwooferLevel) }
             slider("sub_level", r(R.string.sub_level), 0..12, display = { "${it - 5} dB" }, get = { api.subwooferLevel }) { v -> api.setSubwoofer(api.isSubwooferOn, v) }
+            pick("sub_cutoff", r(R.string.sub_cutoff), Bd37534.SUB_CUTOFFS.map { it to hz(it) } + (0 to r(R.string.sub_cutoff_off)), r(R.string.sub_tuning_hint), get = {
+                api.audioAdvanced.getInt("subCutoff")
+            }) { v -> adv(api) { putInt("subCutoff", v) } }
+            pick("sub_phase", r(R.string.sub_phase), listOf(0 to "0°", 1 to "180°"), get = { if (api.audioAdvanced.getBoolean("subPhase180")) 1 else 0 }) { v ->
+                adv(api) { putBoolean("subPhase180", v == 1) }
+            }
+            pick(
+                "sub_output",
+                r(R.string.sub_output),
+                listOf(0 to r(R.string.sub_output_lpf), 1 to r(R.string.sub_output_front), 2 to r(R.string.sub_output_rear)),
+                get = { api.audioAdvanced.getInt("subOutput") },
+            ) { v -> adv(api) { putInt("subOutput", v) } }
             switch("external_amp", r(R.string.external_amp), r(R.string.external_amp_hint), get = { api.isExternalAmpEnabled }) { api.isExternalAmpEnabled = it }
         }
         overlay(this, app, r, OverlayKind.VOLUME)

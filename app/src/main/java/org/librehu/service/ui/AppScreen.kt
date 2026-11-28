@@ -370,8 +370,10 @@ fun AudioScreen(client: ServiceClient) {
     Page(stringResource(R.string.tab_audio)) {
         if (link.state != LibreHuService.Link.RUNNING) Card { Hint(stringResource(R.string.audio_offline)) }
         Card(stringResource(R.string.section_audio)) {
-            SliderRow(stringResource(R.string.volume), a.volume, 0..a.maxVolume) { v -> client.call { it.setVolume(v) } }
+            SliderRow(stringResource(R.string.volume), a.volume, 0..a.volumeLimit) { v -> client.call { it.setVolume(v) } }
             SwitchRow(stringResource(R.string.mute), a.muted) { on -> client.call { it.setMuted(on) } }
+            SliderRow(stringResource(R.string.volume_limit), a.volumeLimit, 1..a.maxVolume) { v -> client.adv("maxVolume", v) }
+            Hint(stringResource(R.string.volume_limit_hint))
         }
         Card(stringResource(R.string.audio_source)) {
             Hint(stringResource(R.string.audio_source_hint))
@@ -401,20 +403,63 @@ fun AudioScreen(client: ServiceClient) {
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         SoundOsdCard()
         Card(stringResource(R.string.audio_tone)) {
-            SliderRow(stringResource(R.string.bass), a.bass, 0..20, ::db) { v -> client.call { it.setTone(v, a.middle, a.treble) } }
-            SliderRow(stringResource(R.string.middle), a.middle, 0..20, ::db) { v -> client.call { it.setTone(a.bass, v, a.treble) } }
-            SliderRow(stringResource(R.string.treble), a.treble, 0..20, ::db) { v -> client.call { it.setTone(a.bass, a.middle, v) } }
-            SliderRow(stringResource(R.string.loudness), a.loudness, 0..15, { "$it dB" }) { v -> client.call { it.setLoudness(v) } }
+            SwitchRow(stringResource(R.string.tone_by_viper), a.toneByViper, stringResource(R.string.tone_by_viper_hint)) { on ->
+                client.adv("toneByViper", on)
+            }
+            if (!a.toneByViper) {
+                SliderRow(stringResource(R.string.bass), a.bassDb, -20..20, ::signedDb) { v -> client.adv("bassDb", v) }
+                ToneBand(a.bassFreq, Bd37534.BASS_FREQS, a.bassQ, Bd37534.BASS_QS, { client.adv("bassFreq", it) }) { client.adv("bassQ", it) }
+                SliderRow(stringResource(R.string.middle), a.middleDb, -20..20, ::signedDb) { v -> client.adv("middleDb", v) }
+                ToneBand(a.middleFreq, Bd37534.MIDDLE_FREQS, a.middleQ, Bd37534.MIDDLE_QS, { client.adv("middleFreq", it) }) {
+                    client.adv("middleQ", it)
+                }
+                SliderRow(stringResource(R.string.treble), a.trebleDb, -20..20, ::signedDb) { v -> client.adv("trebleDb", v) }
+                ToneBand(a.trebleFreq, Bd37534.TREBLE_FREQS, a.trebleQ, Bd37534.TREBLE_QS, { client.adv("trebleFreq", it) }) {
+                    client.adv("trebleQ", it)
+                }
+                SliderRow(stringResource(R.string.loudness), a.loudness, 0..Bd37534.LOUDNESS_MAX, { "$it dB" }) { v -> client.adv("loudness", v) }
+                BodyText(stringResource(R.string.loudness_freq))
+                Choices(Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, a.loudnessFreq) { client.adv("loudnessFreq", it) }
+                BodyText(stringResource(R.string.loudness_hicut))
+                Choices((1..4).map { it to "$it" }, a.loudnessHicut) { client.adv("loudnessHicut", it) }
+            }
         }
         Card(stringResource(R.string.audio_balance)) {
             SliderRow(stringResource(R.string.balance), a.balance, 0..60, ::centred) { v -> client.call { it.setBalanceFade(v, a.fade) } }
             SliderRow(stringResource(R.string.fade), a.fade, 0..60, ::centred) { v -> client.call { it.setBalanceFade(a.balance, v) } }
+            BodyText(stringResource(R.string.speaker_trims))
+            Hint(stringResource(R.string.speaker_trims_hint))
+            val names = listOf(R.string.trim_fl, R.string.trim_fr, R.string.trim_rl, R.string.trim_rr)
+            for (i in 0..3) {
+                SliderRow(stringResource(names[i]), a.trims.getOrElse(i) { 0 }, Bd37534.TRIM_MIN_DB..Bd37534.TRIM_MAX_DB, ::signedDb) { v ->
+                    client.advTrims(a.trims, i, v)
+                }
+            }
         }
         Card(stringResource(R.string.audio_outputs)) {
             SwitchRow(stringResource(R.string.subwoofer), a.subwoofer) { on -> client.call { it.setSubwoofer(on, a.subLevel) } }
             SliderRow(stringResource(R.string.sub_level), a.subLevel, 0..12, {
                 "${it - 5} dB"
             }) { v -> client.call { it.setSubwoofer(a.subwoofer, v) } }
+            if (a.subwoofer) {
+                Hint(stringResource(R.string.sub_tuning_hint))
+                BodyText(stringResource(R.string.sub_cutoff))
+                Choices(
+                    Bd37534.SUB_CUTOFFS.map { it to hz(it) } + (0 to stringResource(R.string.sub_cutoff_off)),
+                    a.subCutoff,
+                ) { client.adv("subCutoff", it) }
+                BodyText(stringResource(R.string.sub_phase))
+                Choices(listOf(false to "0°", true to "180°"), a.subPhase180) { client.adv("subPhase180", it) }
+                BodyText(stringResource(R.string.sub_output))
+                Choices(
+                    listOf(
+                        Bd37534.SUB_OUTPUT_LPF to stringResource(R.string.sub_output_lpf),
+                        Bd37534.SUB_OUTPUT_FRONT to stringResource(R.string.sub_output_front),
+                        Bd37534.SUB_OUTPUT_REAR to stringResource(R.string.sub_output_rear),
+                    ),
+                    a.subOutput,
+                ) { client.adv("subOutput", it) }
+            }
             SwitchRow(stringResource(R.string.external_amp), a.externalAmp, stringResource(R.string.external_amp_hint)) { on ->
                 client.call { it.setExternalAmpEnabled(on) }
             }
@@ -432,7 +477,25 @@ fun AudioScreen(client: ServiceClient) {
     }
 }
 
-private fun db(step: Int) = "%+d dB".format((step - 10) * 2)
+private fun signedDb(v: Int) = "%+d dB".format(v)
+
+private fun hz(v: Int) = if (v >= 1000) "%s kHz".format(if (v % 1000 == 0) "${v / 1000}" else "%.1f".format(v / 1000.0)) else "$v Hz"
+
+/** Centre frequency and Q of one band of the sound processor. */
+@Composable
+private fun ToneBand(
+    freq: Int,
+    freqs: IntArray,
+    q: Int,
+    qs: IntArray,
+    onFreq: (Int) -> Unit,
+    onQ: (Int) -> Unit,
+) {
+    BodyText(stringResource(R.string.tone_freq))
+    Choices(freqs.map { it to hz(it) }, freq, onFreq)
+    BodyText(stringResource(R.string.tone_q))
+    Choices(qs.map { it to "%.2f".format(it / 100.0).trimEnd('0').trimEnd('.') }, q, onQ)
+}
 
 private fun centred(v: Int) = (v - 30).let { if (it == 0) "0" else "%+d".format(it) }
 
