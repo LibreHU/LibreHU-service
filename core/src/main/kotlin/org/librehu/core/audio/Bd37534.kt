@@ -255,12 +255,12 @@ class Bd37534(
          * Gain of the Android input chosen in LibreHU (0 by default: most headroom, see [setInputGain]); ivi-services
          * sets +4 dB on A0 boards and +5 dB on A1 boards ([org.librehu.core.unit.BoardProfile.androidGainDb]).
          */
-        const val ANDROID_GAIN_MAX = INPUT_GAIN_MAX
+        const val ANDROID_GAIN_MAX = 20
         const val SUB_DEFAULT_LEVEL = 6
         const val SUB_FC_120HZ = 3
 
         /** Input gain range of the chip (0x06), dB. */
-        const val INPUT_GAIN_MAX = 20
+        const val INPUT_GAIN_MAX = ANDROID_GAIN_MAX
         const val TONE_DB_MAX = 20
         const val LOUDNESS_MAX = 20
         const val TRIM_MIN_DB = -20
