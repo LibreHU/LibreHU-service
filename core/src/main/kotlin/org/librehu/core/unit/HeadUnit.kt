@@ -1,6 +1,9 @@
 package org.librehu.core.unit
 
 import org.librehu.core.audio.Bd37534
+import org.librehu.core.audio.Bu32107
+import org.librehu.core.audio.Bu32107Settings
+import org.librehu.core.audio.SoundProcessor
 import org.librehu.core.audio.SubConfig
 import org.librehu.core.audio.ToneSetup
 import org.librehu.core.mcu.BoardSpec
@@ -90,6 +93,8 @@ data class HeadUnitSettings(
     val externalAmp: Boolean = false,
     /** Gain of the Android input of the BD37534, dB (0..[Bd37534.ANDROID_GAIN_MAX]). */
     val androidInputGain: Int = 0,
+    /** Settings only a ROHM BU32107 has (13-band EQ, high-pass, P2Bass, time alignment...), unused elsewhere. */
+    val bu: Bu32107Settings = Bu32107Settings(),
 )
 
 interface SettingsStore {
@@ -105,7 +110,7 @@ interface SettingsStore {
  */
 class HeadUnit(
     private val gpio: Gpio,
-    private val dsp: Bd37534?,
+    private val dsp: SoundProcessor?,
     private val store: SettingsStore,
     private val executor: ScheduledExecutorService,
     private val listener: Listener,
@@ -200,7 +205,7 @@ class HeadUnit(
             setGpio(board.ampMuteGpio, true)
             handshake()
             val ok = dsp?.init()
-            log("MCU protocol: ${protocol.name}; BD37534 init: ${ok ?: "absent"}")
+            log("MCU protocol: ${protocol.name}; ${dsp?.chip ?: "sound processor"} init: ${ok ?: "absent"}")
             applyAudio()
         }
         executor.scheduleWithFixedDelay(guarded("GPIO poll", ::pollGpio), 500, GPIO_POLL_MS, TimeUnit.MILLISECONDS)
@@ -239,6 +244,9 @@ class HeadUnit(
      */
     fun wake() = executor.execute { handshake() }
 
+    /** Runs [task] on the head unit's thread, where every chip access happens. */
+    fun runOnUnit(task: () -> Unit) = executor.execute(task)
+
     /**
      * After a real standby: the MCU cut the sound processor's supply, so its registers are back to their power-on
      * values (setup, input selector) while [Bd37534] still caches the old ones; only volume, tone, faders and mute were
@@ -250,8 +258,8 @@ class HeadUnit(
             val dsp = dsp ?: return@execute
             setGpio(board.ampMuteGpio, true)
             val ok = dsp.init()
-            if (source == SOURCE_AUX) dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB)
-            log("BD37534 init after a standby: $ok")
+            if (source == SOURCE_AUX) dsp.selectAux()
+            log("${dsp.chip} init after a standby: $ok")
             applyAudio()
         }
 
@@ -449,11 +457,7 @@ class HeadUnit(
             val dsp = dsp ?: return@execute
             val wasMuted = dsp.isMuted
             if (!wasMuted) dsp.setMute(true)
-            if (aux) {
-                dsp.setInput(Bd37534.INPUT_AUX, Bd37534.AUX_GAIN_DB)
-            } else {
-                dsp.setInput(Bd37534.INPUT_ANDROID, settings.androidInputGain)
-            }
+            if (aux) dsp.selectAux() else dsp.selectAndroid(settings.androidInputGain)
             applyMixing()
             if (!wasMuted) dsp.setMute(false)
             log("Audio source: ${if (aux) "AUX" else "Android"}")
@@ -618,6 +622,8 @@ class HeadUnit(
         val s = settings
         val dsp = dsp
         if (dsp != null) {
+            // First: the other settings of a BU32107 read its filter choices (subwoofer low-pass...).
+            if (dsp is Bu32107 && (old == null || old.bu != s.bu)) dsp.applySettings(s.bu)
             if (old == null || old.volume != s.volume) {
                 dsp.setVolume(s.volume)
                 applyMixing()
@@ -665,6 +671,7 @@ class HeadUnit(
             subLevel = subLevel.coerceIn(0, Bd37534.SUB_MAX_LEVEL),
             trims = List(4) { trims.getOrElse(it) { 0 }.coerceIn(Bd37534.TRIM_MIN_DB, Bd37534.TRIM_MAX_DB) },
             androidInputGain = androidInputGain.coerceIn(0, Bd37534.ANDROID_GAIN_MAX),
+            bu = bu.normalized(),
         )
     }
 

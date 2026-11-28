@@ -1591,4 +1591,37 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="sub_output_lpf">Subwoofer (filtered)</string>
     <string name="sub_output_front">Copy of the front</string>
     <string name="sub_output_rear">Copy of the rear</string>
+    <string name="bu_title">ROHM BU32107 sound processor</string>
+    <string name="bu_driver">Experimental BU32107 driver</string>
+    <string name="bu_driver_hint">Written from the ROHM datasheet, not tested on a real board yet. Off: the chip is not driven (no sound). Turn the volume down before the first try; the service restarts its hardware.</string>
+    <string name="bu_eq">13-band equaliser (BU32107)</string>
+    <string name="bu_eq_q">Width (Q) of every band</string>
+    <string name="bu_eq_headroom">EQ headroom</string>
+    <string name="bu_eq_headroom_hint">Pre-scaler -12 dB and post-scaler +12 dB inside the DSP: for strong boosts, against internal clipping.</string>
+    <string name="bu_eq_rear_same">Rear speakers: same EQ as the front</string>
+    <string name="bu_eq_rear">Rear EQ</string>
+    <string name="bu_tone_loudness">Tone and loudness frequencies (BU32107)</string>
+    <string name="bu_loud_lpf">Loudness: bass corner</string>
+    <string name="bu_loud_hpf">Loudness: treble corner</string>
+    <string name="bu_hiboost">Loudness: high boost</string>
+    <string name="bu_filters">Crossover filters (BU32107)</string>
+    <string name="bu_filters_hint">High-pass of the front and rear speakers, low-pass and subsonic filter of the subwoofer. Steep = 4th order (24 dB/octave), else 2nd order.</string>
+    <string name="bu_hpf_front">Front high-pass</string>
+    <string name="bu_hpf_rear">Rear high-pass</string>
+    <string name="bu_steep">Steep (4th order)</string>
+    <string name="bu_invert">Phase 180°</string>
+    <string name="bu_sub_lpf">Subwoofer low-pass</string>
+    <string name="bu_sub_hpf">Subwoofer subsonic high-pass</string>
+    <string name="bu_p2bass">P2Bass bass enhancement (BU32107)</string>
+    <string name="bu_p2bass_hint">Bass boost of the chip at one frequency, front and rear separately. Off = no effect.</string>
+    <string name="bu_front">Front</string>
+    <string name="bu_rear">Rear</string>
+    <string name="bu_gain">Gain</string>
+    <string name="bu_delays">Time alignment (BU32107)</string>
+    <string name="bu_delays_hint">Delay of each speaker so every sound reaches the driver\'s seat together: delay the nearest speakers by their distance difference (1 ms = 34.3 cm).</string>
+    <string name="bu_noise">Test noise (BU32107)</string>
+    <string name="bu_noise_hint">The chip plays its own noise instead of the music, for REW or a phone RTA. The volume applies: start low.</string>
+    <string name="bu_noise_off">Off</string>
+    <string name="bu_noise_pink">Pink noise</string>
+    <string name="bu_noise_white">White noise</string>
 </resources>

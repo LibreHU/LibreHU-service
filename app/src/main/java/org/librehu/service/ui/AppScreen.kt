@@ -64,6 +64,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.librehu.core.audio.Bd37534
+import org.librehu.core.audio.Bu32107
+import org.librehu.core.audio.Bu32107Settings
 import org.librehu.service.LibreHuService
 import org.librehu.service.R
 import org.librehu.service.ServiceState
@@ -366,6 +368,8 @@ fun onOff(on: Boolean) = stringResource(if (on) R.string.on else R.string.off)
 @Composable
 fun AudioScreen(client: ServiceClient) {
     val a = client.audio
+    // Board with a ROHM BU32107: its own settings, some BD37534 ones hidden.
+    val isBu = a.chip.contains("BU32107")
     val link by ServiceState.link.collectAsStateWithLifecycle()
     Page(stringResource(R.string.tab_audio)) {
         if (link.state != LibreHuService.Link.RUNNING) Card { Hint(stringResource(R.string.audio_offline)) }
@@ -407,21 +411,30 @@ fun AudioScreen(client: ServiceClient) {
                 client.adv("toneByViper", on)
             }
             if (!a.toneByViper) {
-                SliderRow(stringResource(R.string.bass), a.bassDb, -20..20, ::signedDb) { v -> client.adv("bassDb", v) }
-                ToneBand(a.bassFreq, Bd37534.BASS_FREQS, a.bassQ, Bd37534.BASS_QS, { client.adv("bassFreq", it) }) { client.adv("bassQ", it) }
-                SliderRow(stringResource(R.string.middle), a.middleDb, -20..20, ::signedDb) { v -> client.adv("middleDb", v) }
-                ToneBand(a.middleFreq, Bd37534.MIDDLE_FREQS, a.middleQ, Bd37534.MIDDLE_QS, { client.adv("middleFreq", it) }) {
-                    client.adv("middleQ", it)
+                // BU32107: ±12 dB in 2 dB steps, its own frequencies (BU32107 card); BD37534: ±20 dB, frequency and Q here.
+                val toneMax = if (isBu) Bu32107.TONE_MAX_DB else 20
+                SliderRow(stringResource(R.string.bass), a.bassDb, -toneMax..toneMax, ::signedDb) { v -> client.adv("bassDb", v) }
+                if (!isBu) ToneBand(a.bassFreq, Bd37534.BASS_FREQS, a.bassQ, Bd37534.BASS_QS, { client.adv("bassFreq", it) }) { client.adv("bassQ", it) }
+                SliderRow(stringResource(R.string.middle), a.middleDb, -toneMax..toneMax, ::signedDb) { v -> client.adv("middleDb", v) }
+                if (!isBu) {
+                    ToneBand(a.middleFreq, Bd37534.MIDDLE_FREQS, a.middleQ, Bd37534.MIDDLE_QS, { client.adv("middleFreq", it) }) {
+                        client.adv("middleQ", it)
+                    }
                 }
-                SliderRow(stringResource(R.string.treble), a.trebleDb, -20..20, ::signedDb) { v -> client.adv("trebleDb", v) }
-                ToneBand(a.trebleFreq, Bd37534.TREBLE_FREQS, a.trebleQ, Bd37534.TREBLE_QS, { client.adv("trebleFreq", it) }) {
-                    client.adv("trebleQ", it)
+                SliderRow(stringResource(R.string.treble), a.trebleDb, -toneMax..toneMax, ::signedDb) { v -> client.adv("trebleDb", v) }
+                if (!isBu) {
+                    ToneBand(a.trebleFreq, Bd37534.TREBLE_FREQS, a.trebleQ, Bd37534.TREBLE_QS, { client.adv("trebleFreq", it) }) {
+                        client.adv("trebleQ", it)
+                    }
                 }
-                SliderRow(stringResource(R.string.loudness), a.loudness, 0..Bd37534.LOUDNESS_MAX, { "$it dB" }) { v -> client.adv("loudness", v) }
-                BodyText(stringResource(R.string.loudness_freq))
-                Choices(Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, a.loudnessFreq) { client.adv("loudnessFreq", it) }
-                BodyText(stringResource(R.string.loudness_hicut))
-                Choices((1..4).map { it to "$it" }, a.loudnessHicut) { client.adv("loudnessHicut", it) }
+                val loudMax = if (isBu) Bu32107.LOUDNESS_MAX_DB else Bd37534.LOUDNESS_MAX
+                SliderRow(stringResource(R.string.loudness), a.loudness, 0..loudMax, { "$it dB" }) { v -> client.adv("loudness", v) }
+                if (!isBu) {
+                    BodyText(stringResource(R.string.loudness_freq))
+                    Choices(Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, a.loudnessFreq) { client.adv("loudnessFreq", it) }
+                    BodyText(stringResource(R.string.loudness_hicut))
+                    Choices((1..4).map { it to "$it" }, a.loudnessHicut) { client.adv("loudnessHicut", it) }
+                }
             }
         }
         Card(stringResource(R.string.audio_balance)) {
@@ -441,7 +454,7 @@ fun AudioScreen(client: ServiceClient) {
             SliderRow(stringResource(R.string.sub_level), a.subLevel, 0..12, {
                 "${it - 5} dB"
             }) { v -> client.call { it.setSubwoofer(a.subwoofer, v) } }
-            if (a.subwoofer) {
+            if (a.subwoofer && !isBu) {
                 Hint(stringResource(R.string.sub_tuning_hint))
                 BodyText(stringResource(R.string.sub_cutoff))
                 Choices(
@@ -464,6 +477,7 @@ fun AudioScreen(client: ServiceClient) {
                 client.call { it.setExternalAmpEnabled(on) }
             }
         }
+        if (isBu) Bu32107Cards(a, client)
         Card(stringResource(R.string.android_input_gain)) {
             if (!a.chipSupported) {
                 BodyText(stringResource(R.string.chip_not_supported, a.chip.ifEmpty { "?" }, a.boardId.ifEmpty { "?" }))
@@ -479,7 +493,7 @@ fun AudioScreen(client: ServiceClient) {
 
 private fun signedDb(v: Int) = "%+d dB".format(v)
 
-private fun hz(v: Int) = if (v >= 1000) "%s kHz".format(if (v % 1000 == 0) "${v / 1000}" else "%.1f".format(v / 1000.0)) else "$v Hz"
+private fun hz(v: Int) = if (v == 31) "31.5 Hz" else if (v >= 1000) "%s kHz".format(if (v % 1000 == 0) "${v / 1000}" else "%.1f".format(v / 1000.0)) else "$v Hz"
 
 /** Centre frequency and Q of one band of the sound processor. */
 @Composable
@@ -654,6 +668,111 @@ private fun StyledAppScreen(
                     Box(Modifier.weight(1f).fillMaxWidth()) { if (query.isBlank()) content() else SearchResults(query, onTab, { onQuery("") }) }
                 }
             }
+        }
+    }
+}
+
+/** Driver switch and every setting of the ROHM BU32107 (Table mode of the datasheet). */
+@Composable
+private fun Bu32107Cards(
+    a: AudioState,
+    client: ServiceClient,
+) {
+    val b = a.bu
+
+    fun set(t: (Bu32107Settings) -> Bu32107Settings) = client.adv("bu32107", t(b).encode())
+    Card(stringResource(R.string.bu_title)) {
+        SwitchRow(stringResource(R.string.bu_driver), a.buDriver, stringResource(R.string.bu_driver_hint)) { on ->
+            client.adv("bu32107Driver", on)
+        }
+    }
+    if (a.driver != "BU32107") return
+    Card(stringResource(R.string.bu_eq)) {
+        for (i in 0 until Bu32107.EQ_BANDS) {
+            SliderRow(hz(Bu32107.EQ_BANDS_HZ[i]), b.eqFront[i], -Bu32107.EQ_MAX_DB..Bu32107.EQ_MAX_DB, ::signedDb) { v ->
+                set { s -> s.copy(eqFront = s.eqFront.toMutableList().also { it[i] = v / 2 * 2 }) }
+            }
+        }
+        BodyText(stringResource(R.string.bu_eq_q))
+        Choices(listOf(false to "2.2", true to "4.7"), b.eqNarrow) { v -> set { it.copy(eqNarrow = v) } }
+        SwitchRow(stringResource(R.string.bu_eq_headroom), b.eqHeadroom, stringResource(R.string.bu_eq_headroom_hint)) { v ->
+            set { it.copy(eqHeadroom = v) }
+        }
+        SwitchRow(stringResource(R.string.bu_eq_rear_same), b.eqRearSame) { v -> set { it.copy(eqRearSame = v) } }
+        if (!b.eqRearSame) {
+            BodyText(stringResource(R.string.bu_eq_rear))
+            for (i in 0 until Bu32107.EQ_BANDS) {
+                SliderRow(hz(Bu32107.EQ_BANDS_HZ[i]), b.eqRear[i], -Bu32107.EQ_MAX_DB..Bu32107.EQ_MAX_DB, ::signedDb) { v ->
+                    set { s -> s.copy(eqRear = s.eqRear.toMutableList().also { it[i] = v / 2 * 2 }) }
+                }
+            }
+        }
+    }
+    Card(stringResource(R.string.bu_tone_loudness)) {
+        BodyText(stringResource(R.string.bass))
+        Choices(Bu32107.BASS_FC.map { it to hz(it) }, b.bassFc) { v -> set { it.copy(bassFc = v) } }
+        BodyText(stringResource(R.string.middle))
+        Choices(Bu32107.MIDDLE_F0.map { it to hz(it) }, b.middleF0) { v -> set { it.copy(middleF0 = v) } }
+        BodyText(stringResource(R.string.treble))
+        Choices(Bu32107.TREBLE_FC.map { it to hz(it) }, b.trebleFc) { v -> set { it.copy(trebleFc = v) } }
+        BodyText(stringResource(R.string.bu_loud_lpf))
+        Choices(Bu32107.LOUD_LPF.map { it to hz(it) }, b.loudLpf) { v -> set { it.copy(loudLpf = v) } }
+        BodyText(stringResource(R.string.bu_loud_hpf))
+        Choices(Bu32107.LOUD_HPF.map { it to hz(it) }, b.loudHpf) { v -> set { it.copy(loudHpf = v) } }
+        BodyText(stringResource(R.string.bu_hiboost))
+        Choices(Bu32107.LOUD_HIBOOST.map { it to if (it == 0) "0" else "0.$it" }, b.loudHiBoost) { v -> set { it.copy(loudHiBoost = v) } }
+    }
+    Card(stringResource(R.string.bu_filters)) {
+        Hint(stringResource(R.string.bu_filters_hint))
+        val off = stringResource(R.string.sub_cutoff_off)
+
+        fun opts(list: IntArray) = list.map { it to if (it == 0) off else hz(it) }
+        BodyText(stringResource(R.string.bu_hpf_front))
+        Choices(opts(Bu32107.HPF_FC), b.hpfFront) { v -> set { it.copy(hpfFront = v) } }
+        SwitchRow(stringResource(R.string.bu_steep), b.hpfFrontSteep) { v -> set { it.copy(hpfFrontSteep = v) } }
+        SwitchRow(stringResource(R.string.bu_invert), b.hpfFrontInvert) { v -> set { it.copy(hpfFrontInvert = v) } }
+        BodyText(stringResource(R.string.bu_hpf_rear))
+        Choices(opts(Bu32107.HPF_FC), b.hpfRear) { v -> set { it.copy(hpfRear = v) } }
+        SwitchRow(stringResource(R.string.bu_steep), b.hpfRearSteep) { v -> set { it.copy(hpfRearSteep = v) } }
+        SwitchRow(stringResource(R.string.bu_invert), b.hpfRearInvert) { v -> set { it.copy(hpfRearInvert = v) } }
+        BodyText(stringResource(R.string.bu_sub_lpf))
+        Choices(opts(Bu32107.SUB_LPF_FC), b.subLpf) { v -> set { it.copy(subLpf = v) } }
+        SwitchRow(stringResource(R.string.bu_steep), b.subLpfSteep) { v -> set { it.copy(subLpfSteep = v) } }
+        SwitchRow(stringResource(R.string.sub_phase), a.subPhase180) { v -> client.adv("subPhase180", v) }
+        BodyText(stringResource(R.string.bu_sub_hpf))
+        Choices(opts(Bu32107.SUB_HPF_FC), b.subHpf) { v -> set { it.copy(subHpf = v) } }
+    }
+    Card(stringResource(R.string.bu_p2bass)) {
+        Hint(stringResource(R.string.bu_p2bass_hint))
+        val off = stringResource(R.string.sub_cutoff_off)
+        BodyText(stringResource(R.string.bu_front))
+        Choices(Bu32107.P2BASS_FC.map { it to if (it == 0) off else hz(it) }, b.p2BassFrontHz) { v -> set { it.copy(p2BassFrontHz = v) } }
+        SliderRow(stringResource(R.string.bu_gain), b.p2BassFrontDb, 0..Bu32107.P2BASS_MAX_DB, { "+$it dB" }) { v ->
+            set { it.copy(p2BassFrontDb = v) }
+        }
+        BodyText(stringResource(R.string.bu_rear))
+        Choices(Bu32107.P2BASS_FC.map { it to if (it == 0) off else hz(it) }, b.p2BassRearHz) { v -> set { it.copy(p2BassRearHz = v) } }
+        SliderRow(stringResource(R.string.bu_gain), b.p2BassRearDb, 0..Bu32107.P2BASS_MAX_DB, { "+$it dB" }) { v ->
+            set { it.copy(p2BassRearDb = v) }
+        }
+    }
+    Card(stringResource(R.string.bu_delays)) {
+        Hint(stringResource(R.string.bu_delays_hint))
+        val names = listOf(R.string.trim_fl, R.string.trim_fr, R.string.trim_rl, R.string.trim_rr, R.string.subwoofer)
+        for (i in 0 until 5) {
+            SliderRow(stringResource(names[i]), b.delays[i], 0..Bu32107.DELAY_MAX_TENTHS, { t ->
+                "%.1f ms · %d cm".format(t / 10.0, (t * 3.43).toInt())
+            }) { v -> set { s -> s.copy(delays = s.delays.toMutableList().also { it[i] = v }) } }
+        }
+    }
+    Card(stringResource(R.string.bu_noise)) {
+        Hint(stringResource(R.string.bu_noise_hint))
+        Choices(
+            listOf(0 to stringResource(R.string.bu_noise_off), 1 to stringResource(R.string.bu_noise_pink), 2 to stringResource(R.string.bu_noise_white)),
+            a.testNoise,
+        ) { v ->
+            client.adv("testNoise", v)
+            client.refreshAudio()
         }
     }
 }

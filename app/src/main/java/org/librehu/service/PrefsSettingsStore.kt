@@ -49,6 +49,7 @@ class PrefsSettingsStore(
             subLevel = prefs.getInt("sub_level", d.subLevel),
             externalAmp = prefs.getBoolean("external_amp", d.externalAmp),
             androidInputGain = prefs.getInt("android_input_gain", d.androidInputGain),
+            bu = org.librehu.core.audio.Bu32107Settings.decode(prefs.getString("bu32107", null)),
         )
     }
 
@@ -84,6 +85,7 @@ class PrefsSettingsStore(
             .putInt("sub_level", settings.subLevel)
             .putBoolean("external_amp", settings.externalAmp)
             .putInt("android_input_gain", settings.androidInputGain)
+            .putString("bu32107", settings.bu.encode())
             .apply()
     }
 }

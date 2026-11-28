@@ -1591,4 +1591,37 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="sub_output_lpf">Caisson (filtré)</string>
     <string name="sub_output_front">Copie de l\'avant</string>
     <string name="sub_output_rear">Copie de l\'arrière</string>
+    <string name="bu_title">Processeur de son ROHM BU32107</string>
+    <string name="bu_driver">Pilote BU32107 expérimental</string>
+    <string name="bu_driver_hint">Écrit d\'après la fiche ROHM, pas encore testé sur une vraie carte. Éteint : la puce n\'est pas pilotée (pas de son). Baissez le volume avant le premier essai ; le service redémarre son matériel.</string>
+    <string name="bu_eq">Égaliseur 13 bandes (BU32107)</string>
+    <string name="bu_eq_q">Largeur (Q) de chaque bande</string>
+    <string name="bu_eq_headroom">Marge de l\'égaliseur</string>
+    <string name="bu_eq_headroom_hint">Pré-échelle -12 dB et post-échelle +12 dB dans le DSP : pour les fortes hausses, contre l\'écrêtage interne.</string>
+    <string name="bu_eq_rear_same">Haut-parleurs arrière : même égaliseur que l\'avant</string>
+    <string name="bu_eq_rear">Égaliseur arrière</string>
+    <string name="bu_tone_loudness">Fréquences de tonalité et de loudness (BU32107)</string>
+    <string name="bu_loud_lpf">Loudness : coin des graves</string>
+    <string name="bu_loud_hpf">Loudness : coin des aigus</string>
+    <string name="bu_hiboost">Loudness : renfort des aigus</string>
+    <string name="bu_filters">Filtres de coupure (BU32107)</string>
+    <string name="bu_filters_hint">Passe-haut des haut-parleurs avant et arrière, passe-bas et filtre subsonique du caisson. Raide = 4e ordre (24 dB/octave), sinon 2e ordre.</string>
+    <string name="bu_hpf_front">Passe-haut avant</string>
+    <string name="bu_hpf_rear">Passe-haut arrière</string>
+    <string name="bu_steep">Raide (4e ordre)</string>
+    <string name="bu_invert">Phase 180°</string>
+    <string name="bu_sub_lpf">Passe-bas du caisson</string>
+    <string name="bu_sub_hpf">Passe-haut subsonique du caisson</string>
+    <string name="bu_p2bass">Renfort de graves P2Bass (BU32107)</string>
+    <string name="bu_p2bass_hint">Hausse des graves de la puce à une fréquence, avant et arrière séparément. Coupé = sans effet.</string>
+    <string name="bu_front">Avant</string>
+    <string name="bu_rear">Arrière</string>
+    <string name="bu_gain">Gain</string>
+    <string name="bu_delays">Alignement temporel (BU32107)</string>
+    <string name="bu_delays_hint">Retard de chaque haut-parleur pour que tous les sons arrivent ensemble à la place du conducteur : retardez les plus proches de leur différence de distance (1 ms = 34,3 cm).</string>
+    <string name="bu_noise">Bruit de test (BU32107)</string>
+    <string name="bu_noise_hint">La puce joue son propre bruit à la place de la musique, pour REW ou un RTA sur téléphone. Le volume s\'applique : commencez bas.</string>
+    <string name="bu_noise_off">Coupé</string>
+    <string name="bu_noise_pink">Bruit rose</string>
+    <string name="bu_noise_white">Bruit blanc</string>
 </resources>

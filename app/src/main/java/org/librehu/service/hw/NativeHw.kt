@@ -47,6 +47,14 @@ object NativeHw {
         register: Int,
         value: Int,
     ): Int
+
+    /** 16-bit select address then [data] (at most 64 bytes). */
+    @JvmStatic external fun i2cWriteBlock(
+        fd: Int,
+        address: Int,
+        register: Int,
+        data: ByteArray,
+    ): Int
 }
 
 /** MCU serial port (`/dev/ttyS1`, 115200 8N1). */
@@ -101,6 +109,28 @@ object SocGpio : Gpio {
     ): Boolean = NativeHw.gpioSet(gpio, high) == 0
 
     override fun read(gpio: Int): Int = NativeHw.gpioRead(gpio).let { if (it < 0) -1 else it }
+}
+
+/** One I2C device with 16-bit select addresses (ROHM BU32107). */
+class I2cBlockDevice private constructor(
+    private val fd: Int,
+    private val address: Int,
+) : org.librehu.core.audio.BlockWriter {
+    override fun write(
+        address: Int,
+        data: ByteArray,
+    ): Boolean = NativeHw.i2cWriteBlock(fd, this.address, address, data) == 0
+
+    companion object {
+        fun open(
+            bus: Int,
+            address: Int,
+        ): I2cBlockDevice {
+            val fd = NativeHw.i2cOpen(bus, address)
+            if (fd < 0) throw IOException("open /dev/i2c-$bus @0x${address.toString(16)}: errno ${-fd}")
+            return I2cBlockDevice(fd, address)
+        }
+    }
 }
 
 /** One I2C device. */

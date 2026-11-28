@@ -52,6 +52,12 @@ data class AudioState(
     val volumeLimit: Int = 40,
     /** The chip's tone and loudness held flat (equaliser in ViPER4Android). */
     val toneByViper: Boolean = false,
+    /** Driver LibreHU runs for the board's sound processor ("BD37534", "BU32107", "" none). */
+    val driver: String = "BD37534",
+    /** Experimental BU32107 driver turned on, its own settings, and the chip's test noise (0 off, 1 pink, 2 white). */
+    val buDriver: Boolean = false,
+    val bu: org.librehu.core.audio.Bu32107Settings = org.librehu.core.audio.Bu32107Settings(),
+    val testNoise: Int = 0,
     val externalAmp: Boolean = false,
     /** 0 = Android, 1 = AUX. */
     val source: Int = 0,
@@ -209,6 +215,10 @@ class ServiceClient(
                     trims = adv.getIntArray("trims")?.toList() ?: listOf(0, 0, 0, 0),
                     volumeLimit = adv.getInt("maxVolume", s.maxVolume),
                     toneByViper = adv.getBoolean("toneByViper"),
+                    driver = adv.getString("driver") ?: "",
+                    buDriver = adv.getBoolean("bu32107Driver"),
+                    bu = org.librehu.core.audio.Bu32107Settings.decode(adv.getString("bu32107")),
+                    testNoise = adv.getInt("testNoise"),
                     balance = bf[0],
                     fade = bf[1],
                     loudness = s.loudness,
@@ -234,6 +244,7 @@ class ServiceClient(
         when (value) {
             is Int -> b.putInt(key, value)
             is Boolean -> b.putBoolean(key, value)
+            is String -> b.putString(key, value)
             else -> return
         }
         call { it.setAudioAdvanced(b) }

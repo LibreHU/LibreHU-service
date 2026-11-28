@@ -185,3 +185,18 @@ JNIEXPORT jint JNICALL JNI_FN(i2cWriteReg)(JNIEnv *env, jclass clazz, jint fd, j
     struct i2c_rdwr_ioctl_data xfer = {.msgs = &msg, .nmsgs = 1};
     return ioctl(fd, I2C_RDWR, &xfer) < 0 ? -errno : 0;
 }
+
+/* Writes a 16-bit select address then the bytes of data (chips with address auto-increment: ROHM BU32107).
+ * Returns 0 or -errno. */
+JNIEXPORT jint JNICALL JNI_FN(i2cWriteBlock)(JNIEnv *env, jclass clazz, jint fd, jint address, jint reg, jbyteArray data) {
+    (void) clazz;
+    jsize n = (*env)->GetArrayLength(env, data);
+    if (n < 0 || n > 64) return -EINVAL;
+    unsigned char buf[66];
+    buf[0] = (unsigned char) ((reg >> 8) & 0xFF);
+    buf[1] = (unsigned char) (reg & 0xFF);
+    (*env)->GetByteArrayRegion(env, data, 0, n, (jbyte *) (buf + 2));
+    struct i2c_msg msg = {.addr = (unsigned short) address, .flags = 0, .len = (unsigned short) (n + 2), .buf = buf};
+    struct i2c_rdwr_ioctl_data xfer = {.msgs = &msg, .nmsgs = 1};
+    return ioctl(fd, I2C_RDWR, &xfer) < 0 ? -errno : 0;
+}

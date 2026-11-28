@@ -29,7 +29,9 @@ fun interface RegisterWriter {
 class Bd37534(
     private val io: RegisterWriter,
     private val sleep: (Long) -> Unit = { Thread.sleep(it) },
-) {
+) : SoundProcessor {
+    override val chip = "BD37534"
+
     /** Last value written per register (for diagnostics and the UI). */
     val shadow = IntArray(256) { -1 }
 
@@ -40,7 +42,7 @@ class Bd37534(
     private var subConfig = SubConfig()
 
     /** Power-on sequence of libJanCarIVI `AudioBD37534::init()`, then Android input selected and muted. */
-    fun init(): Boolean {
+    override fun init(): Boolean {
         var ok = true
         ok = w(SETUP_1, 0xB7) && ok
         ok = w(SETUP_2, 0x00) && ok
@@ -73,27 +75,31 @@ class Bd37534(
      * gain stage comes before the volume: it clips on loud content at any volume once the input level times the gain
      * goes past about 2.1 Vrms (datasheet: maximum input voltage 2.1 Vrms min, 2.3 typ, at THD+N 1 %).
      */
-    fun setInputGain(gainDb: Int): Boolean {
+    override fun setInputGain(gainDb: Int): Boolean {
         inputGainDb = gainDb.coerceIn(0, INPUT_GAIN_MAX)
         return writeInputGain()
     }
 
     /** Soft mute through bit 7 of the input gain register, followed by 50 ms for the ramp when muting. */
-    fun setMute(on: Boolean): Boolean {
+    override fun setMute(on: Boolean): Boolean {
         muted = on
         val ok = writeInputGain()
         if (on) sleep(50)
         return ok
     }
 
-    val isMuted: Boolean get() = muted
+    override val isMuted: Boolean get() = muted
+
+    override fun selectAndroid(gainDb: Int): Boolean = setInput(INPUT_ANDROID, gainDb)
+
+    override fun selectAux(): Boolean = setInput(INPUT_AUX, AUX_GAIN_DB)
 
     private fun writeInputGain() = w(INPUT_GAIN, (if (muted) 0x80 else 0) or inputGainDb)
 
     /** Master volume as a step of [VOLUME_CURVE] (0..[MAX_VOLUME]), plus an optional offset in dB. */
-    fun setVolume(
+    override fun setVolume(
         step: Int,
-        offsetDb: Int = 0,
+        offsetDb: Int,
     ): Boolean = w(VOLUME, attenuator(VOLUME_CURVE[step.coerceIn(0, MAX_VOLUME)] + offsetDb))
 
     /**
@@ -102,9 +108,9 @@ class Bd37534(
      * Its level follows the master volume [step] plus [offsetDb], at most +7 dB, as libJanCarIVI's
      * `AudioBD37534::setMonoVolume`; null = off (0xFF).
      */
-    fun setMixing(
+    override fun setMixing(
         step: Int?,
-        offsetDb: Int = 0,
+        offsetDb: Int,
     ): Boolean =
         w(
             MIXING,
@@ -119,7 +125,7 @@ class Bd37534(
     ): Boolean = setToneDb(2 * bass - 20, 2 * middle - 20, 2 * treble - 20)
 
     /** Bass / middle / treble gains, -20..+20 dB each in 1 dB steps (registers 0x51, 0x54, 0x57). */
-    fun setToneDb(
+    override fun setToneDb(
         bassDb: Int,
         middleDb: Int,
         trebleDb: Int,
@@ -130,7 +136,7 @@ class Bd37534(
      * middle 500/1000/1500/2500 Hz, Q 0.75/1/1.25/1.5; treble 7500/10000/12500/15000 Hz, Q 0.75/1.25. Q given ×100.
      * Unknown values fall back to Jancar's: 80 Hz Q 1, 1500 Hz Q 1, 12500 Hz Q 0.75.
      */
-    fun setToneSetup(setup: ToneSetup): Boolean =
+    override fun setToneSetup(setup: ToneSetup): Boolean =
         w(BASS_SETUP, bandSetup(BASS_FREQS, BASS_QS, setup.bassFreq, setup.bassQ, 1, 1)) and
             w(MIDDLE_SETUP, bandSetup(MIDDLE_FREQS, MIDDLE_QS, setup.middleFreq, setup.middleQ, 2, 1)) and
             w(TREBLE_SETUP, bandSetup(TREBLE_FREQS, TREBLE_QS, setup.trebleFreq, setup.trebleQ, 2, 0))
@@ -144,7 +150,7 @@ class Bd37534(
      * Loudness gain 0..20 dB, centre frequency 250/400/800 Hz (setup 3, 0x03) and high cut 1..4 (bits 6..5 of 0x75).
      * Unknown frequency: 800 Hz, Jancar's.
      */
-    fun setLoudness(
+    override fun setLoudness(
         gainDb: Int,
         freqHz: Int,
         hicut: Int,
@@ -158,10 +164,10 @@ class Bd37534(
      * Balance and fader, 0..60 each (30 = centre). Balance 0 = left, fader 0 = front (ivi-services convention).
      * Every speaker loses the distance of the chosen point to it, mapped to dB with Jancar's table.
      */
-    fun setBalanceFade(
+    override fun setBalanceFade(
         balance: Int,
         fade: Int,
-        trimsDb: IntArray = IntArray(4),
+        trimsDb: IntArray,
     ): Boolean {
         val levels = speakerLevels(balance, fade)
         var ok = true
@@ -181,7 +187,12 @@ class Bd37534(
     fun setSubwoofer(
         on: Boolean,
         level: Int,
-        config: SubConfig = subConfig,
+    ): Boolean = setSubwoofer(on, level, subConfig)
+
+    override fun setSubwoofer(
+        on: Boolean,
+        level: Int,
+        config: SubConfig,
     ): Boolean {
         subLevel = level.coerceIn(0, SUB_MAX_LEVEL)
         subConfig = config

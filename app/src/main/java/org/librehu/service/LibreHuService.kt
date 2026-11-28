@@ -44,6 +44,7 @@ import org.librehu.service.can.CanVehicleStore
 import org.librehu.service.can.CanWheelKeys
 import org.librehu.service.config.ServiceConfig
 import org.librehu.service.display.DisplayController
+import org.librehu.service.hw.I2cBlockDevice
 import org.librehu.service.hw.I2cDevice
 import org.librehu.service.hw.SocGpio
 import org.librehu.service.hw.TtySerialChannel
@@ -89,6 +90,10 @@ class LibreHuService : Service() {
 
     /** Board read from the kernel (jancar_board_id) at the hardware start; A0_AN profile while unknown. */
     private var boardProfile = org.librehu.core.unit.BoardProfiles.forBoardId(null)
+
+    /** Sound processor driven by this service, null when none (unknown chip, BU32107 driver off, I2C error). */
+    @Volatile
+    private var soundProcessor: org.librehu.core.audio.SoundProcessor? = null
     private var jancar = false
     private var protocol: McuProtocol? = null
 
@@ -357,22 +362,39 @@ class LibreHuService : Service() {
             "Board ${bp.boardId ?: "unknown (${org.librehu.core.unit.BoardProfiles.readBoardAdc() ?: "no board id node"})"}: " +
                 "${bp.chip?.label ?: "no audio platform"} (${bp.platform})",
         )
-        // Only a BD37534 is driven: BD37534 commands sent to another chip would set wrong registers.
-        val chipSupported = bp.chip == org.librehu.core.unit.AudioChip.BD37534
-        val dsp =
-            if (profile.board.audioChip == "bd37534" && !chipSupported) {
-                log("Audio chip ${bp.chip?.label ?: "unknown"} of board ${bp.boardId}: not driven by LibreHU yet, BD37534 left off")
+        // Each chip gets its own driver: commands of one chip sent to another would set wrong registers. The BU32107
+        // driver is new and untested on a real board: it runs only once the user turned it on (Audio page).
+        val buOn = prefs(this).getBoolean(PREF_BU32107, false)
+        val dsp: org.librehu.core.audio.SoundProcessor? =
+            if (profile.board.audioChip != "bd37534") {
                 null
-            } else if (profile.board.audioChip == "bd37534") {
+            } else {
                 try {
-                    Bd37534(I2cDevice.open(profile.board.audioBus, profile.board.audioAddress))
+                    when (bp.chip) {
+                        org.librehu.core.unit.AudioChip.BD37534 ->
+                            Bd37534(I2cDevice.open(profile.board.audioBus, profile.board.audioAddress))
+                        org.librehu.core.unit.AudioChip.BU32107 ->
+                            if (buOn) {
+                                org.librehu.core.audio.Bu32107(
+                                    I2cBlockDevice.open(bp.i2cBus, org.librehu.core.audio.Bu32107.I2C_ADDRESS),
+                                    auxInput = bp.auxInput,
+                                    auxGainDb = bp.auxGainDb,
+                                )
+                            } else {
+                                log("BU32107 of board ${bp.boardId}: experimental driver off (Audio page), chip left off")
+                                null
+                            }
+                        else -> {
+                            log("Audio chip ${bp.chip?.label ?: "unknown"} of board ${bp.boardId}: not driven by LibreHU yet")
+                            null
+                        }
+                    }
                 } catch (e: IOException) {
                     log("Audio chip unavailable: ${e.message}")
                     null
                 }
-            } else {
-                null
             }
+        soundProcessor = dsp
         // One thread, as before; an error of one of its tasks (an MCU frame, a setting) is logged instead of lost.
         val exec = org.librehu.core.unit.LoggedExecutor("headunit") { m -> log("Head unit thread: $m") }
         val headUnit =
@@ -430,11 +452,19 @@ class LibreHuService : Service() {
             .get(this)
             .also { it.sender = if (jancar) headUnit::sendToMcu else null }
             .also { it.onHeadlights(DisplayController.get(this).headlights.value) }
-        ServiceState.dsp = dsp
+        ServiceState.dsp = dsp as? Bd37534
         // The head unit's thread or the MCU threads stuck: the service ends and Android starts it again.
         org.librehu.service.power.LinkWatchdog
             .arm(this, exec, t)
-        setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + BD37534")
+        setLink(Link.RUNNING, if (dsp == null) "MCU ok, no audio chip" else "MCU + ${dsp.chip}")
+    }
+
+    /** Hardware stopped and started again on the main thread (as ACTION_RESTART), from a binder call. */
+    private fun restartHardwareAsync() {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            stopHardware()
+            startHardware()
+        }
     }
 
     private fun stopHardware() {
@@ -447,6 +477,7 @@ class LibreHuService : Service() {
             .sender = null
         ServiceState.simulator = null
         ServiceState.dsp = null
+        soundProcessor = null
         transport?.close()
         executor?.shutdownNow()
         transport = null
@@ -790,12 +821,31 @@ class LibreHuService : Service() {
                     putIntArray("trims", s.trims.toIntArray())
                     putInt("maxVolume", s.maxVolume)
                     putBoolean("toneByViper", s.toneByViper)
-                    putBoolean("supported", boardProfile.chip == org.librehu.core.unit.AudioChip.BD37534)
+                    putBoolean("supported", soundProcessor != null)
+                    putString("chip", boardProfile.chip?.name ?: "")
+                    putString("driver", soundProcessor?.chip ?: "")
+                    putBoolean("bu32107Driver", prefs(this@LibreHuService).getBoolean(PREF_BU32107, false))
+                    putString("bu32107", s.bu.encode())
+                    putInt("testNoise", (soundProcessor as? org.librehu.core.audio.Bu32107)?.testNoise ?: 0)
                 }
             }
 
             override fun setAudioAdvanced(values: Bundle?) {
                 val b = values ?: return
+                if (b.containsKey("bu32107Driver")) {
+                    prefs(this@LibreHuService).edit().putBoolean(PREF_BU32107, b.getBoolean("bu32107Driver")).apply()
+                    // The driver is chosen at start: start the hardware again with it (or without it).
+                    if (b.size() == 1) {
+                        restartHardwareAsync()
+                        return
+                    }
+                }
+                if (b.containsKey("testNoise")) {
+                    val chip = soundProcessor as? org.librehu.core.audio.Bu32107
+                    val mode = b.getInt("testNoise")
+                    unit?.let { u -> u.runOnUnit { chip?.setTestNoise(mode) } }
+                    if (b.size() == 1) return
+                }
                 fun int(key: String) = if (b.containsKey(key)) b.getInt(key) else null
                 fun bool(key: String) = if (b.containsKey(key)) b.getBoolean(key) else null
                 change { s ->
@@ -824,6 +874,7 @@ class LibreHuService : Service() {
                         trims = b.getIntArray("trims")?.toList() ?: s.trims,
                         maxVolume = int("maxVolume") ?: s.maxVolume,
                         toneByViper = bool("toneByViper") ?: s.toneByViper,
+                        bu = if (b.containsKey("bu32107")) org.librehu.core.audio.Bu32107Settings.decode(b.getString("bu32107")) else s.bu,
                     )
                 }
             }
@@ -835,7 +886,11 @@ class LibreHuService : Service() {
                     putBoolean("known", bp.known)
                     putString("platform", bp.platform)
                     putString("chip", bp.chip?.label.orEmpty())
-                    putBoolean("supported", bp.chip == org.librehu.core.unit.AudioChip.BD37534)
+                    // A driver exists (the BU32107 one is experimental and off until turned on).
+                    putBoolean(
+                        "supported",
+                        bp.chip == org.librehu.core.unit.AudioChip.BD37534 || bp.chip == org.librehu.core.unit.AudioChip.BU32107,
+                    )
                     putInt("jancarAndroidGain", bp.androidGainDb)
                     putString("iviConfigSection", bp.iviConfigSection.orEmpty())
                     putString("tuner", bp.tuner.orEmpty())
@@ -1059,6 +1114,9 @@ class LibreHuService : Service() {
         const val EXTRA_SOURCE = "source"
         const val PREF_FORCE = "force_with_ivi"
         const val PREF_TURN_GPIO = "turn_gpio"
+
+        /** The experimental ROHM BU32107 driver is on (boards with that chip). */
+        const val PREF_BU32107 = "bu32107_driver"
         const val PREF_INVERTED = "inverted_inputs"
         private const val REBOOT_DELAY_MS = 500L
 

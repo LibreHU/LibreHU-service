@@ -34,13 +34,49 @@ the sound is not equalised twice.
 `ILibreHuService.getAudioAdvanced()` / `setAudioAdvanced(Bundle)`: keys `bassDb`, `middleDb`, `trebleDb`,
 `bassFreq`, `bassQ`, `middleFreq`, `middleQ`, `trebleFreq`, `trebleQ` (Q ×100), `loudness`, `loudnessFreq`,
 `loudnessHicut`, `subCutoff` (0 = off), `subPhase180`, `subOutput` (0 low-pass, 1 front, 2 rear), `trims` (int[4]),
-`maxVolume`, `toneByViper`, `supported`. `getTone` / `setTone` keep the 2 dB steps of API 1-9.
+`maxVolume`, `toneByViper`, `supported` (a driver runs), `driver` ("BD37534", "BU32107" or ""), BU32107 boards:
+`bu32107Driver` (experimental driver on; setting it restarts the hardware), `bu32107` (`Bu32107Settings.encode()`),
+`testNoise` (0 off, 1 pink, 2 white, not stored). `getTone` / `setTone` keep the 2 dB steps of API 1-9.
 
 ## Other chips
 
-BU32107 and AK7604 boards: not driven yet (no tester). The board is identified by the kernel node
-`/sys/devices/virtual/mtk-adc-cali/mtk-adc-cali/jancar_board_id` (kernels `stable-4.9.337` and `rc-4.19.325`); a
-chip other than the BD37534 receives nothing.
+The board is identified by the kernel node `/sys/devices/virtual/mtk-adc-cali/mtk-adc-cali/jancar_board_id`
+(kernels `stable-4.9.337` and `rc-4.19.325`); each chip gets its own driver, never another chip's commands.
+
+### ROHM BU32107 (experimental, off by default)
+
+`core/.../audio/Bu32107.kt`, written from the ROHM datasheet **BU32107EFV-M Rev.001 (07.Apr.2017)**. Jancar's
+`libJanCarIVI.so` (`AudioBU32107`, `BU32107_Init`) was read statically (disassembly, never run) only for the
+board wiring. Not tested on a real board: the driver runs only once "Experimental BU32107 driver" is turned on in the
+Audio page (`PREF_BU32107`; the service restarts its hardware).
+
+- **Bus**: `/dev/i2c-6`, slave 80h (7-bit 0x40), 16-bit select address, address auto-increment (new native
+  `i2cWriteBlock`). Android's audio arrives **digitally** (I2S 16 bits on the D-1 pins, Digital Input1); radio and AUX
+  through the ADC (Single4 / Single5, input gain 0..36 dB); the subwoofer leaves on the SL and SR faders.
+- **Jancar's init checked against the datasheet**: every value is legal and in the datasheet's order (System Reset
+  `FEFE=81`, Initial Setup with RAM clear `0001=CC` then `0C`, Test A..F = `00 C0 00 C0 34 05` as required, fader
+  inputs `0102=20` meeting the digital-mixing rule, fixed bits kept). Its encoders are right (fader `80h | 32-dB`,
+  -inf at -80 dB and below; digital attenuator `64-2·dB`, capped at -79 dB though the chip reaches -95.5 dB). Jancar
+  runs the EQ and the front high-pass with its own biquad coefficients ("Direct Coef Set"); LibreHU uses the chip's
+  Table mode everywhere, so no coefficient can be wrong.
+- **Driven** (Jancar used only part of it): 13-band graphic EQ ±24 dB (2 dB steps, Q 4.7 or 2.2, rear same or
+  separate, EQ headroom pre/post scaler), 3-band tone ±12 dB with bass 40/63/100/160 Hz, middle 400/630/1k/1.6k,
+  treble 2.5k/4k/6.3k/10k, loudness 0..15 dB with its two corners and high boost, front and rear high-pass
+  25..250 Hz 2nd/4th order and phase, subwoofer low-pass 25..250 Hz 2nd/4th order and phase, subsonic high-pass
+  20..200 Hz, P2Bass front / rear (0..12 dB, 54..214 Hz), **time alignment** of FL, FR, RL, RR and subwoofer
+  (0..21.3 ms, 1/48 ms steps), volume on the digital attenuators (0.5 dB), balance / fader / speaker levels / sub level
+  on the analog faders (positive levels by the digital boost), Android over AUX (D-1 to Input3, DAC digital mixing),
+  pink / white **test noise** of the chip (REW, RTA).
+- **Not driven**: spectrum analyser (needs I2C reads), BEEP generator, 16-band EQ mode, S/PDIF output settings,
+  direct coefficients.
+
+### AKM AK7604
+
+Not driven. The AK7604 is a programmable DSP: Jancar's `Ak7604_Init` loads its **own DSP program** (command B8h,
+3245 bytes, and B4h, 855 bytes, from `libJanCarIVI.so`), then writes coefficients into it. Its features are the ones
+of that program; AKM's public document is a product brief (no register or command description), so nothing can be
+added or checked against a datasheet. Jancar's program cannot be shipped with LibreHU; a driver would have to read
+it from the unit's own `ivi-services.apk`.
 
 ---
 
@@ -56,3 +92,20 @@ haut-parleur en plus de la balance et du fader, fréquence centrale et largeur (
 des pas de 1 dB, fréquence et coupe-aigus du loudness, gain d'entrée jusqu'à +20 dB, volume maximal, et
 « Tonalité gérée par ViPER4Android » (tonalité et loudness de la puce à plat). Absent de la puce : retard par
 haut-parleur, passe-haut des sorties avant / arrière.
+
+## Autres puces
+
+### ROHM BU32107 (expérimental, éteint par défaut)
+
+Pilote écrit d'après la fiche ROHM BU32107EFV-M Rev.001 ; la bibliothèque Jancar n'a servi qu'au câblage de la carte
+(lecture statique). Pas testé sur une vraie carte : il ne tourne qu'avec « Pilote BU32107 expérimental » activé
+(onglet Audio). L'init de Jancar est conforme à la fiche (valeurs légales, ordre reset → effacement RAM → réglages →
+faders). LibreHU pilote en plus : égaliseur 13 bandes ±24 dB, fréquences de tonalité, passe-haut avant / arrière,
+passe-bas et subsonique du caisson (2e/4e ordre, phase), P2Bass, alignement temporel par haut-parleur, bruit rose /
+blanc de test. Non pilotés : analyseur de spectre, bip, mode EQ 16 bandes, sortie S/PDIF.
+
+### AKM AK7604
+
+Non pilotée : DSP programmable dont le programme vient de Jancar (pas redistribuable) ; la fiche publique AKM ne
+décrit ni registres ni commandes.
+
