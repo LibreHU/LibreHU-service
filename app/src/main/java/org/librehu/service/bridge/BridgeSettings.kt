@@ -10,6 +10,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.librehu.core.audio.Bd37534
+import org.librehu.core.audio.Bu32107
+import org.librehu.core.audio.Bu32107Settings
 import org.librehu.core.obd.ObdPid
 import org.librehu.core.unit.VehicleInput
 import org.librehu.service.AuxMix
@@ -125,6 +127,89 @@ object BridgeSettings {
         fill: android.os.Bundle.() -> Unit,
     ) = api.setAudioAdvanced(android.os.Bundle().apply(fill))
 
+    private fun bu(api: org.librehu.service.ILibreHuService) = Bu32107Settings.decode(api.audioAdvanced.getString("bu32107"))
+
+    private fun setBu(
+        api: org.librehu.service.ILibreHuService,
+        t: (Bu32107Settings) -> Bu32107Settings,
+    ) = adv(api) { putString("bu32107", t(bu(api)).encode()) }
+
+    /** Every setting of a ROHM BU32107 (boards whose 4th board-id character is not A). */
+    private fun bu32107(
+        page: PageBuilder,
+        api: org.librehu.service.ILibreHuService,
+        r: (Int) -> String,
+    ) = with(page) {
+        val off = r(R.string.sub_cutoff_off)
+
+        fun opts(list: IntArray) = list.map { it to if (it == 0) off else hz(it) }
+        section(r(R.string.bu_title))
+        switch("bu_driver", r(R.string.bu_driver), r(R.string.bu_driver_hint), get = { api.audioAdvanced.getBoolean("bu32107Driver") }) { on ->
+            adv(api) { putBoolean("bu32107Driver", on) }
+        }
+        if (api.audioAdvanced.getString("driver") != "BU32107") return@with
+        section(r(R.string.bu_eq))
+        for (i in 0 until Bu32107.EQ_BANDS) {
+            slider("bu_eq_$i", hz(Bu32107.EQ_BANDS_HZ[i]), -Bu32107.EQ_MAX_DB..Bu32107.EQ_MAX_DB, step = 2, display = ::signed, get = { bu(api).eqFront[i] }) { v ->
+                setBu(api) { s -> s.copy(eqFront = s.eqFront.toMutableList().also { it[i] = v }) }
+            }
+        }
+        pick("bu_eq_q", r(R.string.bu_eq_q), listOf(false to "2.2", true to "4.7"), get = { bu(api).eqNarrow }) { v -> setBu(api) { it.copy(eqNarrow = v) } }
+        switch("bu_eq_headroom", r(R.string.bu_eq_headroom), r(R.string.bu_eq_headroom_hint), get = { bu(api).eqHeadroom }) { v ->
+            setBu(api) { it.copy(eqHeadroom = v) }
+        }
+        switch("bu_eq_rear_same", r(R.string.bu_eq_rear_same), get = { bu(api).eqRearSame }) { v -> setBu(api) { it.copy(eqRearSame = v) } }
+        if (!bu(api).eqRearSame) {
+            for (i in 0 until Bu32107.EQ_BANDS) {
+                slider("bu_eqr_$i", "${r(R.string.bu_eq_rear)} · ${hz(Bu32107.EQ_BANDS_HZ[i])}", -Bu32107.EQ_MAX_DB..Bu32107.EQ_MAX_DB, step = 2, display = ::signed, get = {
+                    bu(api).eqRear[i]
+                }) { v -> setBu(api) { s -> s.copy(eqRear = s.eqRear.toMutableList().also { it[i] = v }) } }
+            }
+        }
+        section(r(R.string.bu_tone_loudness))
+        pick("bu_bass", r(R.string.bass), Bu32107.BASS_FC.map { it to hz(it) }, get = { bu(api).bassFc }) { v -> setBu(api) { it.copy(bassFc = v) } }
+        pick("bu_mid", r(R.string.middle), Bu32107.MIDDLE_F0.map { it to hz(it) }, get = { bu(api).middleF0 }) { v -> setBu(api) { it.copy(middleF0 = v) } }
+        pick("bu_treble", r(R.string.treble), Bu32107.TREBLE_FC.map { it to hz(it) }, get = { bu(api).trebleFc }) { v -> setBu(api) { it.copy(trebleFc = v) } }
+        pick("bu_loud_lpf", r(R.string.bu_loud_lpf), Bu32107.LOUD_LPF.map { it to hz(it) }, get = { bu(api).loudLpf }) { v -> setBu(api) { it.copy(loudLpf = v) } }
+        pick("bu_loud_hpf", r(R.string.bu_loud_hpf), Bu32107.LOUD_HPF.map { it to hz(it) }, get = { bu(api).loudHpf }) { v -> setBu(api) { it.copy(loudHpf = v) } }
+        pick("bu_hiboost", r(R.string.bu_hiboost), Bu32107.LOUD_HIBOOST.map { it to if (it == 0) "0" else "0.$it" }, get = { bu(api).loudHiBoost }) { v ->
+            setBu(api) { it.copy(loudHiBoost = v) }
+        }
+        section(r(R.string.bu_filters))
+        pick("bu_hpf_front", r(R.string.bu_hpf_front), opts(Bu32107.HPF_FC), r(R.string.bu_filters_hint), get = { bu(api).hpfFront }) { v -> setBu(api) { it.copy(hpfFront = v) } }
+        switch("bu_hpf_front_steep", "${r(R.string.bu_hpf_front)} · ${r(R.string.bu_steep)}", get = { bu(api).hpfFrontSteep }) { v -> setBu(api) { it.copy(hpfFrontSteep = v) } }
+        switch("bu_hpf_front_inv", "${r(R.string.bu_hpf_front)} · ${r(R.string.bu_invert)}", get = { bu(api).hpfFrontInvert }) { v -> setBu(api) { it.copy(hpfFrontInvert = v) } }
+        pick("bu_hpf_rear", r(R.string.bu_hpf_rear), opts(Bu32107.HPF_FC), get = { bu(api).hpfRear }) { v -> setBu(api) { it.copy(hpfRear = v) } }
+        switch("bu_hpf_rear_steep", "${r(R.string.bu_hpf_rear)} · ${r(R.string.bu_steep)}", get = { bu(api).hpfRearSteep }) { v -> setBu(api) { it.copy(hpfRearSteep = v) } }
+        switch("bu_hpf_rear_inv", "${r(R.string.bu_hpf_rear)} · ${r(R.string.bu_invert)}", get = { bu(api).hpfRearInvert }) { v -> setBu(api) { it.copy(hpfRearInvert = v) } }
+        pick("bu_sub_lpf", r(R.string.bu_sub_lpf), opts(Bu32107.SUB_LPF_FC), get = { bu(api).subLpf }) { v -> setBu(api) { it.copy(subLpf = v) } }
+        switch("bu_sub_steep", "${r(R.string.bu_sub_lpf)} · ${r(R.string.bu_steep)}", get = { bu(api).subLpfSteep }) { v -> setBu(api) { it.copy(subLpfSteep = v) } }
+        switch("bu_sub_phase", r(R.string.sub_phase), get = { api.audioAdvanced.getBoolean("subPhase180") }) { v -> adv(api) { putBoolean("subPhase180", v) } }
+        pick("bu_sub_hpf", r(R.string.bu_sub_hpf), opts(Bu32107.SUB_HPF_FC), get = { bu(api).subHpf }) { v -> setBu(api) { it.copy(subHpf = v) } }
+        section(r(R.string.bu_p2bass))
+        pick("bu_p2f_hz", "${r(R.string.bu_p2bass)} · ${r(R.string.bu_front)}", opts(Bu32107.P2BASS_FC), r(R.string.bu_p2bass_hint), get = { bu(api).p2BassFrontHz }) { v ->
+            setBu(api) { it.copy(p2BassFrontHz = v) }
+        }
+        slider("bu_p2f_db", "${r(R.string.bu_front)} · ${r(R.string.bu_gain)}", 0..Bu32107.P2BASS_MAX_DB, display = { "+$it dB" }, get = { bu(api).p2BassFrontDb }) { v ->
+            setBu(api) { it.copy(p2BassFrontDb = v) }
+        }
+        pick("bu_p2r_hz", "${r(R.string.bu_p2bass)} · ${r(R.string.bu_rear)}", opts(Bu32107.P2BASS_FC), get = { bu(api).p2BassRearHz }) { v -> setBu(api) { it.copy(p2BassRearHz = v) } }
+        slider("bu_p2r_db", "${r(R.string.bu_rear)} · ${r(R.string.bu_gain)}", 0..Bu32107.P2BASS_MAX_DB, display = { "+$it dB" }, get = { bu(api).p2BassRearDb }) { v ->
+            setBu(api) { it.copy(p2BassRearDb = v) }
+        }
+        section(r(R.string.bu_delays))
+        val names = listOf(R.string.trim_fl, R.string.trim_fr, R.string.trim_rl, R.string.trim_rr, R.string.subwoofer)
+        for (i in 0 until 5) {
+            slider("bu_delay_$i", r(names[i]), 0..Bu32107.DELAY_MAX_TENTHS, hint = if (i == 0) r(R.string.bu_delays_hint) else "", display = { t ->
+                String.format(Locale.ROOT, "%.1f ms · %d cm", t / 10.0, (t * 3.43).toInt())
+            }, get = { bu(api).delays[i] }) { v -> setBu(api) { s -> s.copy(delays = s.delays.toMutableList().also { it[i] = v }) } }
+        }
+        section(r(R.string.bu_noise))
+        pick("bu_noise", r(R.string.bu_noise), listOf(0 to r(R.string.bu_noise_off), 1 to r(R.string.bu_noise_pink), 2 to r(R.string.bu_noise_white)), r(R.string.bu_noise_hint), get = {
+            api.audioAdvanced.getInt("testNoise")
+        }) { v -> adv(api) { putInt("testNoise", v) } }
+    }
+
     private fun centred(v: Int) = (v - 30).let { if (it == 0) "0" else String.format(Locale.ROOT, "%+d", it) }
 
     private fun pct(v: Int) = "$v %"
@@ -194,6 +279,7 @@ object BridgeSettings {
         if (api != null) {
             section(r(R.string.audio_tone))
             val a = api.audioAdvanced
+            val isBu = api.boardInfo.getString("chip").orEmpty().contains("BU32107")
             switch("tone_by_viper", r(R.string.tone_by_viper), r(R.string.tone_by_viper_hint), get = { api.audioAdvanced.getBoolean("toneByViper") }) { on ->
                 adv(api) { putBoolean("toneByViper", on) }
             }
@@ -204,6 +290,7 @@ object BridgeSettings {
                     Band("treble", R.string.treble, Bd37534.TREBLE_FREQS, Bd37534.TREBLE_QS),
                 )) {
                     slider(key, r(label), -20..20, display = ::signed, get = { api.audioAdvanced.getInt("${key}Db") }) { v -> adv(api) { putInt("${key}Db", v) } }
+                    if (isBu) continue
                     pick("${key}_freq", "${r(label)} · ${r(R.string.tone_freq)}", freqs.map { it to hz(it) }, get = {
                         api.audioAdvanced.getInt("${key}Freq")
                     }) { v -> adv(api) { putInt("${key}Freq", v) } }
@@ -212,11 +299,13 @@ object BridgeSettings {
                     }
                 }
                 slider("loudness", r(R.string.loudness), 0..Bd37534.LOUDNESS_MAX, display = { "$it dB" }, get = { api.loudness }) { api.loudness = it }
-                pick("loudness_freq", r(R.string.loudness_freq), Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, get = {
-                    api.audioAdvanced.getInt("loudnessFreq")
-                }) { v -> adv(api) { putInt("loudnessFreq", v) } }
-                pick("loudness_hicut", r(R.string.loudness_hicut), (1..4).map { it to "$it" }, get = { api.audioAdvanced.getInt("loudnessHicut") }) { v ->
-                    adv(api) { putInt("loudnessHicut", v) }
+                if (!isBu) {
+                    pick("loudness_freq", r(R.string.loudness_freq), Bd37534.LOUDNESS_FREQS.map { it to hz(it) }, get = {
+                        api.audioAdvanced.getInt("loudnessFreq")
+                    }) { v -> adv(api) { putInt("loudnessFreq", v) } }
+                    pick("loudness_hicut", r(R.string.loudness_hicut), (1..4).map { it to "$it" }, get = { api.audioAdvanced.getInt("loudnessHicut") }) { v ->
+                        adv(api) { putInt("loudnessHicut", v) }
+                    }
                 }
             }
             section(r(R.string.audio_balance))
@@ -235,18 +324,23 @@ object BridgeSettings {
             section(r(R.string.audio_outputs))
             switch("subwoofer", r(R.string.subwoofer), get = { api.isSubwooferOn }) { on -> api.setSubwoofer(on, api.subwooferLevel) }
             slider("sub_level", r(R.string.sub_level), 0..12, display = { "${it - 5} dB" }, get = { api.subwooferLevel }) { v -> api.setSubwoofer(api.isSubwooferOn, v) }
-            pick("sub_cutoff", r(R.string.sub_cutoff), Bd37534.SUB_CUTOFFS.map { it to hz(it) } + (0 to r(R.string.sub_cutoff_off)), r(R.string.sub_tuning_hint), get = {
-                api.audioAdvanced.getInt("subCutoff")
-            }) { v -> adv(api) { putInt("subCutoff", v) } }
+            if (!isBu) {
+                pick("sub_cutoff", r(R.string.sub_cutoff), Bd37534.SUB_CUTOFFS.map { it to hz(it) } + (0 to r(R.string.sub_cutoff_off)), r(R.string.sub_tuning_hint), get = {
+                    api.audioAdvanced.getInt("subCutoff")
+                }) { v -> adv(api) { putInt("subCutoff", v) } }
+            }
             pick("sub_phase", r(R.string.sub_phase), listOf(0 to "0°", 1 to "180°"), get = { if (api.audioAdvanced.getBoolean("subPhase180")) 1 else 0 }) { v ->
                 adv(api) { putBoolean("subPhase180", v == 1) }
             }
-            pick(
-                "sub_output",
-                r(R.string.sub_output),
-                listOf(0 to r(R.string.sub_output_lpf), 1 to r(R.string.sub_output_front), 2 to r(R.string.sub_output_rear)),
-                get = { api.audioAdvanced.getInt("subOutput") },
-            ) { v -> adv(api) { putInt("subOutput", v) } }
+            if (!isBu) {
+                pick(
+                    "sub_output",
+                    r(R.string.sub_output),
+                    listOf(0 to r(R.string.sub_output_lpf), 1 to r(R.string.sub_output_front), 2 to r(R.string.sub_output_rear)),
+                    get = { api.audioAdvanced.getInt("subOutput") },
+                ) { v -> adv(api) { putInt("subOutput", v) } }
+            }
+            if (isBu) bu32107(this, api, r)
             switch("external_amp", r(R.string.external_amp), r(R.string.external_amp_hint), get = { api.isExternalAmpEnabled }) { api.isExternalAmpEnabled = it }
         }
         overlay(this, app, r, OverlayKind.VOLUME)
