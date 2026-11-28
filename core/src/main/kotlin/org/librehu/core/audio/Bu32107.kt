@@ -174,7 +174,8 @@ class Bu32107(
         fade: Int,
         trimsDb: IntArray,
     ): Boolean {
-        balanceLevels = Bd37534.speakerLevels(balance, fade)
+        // Jancar's table gives +1 dB at the centre (a BD37534 habit): 0 dB at most here, boosts only from the levels.
+        balanceLevels = Bd37534.speakerLevels(balance, fade).map { minOf(0, it) }.toIntArray()
         trims = IntArray(4) { trimsDb.getOrElse(it) { 0 }.coerceIn(Bd37534.TRIM_MIN_DB, Bd37534.TRIM_MAX_DB) }
         return writeFaders() && writeBoosts()
     }

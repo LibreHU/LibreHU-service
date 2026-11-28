@@ -30,7 +30,8 @@ class Bu32107Test {
         assertEquals(0xA0, Bu32107.fader(0))
         assertEquals(0xEF, Bu32107.fader(-79))
         assertEquals(0x80, Bu32107.fader(-80))
-        assertEquals(0x3FF, Bu32107.delayData(Bu32107.DELAY_MAX_TENTHS))
+        // 21.3 ms × 48 = 1022 (3FFh would be 21.31 ms).
+        assertEquals(1022, Bu32107.delayData(Bu32107.DELAY_MAX_TENTHS))
     }
 
     @Test
