@@ -50,6 +50,7 @@ class PrefsSettingsStore(
             externalAmp = prefs.getBoolean("external_amp", d.externalAmp),
             androidInputGain = prefs.getInt("android_input_gain", d.androidInputGain),
             bu = org.librehu.core.audio.Bu32107Settings.decode(prefs.getString("bu32107", null)),
+            ak = org.librehu.core.audio.Ak7604Settings.decode(prefs.getString("ak7604", null)),
         )
     }
 
@@ -86,6 +87,7 @@ class PrefsSettingsStore(
             .putBoolean("external_amp", settings.externalAmp)
             .putInt("android_input_gain", settings.androidInputGain)
             .putString("bu32107", settings.bu.encode())
+            .putString("ak7604", settings.ak.encode())
             .apply()
     }
 }

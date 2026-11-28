@@ -1624,4 +1624,9 @@ Appels %3$s · Musique %4$s · Répertoire %5$s</string>
     <string name="bu_noise_off">Coupé</string>
     <string name="bu_noise_pink">Bruit rose</string>
     <string name="bu_noise_white">Bruit blanc</string>
+    <string name="ak_title">DSP AKM AK7604</string>
+    <string name="ak_driver">Pilote AK7604 expérimental</string>
+    <string name="ak_driver_hint">Charge dans la puce le programme DSP de Jancar, pilote refait d\'après celui de Jancar ; pas encore testé sur une vraie carte. Éteint : la puce n\'est pas pilotée (pas de son). Baissez le volume avant le premier essai ; le service redémarre son matériel.</string>
+    <string name="ak_limits">Pilotés : volume, sourdine, source, balance / fader / niveau des haut-parleurs, niveau et filtres du caisson, passe-haut des haut-parleurs, P2Bass. Pas encore : égaliseur, tonalité, loudness et alignement temporel de Jancar (formats non décodés).</string>
+    <string name="ak_p2bass">Renfort de graves P2Bass</string>
 </resources>

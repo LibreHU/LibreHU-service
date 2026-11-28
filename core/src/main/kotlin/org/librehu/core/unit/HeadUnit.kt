@@ -95,6 +95,8 @@ data class HeadUnitSettings(
     val androidInputGain: Int = 0,
     /** Settings only a ROHM BU32107 has (13-band EQ, high-pass, P2Bass, time alignment...), unused elsewhere. */
     val bu: Bu32107Settings = Bu32107Settings(),
+    /** Settings of the AKM AK7604 with Jancar's program (speaker high-pass, P2Bass, subwoofer filters). */
+    val ak: org.librehu.core.audio.Ak7604Settings = org.librehu.core.audio.Ak7604Settings(),
 )
 
 interface SettingsStore {
@@ -624,6 +626,7 @@ class HeadUnit(
         if (dsp != null) {
             // First: the other settings of a BU32107 read its filter choices (subwoofer low-pass...).
             if (dsp is Bu32107 && (old == null || old.bu != s.bu)) dsp.applySettings(s.bu)
+            if (dsp is org.librehu.core.audio.Ak7604 && (old == null || old.ak != s.ak)) dsp.applySettings(s.ak)
             if (old == null || old.volume != s.volume) {
                 dsp.setVolume(s.volume)
                 applyMixing()
@@ -672,6 +675,7 @@ class HeadUnit(
             trims = List(4) { trims.getOrElse(it) { 0 }.coerceIn(Bd37534.TRIM_MIN_DB, Bd37534.TRIM_MAX_DB) },
             androidInputGain = androidInputGain.coerceIn(0, Bd37534.ANDROID_GAIN_MAX),
             bu = bu.normalized(),
+            ak = ak.normalized(),
         )
     }
 

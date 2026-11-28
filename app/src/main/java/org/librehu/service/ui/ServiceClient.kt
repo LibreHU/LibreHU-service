@@ -58,6 +58,9 @@ data class AudioState(
     val buDriver: Boolean = false,
     val bu: org.librehu.core.audio.Bu32107Settings = org.librehu.core.audio.Bu32107Settings(),
     val testNoise: Int = 0,
+    /** Experimental AK7604 driver on, and its settings. */
+    val akDriver: Boolean = false,
+    val ak: org.librehu.core.audio.Ak7604Settings = org.librehu.core.audio.Ak7604Settings(),
     val externalAmp: Boolean = false,
     /** 0 = Android, 1 = AUX. */
     val source: Int = 0,
@@ -219,6 +222,8 @@ class ServiceClient(
                     buDriver = adv.getBoolean("bu32107Driver"),
                     bu = org.librehu.core.audio.Bu32107Settings.decode(adv.getString("bu32107")),
                     testNoise = adv.getInt("testNoise"),
+                    akDriver = adv.getBoolean("ak7604Driver"),
+                    ak = org.librehu.core.audio.Ak7604Settings.decode(adv.getString("ak7604")),
                     balance = bf[0],
                     fade = bf[1],
                     loudness = s.loudness,

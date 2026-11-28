@@ -370,6 +370,7 @@ fun AudioScreen(client: ServiceClient) {
     val a = client.audio
     // Board with a ROHM BU32107: its own settings, some BD37534 ones hidden.
     val isBu = a.chip.contains("BU32107")
+    val isAk = a.chip.contains("AK7604")
     val link by ServiceState.link.collectAsStateWithLifecycle()
     Page(stringResource(R.string.tab_audio)) {
         if (link.state != LibreHuService.Link.RUNNING) Card { Hint(stringResource(R.string.audio_offline)) }
@@ -406,7 +407,8 @@ fun AudioScreen(client: ServiceClient) {
         MicrophoneCard()
         LevelOverlayCard(OverlayKind.VOLUME) { it.show(a.volume, Bd37534.MAX_VOLUME, a.muted, force = true) }
         SoundOsdCard()
-        Card(stringResource(R.string.audio_tone)) {
+        if (isAk) Ak7604Card(a, client)
+        if (!isAk) Card(stringResource(R.string.audio_tone)) {
             SwitchRow(stringResource(R.string.tone_by_viper), a.toneByViper, stringResource(R.string.tone_by_viper_hint)) { on ->
                 client.adv("toneByViper", on)
             }
@@ -454,7 +456,7 @@ fun AudioScreen(client: ServiceClient) {
             SliderRow(stringResource(R.string.sub_level), a.subLevel, 0..12, {
                 "${it - 5} dB"
             }) { v -> client.call { it.setSubwoofer(a.subwoofer, v) } }
-            if (a.subwoofer && !isBu) {
+            if (a.subwoofer && !isBu && !isAk) {
                 Hint(stringResource(R.string.sub_tuning_hint))
                 BodyText(stringResource(R.string.sub_cutoff))
                 Choices(
@@ -776,3 +778,47 @@ private fun Bu32107Cards(
         }
     }
 }
+
+/** Driver switch and the settings of Jancar's AK7604 program. */
+@Composable
+private fun Ak7604Card(
+    a: AudioState,
+    client: ServiceClient,
+) {
+    val k = a.ak
+
+    fun set(t: (org.librehu.core.audio.Ak7604Settings) -> org.librehu.core.audio.Ak7604Settings) = client.adv("ak7604", t(k).encode())
+    Card(stringResource(R.string.ak_title)) {
+        SwitchRow(stringResource(R.string.ak_driver), a.akDriver, stringResource(R.string.ak_driver_hint)) { on ->
+            client.adv("ak7604Driver", on)
+        }
+        if (a.driver != "AK7604") return@Card
+        Hint(stringResource(R.string.ak_limits))
+        val off = stringResource(R.string.sub_cutoff_off)
+
+        fun opts(
+            list: IntArray,
+            offValue: Int,
+        ) = list.map { it to if (it == offValue) off else hz(it) }
+        BodyText(stringResource(R.string.bu_hpf_front))
+        Choices(opts(org.librehu.core.audio.Ak7604.HPF_FC, 20), k.hpfFront) { v -> set { it.copy(hpfFront = v) } }
+        BodyText(stringResource(R.string.bu_hpf_rear))
+        Choices(opts(org.librehu.core.audio.Ak7604.HPF_FC, 20), k.hpfRear) { v -> set { it.copy(hpfRear = v) } }
+        BodyText(stringResource(R.string.bu_sub_lpf))
+        Choices(opts(org.librehu.core.audio.Ak7604.SUB_LPF_FC, 0), k.subLpf) { v -> set { it.copy(subLpf = v) } }
+        SwitchRow(stringResource(R.string.sub_phase), a.subPhase180) { v -> client.adv("subPhase180", v) }
+        BodyText(stringResource(R.string.bu_sub_hpf))
+        Choices(opts(org.librehu.core.audio.Ak7604.SUB_HPF_FC, 0), k.subHpf) { v -> set { it.copy(subHpf = v) } }
+        BodyText("${stringResource(R.string.ak_p2bass)} · ${stringResource(R.string.bu_front)}")
+        Choices(opts(org.librehu.core.audio.Ak7604.P2BASS_FC, 0), k.p2BassFrontHz) { v -> set { it.copy(p2BassFrontHz = v) } }
+        SliderRow(stringResource(R.string.bu_gain), k.p2BassFrontDb, 0..org.librehu.core.audio.Ak7604.P2BASS_MAX_DB, { "+$it dB" }) { v ->
+            set { it.copy(p2BassFrontDb = v) }
+        }
+        BodyText("${stringResource(R.string.ak_p2bass)} · ${stringResource(R.string.bu_rear)}")
+        Choices(opts(org.librehu.core.audio.Ak7604.P2BASS_FC, 0), k.p2BassRearHz) { v -> set { it.copy(p2BassRearHz = v) } }
+        SliderRow(stringResource(R.string.bu_gain), k.p2BassRearDb, 0..org.librehu.core.audio.Ak7604.P2BASS_MAX_DB, { "+$it dB" }) { v ->
+            set { it.copy(p2BassRearDb = v) }
+        }
+    }
+}
+

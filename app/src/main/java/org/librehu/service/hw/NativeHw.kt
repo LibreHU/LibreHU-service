@@ -48,6 +48,14 @@ object NativeHw {
         value: Int,
     ): Int
 
+    /** Writes [data] then reads [readLen] bytes (0 = write only); null on error. */
+    @JvmStatic external fun i2cTransfer(
+        fd: Int,
+        address: Int,
+        data: ByteArray,
+        readLen: Int,
+    ): ByteArray?
+
     /** 16-bit select address then [data] (at most 64 bytes). */
     @JvmStatic external fun i2cWriteBlock(
         fd: Int,
@@ -109,6 +117,30 @@ object SocGpio : Gpio {
     ): Boolean = NativeHw.gpioSet(gpio, high) == 0
 
     override fun read(gpio: Int): Int = NativeHw.gpioRead(gpio).let { if (it < 0) -1 else it }
+}
+
+/** One I2C device driven with raw transfers (AKM AK7604). */
+class I2cRawDevice private constructor(
+    private val fd: Int,
+    private val address: Int,
+) : org.librehu.core.audio.Ak7604.Bus {
+    override fun write(data: ByteArray): Boolean = NativeHw.i2cTransfer(fd, address, data, 0) != null
+
+    override fun read(
+        command: ByteArray,
+        length: Int,
+    ): ByteArray? = NativeHw.i2cTransfer(fd, address, command, length)
+
+    companion object {
+        fun open(
+            bus: Int,
+            address: Int,
+        ): I2cRawDevice {
+            val fd = NativeHw.i2cOpen(bus, address)
+            if (fd < 0) throw IOException("open /dev/i2c-$bus @0x${address.toString(16)}: errno ${-fd}")
+            return I2cRawDevice(fd, address)
+        }
+    }
 }
 
 /** One I2C device with 16-bit select addresses (ROHM BU32107). */

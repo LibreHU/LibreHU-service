@@ -1624,4 +1624,9 @@ Calls %3$s · Music %4$s · Phone book %5$s</string>
     <string name="bu_noise_off">Off</string>
     <string name="bu_noise_pink">Pink noise</string>
     <string name="bu_noise_white">White noise</string>
+    <string name="ak_title">AKM AK7604 DSP</string>
+    <string name="ak_driver">Experimental AK7604 driver</string>
+    <string name="ak_driver_hint">Loads Jancar\'s DSP program into the chip, rebuilt from Jancar\'s driver; not tested on a real board yet. Off: the chip is not driven (no sound). Turn the volume down before the first try; the service restarts its hardware.</string>
+    <string name="ak_limits">Driven: volume, mute, source, balance / fader / speaker levels, subwoofer level and filters, speaker high-pass, P2Bass. Not yet: Jancar\'s equaliser, tone, loudness and time alignment (their formats are not decoded).</string>
+    <string name="ak_p2bass">P2Bass bass boost</string>
 </resources>

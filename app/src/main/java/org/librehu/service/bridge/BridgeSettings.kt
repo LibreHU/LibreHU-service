@@ -210,6 +210,47 @@ object BridgeSettings {
         }) { v -> adv(api) { putInt("testNoise", v) } }
     }
 
+    /** Driver switch and the settings of Jancar's AK7604 program. */
+    private fun ak7604(
+        page: PageBuilder,
+        api: org.librehu.service.ILibreHuService,
+        r: (Int) -> String,
+    ) = with(page) {
+        fun ak() = org.librehu.core.audio.Ak7604Settings.decode(api.audioAdvanced.getString("ak7604"))
+
+        fun setAk(t: (org.librehu.core.audio.Ak7604Settings) -> org.librehu.core.audio.Ak7604Settings) =
+            adv(api) { putString("ak7604", t(ak()).encode()) }
+        val off = r(R.string.sub_cutoff_off)
+
+        fun opts(
+            list: IntArray,
+            offValue: Int,
+        ) = list.map { it to if (it == offValue) off else hz(it) }
+        section(r(R.string.ak_title))
+        switch("ak_driver", r(R.string.ak_driver), r(R.string.ak_driver_hint), get = { api.audioAdvanced.getBoolean("ak7604Driver") }) { on ->
+            adv(api) { putBoolean("ak7604Driver", on) }
+        }
+        if (api.audioAdvanced.getString("driver") != "AK7604") return@with
+        info("ak_limits", r(R.string.ak_limits)) { "" }
+        pick("ak_hpf_front", r(R.string.bu_hpf_front), opts(org.librehu.core.audio.Ak7604.HPF_FC, 20), get = { ak().hpfFront }) { v -> setAk { it.copy(hpfFront = v) } }
+        pick("ak_hpf_rear", r(R.string.bu_hpf_rear), opts(org.librehu.core.audio.Ak7604.HPF_FC, 20), get = { ak().hpfRear }) { v -> setAk { it.copy(hpfRear = v) } }
+        pick("ak_sub_lpf", r(R.string.bu_sub_lpf), opts(org.librehu.core.audio.Ak7604.SUB_LPF_FC, 0), get = { ak().subLpf }) { v -> setAk { it.copy(subLpf = v) } }
+        switch("ak_sub_phase", r(R.string.sub_phase), get = { api.audioAdvanced.getBoolean("subPhase180") }) { v -> adv(api) { putBoolean("subPhase180", v) } }
+        pick("ak_sub_hpf", r(R.string.bu_sub_hpf), opts(org.librehu.core.audio.Ak7604.SUB_HPF_FC, 0), get = { ak().subHpf }) { v -> setAk { it.copy(subHpf = v) } }
+        pick("ak_p2f_hz", "${r(R.string.ak_p2bass)} · ${r(R.string.bu_front)}", opts(org.librehu.core.audio.Ak7604.P2BASS_FC, 0), get = { ak().p2BassFrontHz }) { v ->
+            setAk { it.copy(p2BassFrontHz = v) }
+        }
+        slider("ak_p2f_db", "${r(R.string.bu_front)} · ${r(R.string.bu_gain)}", 0..org.librehu.core.audio.Ak7604.P2BASS_MAX_DB, display = { "+$it dB" }, get = { ak().p2BassFrontDb }) { v ->
+            setAk { it.copy(p2BassFrontDb = v) }
+        }
+        pick("ak_p2r_hz", "${r(R.string.ak_p2bass)} · ${r(R.string.bu_rear)}", opts(org.librehu.core.audio.Ak7604.P2BASS_FC, 0), get = { ak().p2BassRearHz }) { v ->
+            setAk { it.copy(p2BassRearHz = v) }
+        }
+        slider("ak_p2r_db", "${r(R.string.bu_rear)} · ${r(R.string.bu_gain)}", 0..org.librehu.core.audio.Ak7604.P2BASS_MAX_DB, display = { "+$it dB" }, get = { ak().p2BassRearDb }) { v ->
+            setAk { it.copy(p2BassRearDb = v) }
+        }
+    }
+
     private fun centred(v: Int) = (v - 30).let { if (it == 0) "0" else String.format(Locale.ROOT, "%+d", it) }
 
     private fun pct(v: Int) = "$v %"
@@ -277,9 +318,12 @@ object BridgeSettings {
             ) { v -> Microphone.update(app) { it.copy(micChannel = v) } }
         }
         if (api != null) {
-            section(r(R.string.audio_tone))
             val a = api.audioAdvanced
             val isBu = api.boardInfo.getString("chip").orEmpty().contains("BU32107")
+            // AK7604: Jancar's equaliser and loudness are not decoded, no tone section.
+            val isAk = api.boardInfo.getString("chip").orEmpty().contains("AK7604")
+            if (!isAk) {
+            section(r(R.string.audio_tone))
             switch("tone_by_viper", r(R.string.tone_by_viper), r(R.string.tone_by_viper_hint), get = { api.audioAdvanced.getBoolean("toneByViper") }) { on ->
                 adv(api) { putBoolean("toneByViper", on) }
             }
@@ -308,6 +352,7 @@ object BridgeSettings {
                     }
                 }
             }
+            }
             section(r(R.string.audio_balance))
             slider("balance", r(R.string.balance), 0..60, display = ::centred, get = { api.balanceFade[0] }) { v -> api.setBalanceFade(v, api.balanceFade[1]) }
             slider("fade", r(R.string.fade), 0..60, display = ::centred, get = { api.balanceFade[1] }) { v -> api.setBalanceFade(api.balanceFade[0], v) }
@@ -324,7 +369,7 @@ object BridgeSettings {
             section(r(R.string.audio_outputs))
             switch("subwoofer", r(R.string.subwoofer), get = { api.isSubwooferOn }) { on -> api.setSubwoofer(on, api.subwooferLevel) }
             slider("sub_level", r(R.string.sub_level), 0..12, display = { "${it - 5} dB" }, get = { api.subwooferLevel }) { v -> api.setSubwoofer(api.isSubwooferOn, v) }
-            if (!isBu) {
+            if (!isBu && !isAk) {
                 pick("sub_cutoff", r(R.string.sub_cutoff), Bd37534.SUB_CUTOFFS.map { it to hz(it) } + (0 to r(R.string.sub_cutoff_off)), r(R.string.sub_tuning_hint), get = {
                     api.audioAdvanced.getInt("subCutoff")
                 }) { v -> adv(api) { putInt("subCutoff", v) } }
@@ -332,7 +377,7 @@ object BridgeSettings {
             pick("sub_phase", r(R.string.sub_phase), listOf(0 to "0°", 1 to "180°"), get = { if (api.audioAdvanced.getBoolean("subPhase180")) 1 else 0 }) { v ->
                 adv(api) { putBoolean("subPhase180", v == 1) }
             }
-            if (!isBu) {
+            if (!isBu && !isAk) {
                 pick(
                     "sub_output",
                     r(R.string.sub_output),
@@ -341,6 +386,7 @@ object BridgeSettings {
                 ) { v -> adv(api) { putInt("subOutput", v) } }
             }
             if (isBu) bu32107(this, api, r)
+            if (isAk) ak7604(this, api, r)
             switch("external_amp", r(R.string.external_amp), r(R.string.external_amp_hint), get = { api.isExternalAmpEnabled }) { api.isExternalAmpEnabled = it }
         }
         overlay(this, app, r, OverlayKind.VOLUME)

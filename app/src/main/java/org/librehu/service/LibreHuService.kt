@@ -365,6 +365,7 @@ class LibreHuService : Service() {
         // Each chip gets its own driver: commands of one chip sent to another would set wrong registers. The BU32107
         // driver is new and untested on a real board: it runs only once the user turned it on (Audio page).
         val buOn = prefs(this).getBoolean(PREF_BU32107, false)
+        val akOn = prefs(this).getBoolean(PREF_AK7604, false)
         val dsp: org.librehu.core.audio.SoundProcessor? =
             if (profile.board.audioChip != "bd37534") {
                 null
@@ -384,6 +385,26 @@ class LibreHuService : Service() {
                                 log("BU32107 of board ${bp.boardId}: experimental driver off (Audio page), chip left off")
                                 null
                             }
+                        org.librehu.core.unit.AudioChip.AK7604 -> {
+                            val program = org.librehu.service.hw.Ak7604Assets.load(this)
+                            when {
+                                !akOn -> {
+                                    log("AK7604 of board ${bp.boardId}: experimental driver off (Audio page), chip left off")
+                                    null
+                                }
+                                program == null -> {
+                                    log("AK7604: DSP program missing or different from the analysed one, chip left off")
+                                    null
+                                }
+                                else ->
+                                    org.librehu.core.audio.Ak7604(
+                                        org.librehu.service.hw.I2cRawDevice.open(bp.i2cBus, org.librehu.core.audio.Ak7604.I2C_ADDRESS),
+                                        program,
+                                        { high -> SocGpio.set(bp.resetGpio, high) },
+                                        auxInput = bp.auxInput,
+                                    )
+                            }
+                        }
                         else -> {
                             log("Audio chip ${bp.chip?.label ?: "unknown"} of board ${bp.boardId}: not driven by LibreHU yet")
                             null
@@ -826,6 +847,8 @@ class LibreHuService : Service() {
                     putString("driver", soundProcessor?.chip ?: "")
                     putBoolean("bu32107Driver", prefs(this@LibreHuService).getBoolean(PREF_BU32107, false))
                     putString("bu32107", s.bu.encode())
+                    putBoolean("ak7604Driver", prefs(this@LibreHuService).getBoolean(PREF_AK7604, false))
+                    putString("ak7604", s.ak.encode())
                     putInt("testNoise", (soundProcessor as? org.librehu.core.audio.Bu32107)?.testNoise ?: 0)
                 }
             }
@@ -835,6 +858,13 @@ class LibreHuService : Service() {
                 if (b.containsKey("bu32107Driver")) {
                     prefs(this@LibreHuService).edit().putBoolean(PREF_BU32107, b.getBoolean("bu32107Driver")).apply()
                     // The driver is chosen at start: start the hardware again with it (or without it).
+                    if (b.size() == 1) {
+                        restartHardwareAsync()
+                        return
+                    }
+                }
+                if (b.containsKey("ak7604Driver")) {
+                    prefs(this@LibreHuService).edit().putBoolean(PREF_AK7604, b.getBoolean("ak7604Driver")).apply()
                     if (b.size() == 1) {
                         restartHardwareAsync()
                         return
@@ -875,6 +905,7 @@ class LibreHuService : Service() {
                         maxVolume = int("maxVolume") ?: s.maxVolume,
                         toneByViper = bool("toneByViper") ?: s.toneByViper,
                         bu = if (b.containsKey("bu32107")) org.librehu.core.audio.Bu32107Settings.decode(b.getString("bu32107")) else s.bu,
+                        ak = if (b.containsKey("ak7604")) org.librehu.core.audio.Ak7604Settings.decode(b.getString("ak7604")) else s.ak,
                     )
                 }
             }
@@ -889,7 +920,7 @@ class LibreHuService : Service() {
                     // A driver exists (the BU32107 one is experimental and off until turned on).
                     putBoolean(
                         "supported",
-                        bp.chip == org.librehu.core.unit.AudioChip.BD37534 || bp.chip == org.librehu.core.unit.AudioChip.BU32107,
+                        bp.chip != null,
                     )
                     putInt("jancarAndroidGain", bp.androidGainDb)
                     putString("iviConfigSection", bp.iviConfigSection.orEmpty())
@@ -1117,6 +1148,9 @@ class LibreHuService : Service() {
 
         /** The experimental ROHM BU32107 driver is on (boards with that chip). */
         const val PREF_BU32107 = "bu32107_driver"
+
+        /** The experimental AKM AK7604 driver (Jancar's DSP program) is on. */
+        const val PREF_AK7604 = "ak7604_driver"
         const val PREF_INVERTED = "inverted_inputs"
         private const val REBOOT_DELAY_MS = 500L
 

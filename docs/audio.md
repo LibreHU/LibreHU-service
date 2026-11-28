@@ -36,7 +36,7 @@ the sound is not equalised twice.
 `loudnessHicut`, `subCutoff` (0 = off), `subPhase180`, `subOutput` (0 low-pass, 1 front, 2 rear), `trims` (int[4]),
 `maxVolume`, `toneByViper`, `supported` (a driver runs), `driver` ("BD37534", "BU32107" or ""), BU32107 boards:
 `bu32107Driver` (experimental driver on; setting it restarts the hardware), `bu32107` (`Bu32107Settings.encode()`),
-`testNoise` (0 off, 1 pink, 2 white, not stored). `getTone` / `setTone` keep the 2 dB steps of API 1-9.
+`testNoise` (0 off, 1 pink, 2 white, not stored); AK7604 boards: `ak7604Driver`, `ak7604` (`Ak7604Settings.encode()`). `getTone` / `setTone` keep the 2 dB steps of API 1-9.
 
 ## Other chips
 
@@ -70,13 +70,28 @@ Audio page (`PREF_BU32107`; the service restarts its hardware).
 - **Not driven**: spectrum analyser (needs I2C reads), BEEP generator, 16-band EQ mode, S/PDIF output settings,
   direct coefficients.
 
-### AKM AK7604
+### AKM AK7604 (experimental, off by default)
 
-Not driven. The AK7604 is a programmable DSP: Jancar's `Ak7604_Init` loads its **own DSP program** (command B8h,
-3245 bytes, and B4h, 855 bytes, from `libJanCarIVI.so`), then writes coefficients into it. Its features are the ones
-of that program; AKM's public document is a product brief (no register or command description), so nothing can be
-added or checked against a datasheet. Jancar's program cannot be shipped with LibreHU; a driver would have to read
-it from the unit's own `ivi-services.apk`.
+`core/.../audio/Ak7604.kt`, rebuilt from Jancar's `Ak7604_*` functions in `libJanCarIVI.so` (read statically, never
+run). The AK7604 is a programmable DSP: the service loads **Jancar's own DSP program** into it, shipped in
+`app/src/main/assets/ak7604/` with the project owner's permission (provenance and SHA-256 in its README; the service
+refuses other files). AKM publishes only a product brief of the chip; Jancar's commands match the AK7755 datasheet of
+the same family: control registers `C0h 00h reg val` / `40h 00h reg`, program `B8h` (40-bit words) and coefficients
+`B4h` (24-bit) while the DSP is held in reset, 50 words per transfer, then the chip's CRC (`72h`, CRC-16/XMODEM)
+compared, coefficients while running `80h..8Fh` + `A4h`.
+
+- **Init** (Jancar's): reset pin (GPIO 14) high / low / high, id register C0h = 04h, DSP stopped (02h bit 7,
+  A3h bits 2..0), 164 control registers, program, coefficients, DSP started, speaker high-pass and P2Bass flat,
+  subwoofer pre-gain -10 dB; muted.
+- **Driven**: master volume (CRAM C8h, 24-bit Q3.21 gain), input mixer (ADC 18h/1Ah, I2S 19h/1Bh: Android at -6 dB
+  as Jancar, AUX through the analog selector 8Dh), mute (89h), the four speaker levels (DAh, DDh, EAh, EDh: balance,
+  fader, speaker levels), subwoofer level (11Ch), low-pass (115h, phase 180° by inverting the numerator) and subsonic
+  high-pass (110h), high-pass of the front (E3h) and rear (F3h) speakers, P2Bass low shelf front (DEh) / rear (EEh).
+  Filters are Jancar's RBJ biquads at 48 kHz, written b2, b1, -a2, -a1, b0 in Q2.22.
+- **Not driven yet**: Jancar's band EQ (`Ak7604_SetEq`, up to 36 bands through `ComperFilter_GetDataHexN`), tone,
+  loudness and time alignment (`_SetDelayCmd`): their coefficient formats and address tables are not decoded.
+  `Ak7604_DelayDefault` is skipped: the downloaded coefficients keep the program's defaults.
+- Not tested on a board: the driver runs only once "Experimental AK7604 driver" is on (`PREF_AK7604`).
 
 ---
 
@@ -104,8 +119,12 @@ faders). LibreHU pilote en plus : égaliseur 13 bandes ±24 dB, fréquences de t
 passe-bas et subsonique du caisson (2e/4e ordre, phase), P2Bass, alignement temporel par haut-parleur, bruit rose /
 blanc de test. Non pilotés : analyseur de spectre, bip, mode EQ 16 bandes, sortie S/PDIF.
 
-### AKM AK7604
+### AKM AK7604 (expérimental, éteint par défaut)
 
-Non pilotée : DSP programmable dont le programme vient de Jancar (pas redistribuable) ; la fiche publique AKM ne
-décrit ni registres ni commandes.
+Pilote refait d'après les fonctions `Ak7604_*` de Jancar (lecture statique). Le service charge dans la puce le
+**programme DSP de Jancar** (`app/src/main/assets/ak7604/`, publié avec l'accord du propriétaire du projet, empreintes
+vérifiées), puis vérifie le CRC de la puce. Pilotés : volume, sourdine, source, balance / fader / niveau des
+haut-parleurs, niveau, passe-bas (phase) et subsonique du caisson, passe-haut avant / arrière, P2Bass avant / arrière.
+Pas encore : égaliseur à bandes, tonalité, loudness et alignement temporel de Jancar (formats non décodés). Pas testé
+sur une carte : ne tourne qu'avec « Pilote AK7604 expérimental » activé.
 

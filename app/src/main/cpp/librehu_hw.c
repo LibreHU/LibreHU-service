@@ -200,3 +200,24 @@ JNIEXPORT jint JNICALL JNI_FN(i2cWriteBlock)(JNIEnv *env, jclass clazz, jint fd,
     struct i2c_rdwr_ioctl_data xfer = {.msgs = &msg, .nmsgs = 1};
     return ioctl(fd, I2C_RDWR, &xfer) < 0 ? -errno : 0;
 }
+
+/* Raw I2C transfer: writes [data], then, when readLen > 0, reads readLen bytes after a repeated start (AKM AK7604).
+ * Returns the bytes read (empty array for a write), or null on error. */
+JNIEXPORT jbyteArray JNICALL JNI_FN(i2cTransfer)(JNIEnv *env, jclass clazz, jint fd, jint address, jbyteArray data, jint readLen) {
+    (void) clazz;
+    jsize n = (*env)->GetArrayLength(env, data);
+    if (n <= 0 || n > 512 || readLen < 0 || readLen > 64) return NULL;
+    unsigned char out[512];
+    unsigned char in[64];
+    (*env)->GetByteArrayRegion(env, data, 0, n, (jbyte *) out);
+    struct i2c_msg msgs[2] = {
+        {.addr = (unsigned short) address, .flags = 0, .len = (unsigned short) n, .buf = out},
+        {.addr = (unsigned short) address, .flags = I2C_M_RD, .len = (unsigned short) readLen, .buf = in},
+    };
+    struct i2c_rdwr_ioctl_data xfer = {.msgs = msgs, .nmsgs = readLen > 0 ? 2 : 1};
+    if (ioctl(fd, I2C_RDWR, &xfer) < 0) return NULL;
+    jbyteArray result = (*env)->NewByteArray(env, readLen);
+    if (result != NULL && readLen > 0) (*env)->SetByteArrayRegion(env, result, 0, readLen, (const jbyte *) in);
+    return result;
+}
+
